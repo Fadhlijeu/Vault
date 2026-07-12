@@ -77,15 +77,48 @@
 
         // State Dashboard
         let localFilesState = [];
-        let currentViewMode = 'list'; // Opsi bawaan: list atau grid
+        let currentViewMode = 'list';
 
         // Element Selectors
         const fileViewer = document.getElementById('fileViewer');
         const searchBar = document.getElementById('searchBar');
         const statusConsole = document.getElementById('statusConsole');
-        const fileInput = document.getElementById('fileInput');
-        const dropZone = document.getElementById('dropZone');
-        const dropZoneText = document.getElementById('dropZoneText');
+        const fInput = document.getElementById('fileInput');
+        const dZone = document.getElementById('dropZone');
+        const dZoneText = document.getElementById('dropZoneText');
+
+        // Pemicu Explorer & Drag Drop Binder (PASTIKAN ANTI-NULL)
+        if (dZone && fInput) {
+            dZone.addEventListener('click', (e) => {
+                if (e.target !== fInput) {
+                    fInput.click();
+                }
+            });
+
+            fInput.addEventListener('change', () => { 
+                if (fInput.files.length > 0) {
+                    dZoneText.innerText = `Target: ${fInput.files[0].name}`; 
+                }
+            });
+
+            dZone.addEventListener('dragover', (e) => { 
+                e.preventDefault(); 
+                dZone.classList.add('border-cyan-500'); 
+            });
+
+            dZone.addEventListener('dragleave', () => {
+                dZone.classList.remove('border-cyan-500');
+            });
+
+            dZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dZone.classList.remove('border-cyan-500');
+                if (e.dataTransfer.files.length > 0) {
+                    fInput.files = e.dataTransfer.files;
+                    dZoneText.innerText = `Target: ${fInput.files[0].name}`;
+                }
+            });
+        }
 
         // Render Controller
         async function loadAndRender() {
@@ -107,7 +140,6 @@
             }
 
             if (currentViewMode === 'list') {
-                // RENDER TAMPILAN LIST
                 let html = `<div class="space-y-2">`;
                 files.forEach(file => {
                     const meta = getFileMeta(file.name);
@@ -129,7 +161,6 @@
                 html += `</div>`;
                 fileViewer.innerHTML = html;
             } else {
-                // RENDER TAMPILAN GRID
                 let html = `<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">`;
                 files.forEach(file => {
                     const meta = getFileMeta(file.name);
@@ -153,9 +184,17 @@
             setupActionListeners();
         }
 
-        // Setup Event Action Tombol Dinamis
         function setupActionListeners() {
-            // Aksi Hapus File
+            document.querySelectorAll('.action-delete').forEach(btn => {
+                btn.replaceWith(btn.cloneNode(true));
+            });
+            document.querySelectorAll('.action-rename').forEach(btn => {
+                btn.replaceWith(btn.cloneNode(true));
+            });
+            document.querySelectorAll('.open-preview').forEach(div => {
+                div.replaceWith(div.cloneNode(true));
+            });
+
             document.querySelectorAll('.action-delete').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     e.stopPropagation();
@@ -169,7 +208,6 @@
                 });
             });
 
-            // Aksi Ubah Nama File
             document.querySelectorAll('.action-rename').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     e.stopPropagation();
@@ -185,7 +223,6 @@
                 });
             });
 
-            // Aksi Buka Modal Preview File
             document.querySelectorAll('.open-preview').forEach(div => {
                 div.addEventListener('click', () => {
                     const id = div.getAttribute('data-id');
@@ -195,16 +232,14 @@
             });
         }
 
-        // Live Real-Time Search Engine Controller
         searchBar.addEventListener('input', (e) => {
             const keyword = e.target.value.toLowerCase();
             const filtered = localFilesState.filter(f => f.name.toLowerCase().includes(keyword));
             renderFiles(filtered);
         });
 
-        // Trigger Upload Core
         document.getElementById('uploadBtn').addEventListener('click', () => {
-            const file = fileInput.files[0];
+            const file = fInput.files[0];
             if (!file) return alert("Suntik filenya dulu bro!");
 
             statusConsole.classList.remove('hidden');
@@ -215,8 +250,8 @@
                 (result) => {
                     if (result.status === "success") {
                         statusConsole.innerText = "CONSOLE > Upload complete. Syncing database...";
-                        fileInput.value = "";
-                        dropZoneText.innerText = "Drag & Drop file di sini atau klik untuk memilih";
+                        fInput.value = "";
+                        dZoneText.innerText = "Drag & Drop file di sini atau klik untuk memilih";
                         setTimeout(() => { statusConsole.classList.add('hidden'); }, 2000);
                         loadAndRender();
                     } else {
@@ -226,7 +261,6 @@
             );
         });
 
-        // Modal Preview Controller Logic
         function openModalViewer(file) {
             const modal = document.getElementById('previewModal');
             const title = document.getElementById('modalTitle');
@@ -261,28 +295,10 @@
             modal.classList.remove('flex');
         });
 
-        // UI View Toggle Bindings
         document.getElementById('setViewList').addEventListener('click', () => { currentViewMode = 'list'; renderFiles(localFilesState); });
         document.getElementById('setViewGrid').addEventListener('click', () => { currentViewMode = 'grid'; renderFiles(localFilesState); });
-
-        // Drag & Drop Area Binder Handling
-        dropZone.addEventListener('click', () => fileInput.click());
-        fileInput.addEventListener('change', () => { if(fileInput.files[0]) dropZoneText.innerText = `Target: ${fileInput.files[0].name}`; });
-        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-cyan-500'); });
-        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-cyan-500'));
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('border-cyan-500');
-            if (e.dataTransfer.files.length) {
-                fileInput.files = e.dataTransfer.files;
-                dropZoneText.innerText = `Target: ${fileInput.files[0].name}`;
-            }
-        });
-
-        // Disconnect Button Binding
         document.getElementById('logoutBtn').addEventListener('click', () => logout());
 
-        // Inisialisasi Ambil Data Pertama Kali Web Dibuka
         loadAndRender();
     </script>
 </body>
