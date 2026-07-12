@@ -3,16 +3,19 @@
 // Helper: Membuka atau membuat folder Cyber Vault di Google Drive
 function getOrCreateFolder() {
   const scriptProperties = PropertiesService.getScriptProperties();
-  const folderId = scriptProperties.getProperty('FOLDER_ID');
-  
+  const folderId = scriptProperties.getProperty("FOLDER_ID");
+
   if (folderId) {
     try {
       return DriveApp.getFolderById(folderId);
     } catch (e) {
-      console.warn("Folder ID dari Script Properties tidak ditemukan atau tidak valid: " + e.toString());
+      console.warn(
+        "Folder ID dari Script Properties tidak ditemukan atau tidak valid: " +
+          e.toString(),
+      );
     }
   }
-  
+
   const folderName = "Cyber Vault Data Store";
   const folders = DriveApp.getFoldersByName(folderName);
   if (folders.hasNext()) {
@@ -25,17 +28,30 @@ function getOrCreateFolder() {
 function validateToken(token) {
   if (!token) return false;
   const scriptProperties = PropertiesService.getScriptProperties();
-  const correctKey = scriptProperties.getProperty('HANDSHAKE_KEY');
-  
+  const correctKey = scriptProperties.getProperty("HANDSHAKE_KEY");
+
   // Inisialisasi otomatis jika belum ada (memudahkan setup awal)
   if (!correctKey) {
-    scriptProperties.setProperty('HANDSHAKE_KEY', 'default-cyber-secret-1337');
-    scriptProperties.setProperty('SYSTEM_CONFIG', JSON.stringify({
-      "vaultName": "Cyber Vault Secure Storage",
-      "maxFileSizeMB": 15,
-      "allowedExtensions": ["png", "jpg", "jpeg", "gif", "webp", "pdf", "txt", "zip", "mp4"]
-    }));
-    return token === 'default-cyber-secret-1337';
+    scriptProperties.setProperty("HANDSHAKE_KEY", "default-cyber-secret-1337");
+    scriptProperties.setProperty(
+      "SYSTEM_CONFIG",
+      JSON.stringify({
+        vaultName: "Cyber Vault Secure Storage",
+        maxFileSizeMB: 15,
+        allowedExtensions: [
+          "png",
+          "jpg",
+          "jpeg",
+          "gif",
+          "webp",
+          "pdf",
+          "txt",
+          "zip",
+          "mp4",
+        ],
+      }),
+    );
+    return token === "default-cyber-secret-1337";
   }
   return token === correctKey;
 }
@@ -43,19 +59,19 @@ function validateToken(token) {
 // 1. Secret Storage: Ambil konfigurasi sistem
 function getConfigs(requestKey) {
   const scriptProperties = PropertiesService.getScriptProperties();
-  const correctKey = scriptProperties.getProperty('HANDSHAKE_KEY');
-  
+  const correctKey = scriptProperties.getProperty("HANDSHAKE_KEY");
+
   if (requestKey === correctKey) {
-    const systemConfigStr = scriptProperties.getProperty('SYSTEM_CONFIG');
+    const systemConfigStr = scriptProperties.getProperty("SYSTEM_CONFIG");
     const systemConfig = systemConfigStr ? JSON.parse(systemConfigStr) : {};
     return {
       status: "success",
-      config: systemConfig
+      config: systemConfig,
     };
   } else {
     return {
       status: "error",
-      message: "Handshake Key tidak valid!"
+      message: "Handshake Key tidak valid!",
     };
   }
 }
@@ -64,69 +80,85 @@ function getConfigs(requestKey) {
 function doGet(e) {
   const action = e.parameter.action;
   const token = e.parameter.token;
-  
+
   // A. Handshake Endpoint
   if (action === "handshake") {
     const key = e.parameter.key;
     const result = getConfigs(key);
-    return ContentService.createTextOutput(JSON.stringify(result))
-                         .setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(
+      ContentService.MimeType.JSON,
+    );
   }
-  
+
   // B. Validasi Token untuk Aksi Lainnya
   if (!validateToken(token)) {
-    return ContentService.createTextOutput(JSON.stringify({ 
-      status: "error", 
-      message: "Akses Ditolak: Token Tidak Valid!" 
-    })).setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(
+      JSON.stringify({
+        status: "error",
+        message: "Akses Ditolak: Token Tidak Valid!",
+      }),
+    ).setMimeType(ContentService.MimeType.JSON);
   }
-  
+
   // C. Fixed Proxy Download Handler
   if (action === "download") {
     const fileId = e.parameter.fileId;
     if (!fileId) {
-      return ContentService.createTextOutput("Error: Parameter fileId dibutuhkan.")
-                           .setMimeType(ContentService.MimeType.TEXT);
+      return ContentService.createTextOutput(
+        "Error: Parameter fileId dibutuhkan.",
+      ).setMimeType(ContentService.MimeType.TEXT);
     }
-    
+
     try {
       const file = DriveApp.getFileById(fileId);
       const blob = file.getBlob();
       const filename = file.getName();
       const contentType = blob.getContentType();
-      
+
       // Jika frontend meminta format JSON Base64 untuk preview aman
       if (e.parameter.format === "base64") {
         const base64Data = Utilities.base64Encode(blob.getBytes());
-        return ContentService.createTextOutput(JSON.stringify({
-          status: "success",
-          base64: base64Data,
-          mimeType: contentType,
-          filename: filename
-        })).setMimeType(ContentService.MimeType.JSON);
+        return ContentService.createTextOutput(
+          JSON.stringify({
+            status: "success",
+            base64: base64Data,
+            mimeType: contentType,
+            filename: filename,
+          }),
+        ).setMimeType(ContentService.MimeType.JSON);
       }
-      
+
       // Jika CLI meminta format raw Base64 murni tanpa pembungkus HTML
       if (e.parameter.format === "raw_base64") {
         const base64Data = Utilities.base64Encode(blob.getBytes());
-        return ContentService.createTextOutput(base64Data)
-                             .setMimeType(ContentService.MimeType.TEXT);
+        return ContentService.createTextOutput(base64Data).setMimeType(
+          ContentService.MimeType.TEXT,
+        );
       }
-      
+
       // Deteksi ekstensi file
-      const ext = filename.split('.').pop().toLowerCase();
-      const isTextFile = ['txt', 'csv', 'json', 'xml', 'md', 'html', 'css', 'js'].includes(ext);
-      
+      const ext = filename.split(".").pop().toLowerCase();
+      const isTextFile = [
+        "txt",
+        "csv",
+        "json",
+        "xml",
+        "md",
+        "html",
+        "css",
+        "js",
+      ].includes(ext);
+
       if (isTextFile) {
         // Untuk file teks, kita bisa langsung kirim via ContentService dengan header download
         const textContent = blob.getDataAsString();
         return ContentService.createTextOutput(textContent)
-                             .setMimeType(ContentService.MimeType.TEXT)
-                             .downloadAsFile(filename);
+          .setMimeType(ContentService.MimeType.TEXT)
+          .downloadAsFile(filename);
       } else {
         // Untuk file biner (gambar, pdf, video, zip), kirim via Base64 HTML Stream Download
         const base64Data = Utilities.base64Encode(blob.getBytes());
-        
+
         const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -215,16 +247,18 @@ function doGet(e) {
   </script>
 </body>
 </html>`;
-        
-        return HtmlService.createHtmlOutput(html)
-                          .setTitle("Downloading " + filename);
+
+        return HtmlService.createHtmlOutput(html).setTitle(
+          "Downloading " + filename,
+        );
       }
     } catch (error) {
-      return ContentService.createTextOutput("Error: Gagal memproses file. " + error.toString())
-                           .setMimeType(ContentService.MimeType.TEXT);
+      return ContentService.createTextOutput(
+        "Error: Gagal memproses file. " + error.toString(),
+      ).setMimeType(ContentService.MimeType.TEXT);
     }
   }
-  
+
   // D. List Files & Folders
   const folderId = e.parameter.folderId;
   return listFiles(token, folderId);
@@ -234,15 +268,21 @@ function doGet(e) {
 function listFiles(token, folderId) {
   try {
     const rootFolder = getOrCreateFolder();
-    const parentFolder = folderId ? DriveApp.getFolderById(folderId) : rootFolder;
+    const parentFolder = folderId
+      ? DriveApp.getFolderById(folderId)
+      : rootFolder;
     const fileList = [];
-    
+
     // Gunakan URL Web App saat ini sebagai base untuk API
     const apiURL = ScriptApp.getService().getUrl();
-    
+
     // Cek apakah folder saat ini adalah root folder brankas
-    const isRoot = (parentFolder.getId() === rootFolder.getId());
-    const parentFolderId = isRoot ? null : (parentFolder.getParents().hasNext() ? parentFolder.getParents().next().getId() : rootFolder.getId());
+    const isRoot = parentFolder.getId() === rootFolder.getId();
+    const parentFolderId = isRoot
+      ? null
+      : parentFolder.getParents().hasNext()
+        ? parentFolder.getParents().next().getId()
+        : rootFolder.getId();
 
     // 1. Ambil Subfolder
     const subfolders = parentFolder.getFolders();
@@ -253,10 +293,10 @@ function listFiles(token, folderId) {
         name: subfolder.getName(),
         size: 0,
         isFolder: true,
-        url: ""
+        url: "",
       });
     }
-    
+
     // 2. Ambil File
     const files = parentFolder.getFiles();
     while (files.hasNext()) {
@@ -266,22 +306,31 @@ function listFiles(token, folderId) {
         name: file.getName(),
         size: file.getSize(),
         isFolder: false,
-        url: apiURL + "?action=download&fileId=" + file.getId() + "&token=" + encodeURIComponent(token)
+        url:
+          apiURL +
+          "?action=download&fileId=" +
+          file.getId() +
+          "&token=" +
+          encodeURIComponent(token),
       });
     }
-    
-    return ContentService.createTextOutput(JSON.stringify({ 
-      status: "success", 
-      data: fileList,
-      currentFolderName: parentFolder.getName(),
-      currentFolderId: parentFolder.getId(),
-      parentFolderId: parentFolderId
-    })).setMimeType(ContentService.MimeType.JSON);
+
+    return ContentService.createTextOutput(
+      JSON.stringify({
+        status: "success",
+        data: fileList,
+        currentFolderName: parentFolder.getName(),
+        currentFolderId: parentFolder.getId(),
+        parentFolderId: parentFolderId,
+      }),
+    ).setMimeType(ContentService.MimeType.JSON);
   } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({ 
-      status: "error", 
-      message: "Gagal mengambil data file: " + error.toString() 
-    })).setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(
+      JSON.stringify({
+        status: "error",
+        message: "Gagal mengambil data file: " + error.toString(),
+      }),
+    ).setMimeType(ContentService.MimeType.JSON);
   }
 }
 
@@ -291,7 +340,7 @@ function doPost(e) {
     let token = e.parameter.token;
     let action = e.parameter.action;
     let postData = {};
-    
+
     if (e.postData && e.postData.contents) {
       try {
         postData = JSON.parse(e.postData.contents);
@@ -301,36 +350,117 @@ function doPost(e) {
         // Bukan JSON, data biner murni
       }
     }
-    
+
     // Validasi token keamanan
     if (!validateToken(token)) {
-      return ContentService.createTextOutput(JSON.stringify({ 
-        status: "error", 
-        message: "Akses Ditolak: Token Tidak Valid!" 
-      })).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(
+        JSON.stringify({
+          status: "error",
+          message: "Akses Ditolak: Token Tidak Valid!",
+        }),
+      ).setMimeType(ContentService.MimeType.JSON);
     }
-    
+
     const rootFolder = getOrCreateFolder();
-    
+
     // JIKA upload biner langsung (misal: curl --data-binary)
     if (e.postData && e.postData.bytes && !postData.base64) {
       const bytes = e.postData.bytes;
       const fileName = e.parameter.filename || "project_snapshot.zip";
       const blob = Utilities.newBlob(bytes, "application/zip", fileName);
       const newFile = rootFolder.createFile(blob);
-      
+
       const apiURL = ScriptApp.getService().getUrl();
-      return ContentService.createTextOutput(JSON.stringify({
-        status: "success",
-        message: "File ZIP proyek berhasil diunggah ke Google Drive!",
-        data: {
-          id: newFile.getId(),
-          name: newFile.getName(),
-          url: apiURL + "?action=download&fileId=" + newFile.getId() + "&token=" + encodeURIComponent(token)
-        }
-      })).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(
+        JSON.stringify({
+          status: "success",
+          message: "File ZIP proyek berhasil diunggah ke Google Drive!",
+          data: {
+            id: newFile.getId(),
+            name: newFile.getName(),
+            url:
+              apiURL +
+              "?action=download&fileId=" +
+              newFile.getId() +
+              "&token=" +
+              encodeURIComponent(token),
+          },
+        }),
+      ).setMimeType(ContentService.MimeType.JSON);
     }
-    
+
+    // A0. Aksi Impor File dari URL Eksternal (curl-to-vault)
+    if (action === "importUrl") {
+      const sourceUrl = postData.url;
+      const fileName = postData.name;
+      const parentId = postData.parentFolderId;
+      if (!sourceUrl) {
+        return ContentService.createTextOutput(
+          JSON.stringify({
+            status: "error",
+            message: "Parameter url dibutuhkan!",
+          }),
+        ).setMimeType(ContentService.MimeType.JSON);
+      }
+      try {
+        const response = UrlFetchApp.fetch(sourceUrl, {
+          muteHttpExceptions: true,
+        });
+        const code = response.getResponseCode();
+        if (code !== 200) {
+          return ContentService.createTextOutput(
+            JSON.stringify({
+              status: "error",
+              message: "Gagal mengambil URL (HTTP " + code + ")!",
+            }),
+          ).setMimeType(ContentService.MimeType.JSON);
+        }
+        const blob = response.getBlob();
+        const finalName =
+          fileName ||
+          (function () {
+            // Coba ambil nama dari Content-Disposition, lalu dari path URL
+            const cd = response.getHeaders()["Content-Disposition"];
+            if (cd) {
+              const m = cd.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)/i);
+              if (m) return decodeURIComponent(m[1]);
+            }
+            const path = sourceUrl.split("?")[0].split("#")[0];
+            const seg = path.split("/").filter(Boolean).pop();
+            return seg || "downloaded_file";
+          })();
+        blob.setName(finalName);
+        const parentFolder = parentId
+          ? DriveApp.getFolderById(parentId)
+          : rootFolder;
+        const newFile = parentFolder.createFile(blob);
+        const apiURL = ScriptApp.getService().getUrl();
+        return ContentService.createTextOutput(
+          JSON.stringify({
+            status: "success",
+            message: "File berhasil diunduh dari URL ke vault!",
+            data: {
+              id: newFile.getId(),
+              name: newFile.getName(),
+              url:
+                apiURL +
+                "?action=download&fileId=" +
+                newFile.getId() +
+                "&token=" +
+                encodeURIComponent(token),
+            },
+          }),
+        ).setMimeType(ContentService.MimeType.JSON);
+      } catch (err) {
+        return ContentService.createTextOutput(
+          JSON.stringify({
+            status: "error",
+            message: "Gagal mengimpor URL: " + err.toString(),
+          }),
+        ).setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+
     // A. Aksi Delete File / Folder Tunggal
     if (action === "delete") {
       const fileId = postData.fileId;
@@ -341,12 +471,14 @@ function doPost(e) {
         const folder = DriveApp.getFolderById(fileId);
         folder.setTrashed(true);
       }
-      return ContentService.createTextOutput(JSON.stringify({ 
-        status: "success", 
-        message: "Item berhasil dihapus!" 
-      })).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(
+        JSON.stringify({
+          status: "success",
+          message: "Item berhasil dihapus!",
+        }),
+      ).setMimeType(ContentService.MimeType.JSON);
     }
-    
+
     // B. Aksi Rename File / Folder
     if (action === "rename") {
       const fileId = postData.fileId;
@@ -358,83 +490,98 @@ function doPost(e) {
         item = DriveApp.getFolderById(fileId);
       }
       item.setName(newName);
-      return ContentService.createTextOutput(JSON.stringify({ 
-        status: "success", 
-        message: "Nama item berhasil diubah!" 
-      })).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(
+        JSON.stringify({
+          status: "success",
+          message: "Nama item berhasil diubah!",
+        }),
+      ).setMimeType(ContentService.MimeType.JSON);
     }
 
     // C. Aksi Buat Folder Baru
     if (action === "createFolder") {
       const folderName = postData.folderName;
       const parentId = postData.parentFolderId;
-      const parentFolder = parentId ? DriveApp.getFolderById(parentId) : rootFolder;
+      const parentFolder = parentId
+        ? DriveApp.getFolderById(parentId)
+        : rootFolder;
       const newFolder = parentFolder.createFolder(folderName);
-      
-      return ContentService.createTextOutput(JSON.stringify({ 
-        status: "success", 
-        message: "Folder berhasil dibuat!",
-        data: {
-          id: newFolder.getId(),
-          name: newFolder.getName()
-        }
-      })).setMimeType(ContentService.MimeType.JSON);
+
+      return ContentService.createTextOutput(
+        JSON.stringify({
+          status: "success",
+          message: "Folder berhasil dibuat!",
+          data: {
+            id: newFolder.getId(),
+            name: newFolder.getName(),
+          },
+        }),
+      ).setMimeType(ContentService.MimeType.JSON);
     }
 
     // D. Aksi Bulk Delete (Hapus Banyak File & Folder)
     if (action === "deleteMultiple") {
       const fileIds = postData.fileIds || [];
       const folderIds = postData.folderIds || [];
-      
-      fileIds.forEach(id => {
+
+      fileIds.forEach((id) => {
         try {
           DriveApp.getFileById(id).setTrashed(true);
         } catch (err) {}
       });
-      
-      folderIds.forEach(id => {
+
+      folderIds.forEach((id) => {
         try {
           DriveApp.getFolderById(id).setTrashed(true);
         } catch (err) {}
       });
-      
-      return ContentService.createTextOutput(JSON.stringify({ 
-        status: "success", 
-        message: "Item-item terpilih berhasil dihapus!" 
-      })).setMimeType(ContentService.MimeType.JSON);
+
+      return ContentService.createTextOutput(
+        JSON.stringify({
+          status: "success",
+          message: "Item-item terpilih berhasil dihapus!",
+        }),
+      ).setMimeType(ContentService.MimeType.JSON);
     }
-    
+
     // E. Default: Aksi Upload File
     if (postData.base64) {
       const base64Data = postData.base64;
       const fileName = postData.name;
       const fileType = postData.type;
       const parentId = postData.parentFolderId;
-      
-      const parentFolder = parentId ? DriveApp.getFolderById(parentId) : rootFolder;
+
+      const parentFolder = parentId
+        ? DriveApp.getFolderById(parentId)
+        : rootFolder;
       const decodedBytes = Utilities.base64Decode(base64Data);
       const blob = Utilities.newBlob(decodedBytes, fileType, fileName);
       const newFile = parentFolder.createFile(blob);
-      
-      return ContentService.createTextOutput(JSON.stringify({ 
-        status: "success", 
-        message: "File berhasil diunggah!",
-        data: {
-          id: newFile.getId(),
-          name: newFile.getName()
-        }
-      })).setMimeType(ContentService.MimeType.JSON);
+
+      return ContentService.createTextOutput(
+        JSON.stringify({
+          status: "success",
+          message: "File berhasil diunggah!",
+          data: {
+            id: newFile.getId(),
+            name: newFile.getName(),
+          },
+        }),
+      ).setMimeType(ContentService.MimeType.JSON);
     }
-    
-    return ContentService.createTextOutput(JSON.stringify({ 
-      status: "error", 
-      message: "Aksi tidak dikenal!" 
-    })).setMimeType(ContentService.MimeType.JSON);
-    
+
+    return ContentService.createTextOutput(
+      JSON.stringify({
+        status: "error",
+        message: "Aksi tidak dikenal!",
+      }),
+    ).setMimeType(ContentService.MimeType.JSON);
   } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({ 
-      status: "error", 
-      message: "Server Error: " + error.toString() 
-    })).setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(
+      JSON.stringify({
+        status: "error",
+        message: "Server Error: " + error.toString(),
+      }),
+    ).setMimeType(ContentService.MimeType.JSON);
   }
 }

@@ -150,3 +150,24 @@ export async function deleteMultiple(fileIds = [], folderIds = []) {
         return { status: "error", message: "Gagal menghapus item terpilih." };
     }
 }
+
+// 8. Impor File dari URL Eksternal langsung ke vault (curl-to-vault)
+export async function importFromUrl(url, name = null, parentFolderId = null) {
+    const token = checkToken();
+    const apiUrl = getApiUrl();
+    try {
+        const response = await fetch(apiUrl, {
+            method: "POST",
+            body: JSON.stringify({
+                token: token,
+                action: "importUrl",
+                url: url,
+                name: name,
+                parentFolderId: parentFolderId
+            })
+        });
+        return await response.json();
+    } catch (error) {
+        return { status: "error", message: "Gagal mengimpor file dari URL." };
+    }
+}

@@ -300,7 +300,7 @@
 
     <script type="module">
         import { checkAuth, logout } from './src/auth.js';
-        import { fetchFiles, uploadFile, deleteFile, renameFile, fetchFileBlob, createFolder, deleteMultiple } from './src/vault.js';
+        import { fetchFiles, uploadFile, deleteFile, renameFile, fetchFileBlob, createFolder, deleteMultiple, importFromUrl } from './src/vault.js';
         import { formatBytes, getFileMeta } from './src/utils.js';
 
         // ==================== TOAST & DIALOG ENGINE ====================
@@ -496,9 +496,17 @@
                     fileName = url.split('/').pop().split('?')[0] || 'download';
                 }
                 if (!url) { cliPrint('<span class="cli-error">Penggunaan: curl -o [nama_file] [url]</span>'); return; }
-                cliPrint(`<span class="cli-info">Menginstruksikan backend untuk mengunduh: ${url.substring(0,60)}</span>`);
-                cliPrint('<span class="cli-warn">⚠ Fitur curl-to-vault memerlukan endpoint backend tambahan (belum aktif).</span>');
-                cliPrint('<span class="cli-info">Untuk sekarang, gunakan fitur Upload di panel kiri untuk mengunggah file secara manual.</span>');
+
+                cliPrint(`<span class="cli-info">⏳ Mengunduh dari: ${url.substring(0,70)}${url.length > 70 ? '…' : ''}</span>`);
+                const result = await importFromUrl(url, fileName, cliCurrentFolder.id);
+                if (result.status === 'success') {
+                    const savedName = (result.data && result.data.name) || fileName || 'file';
+                    cliPrint(`<span class="cli-success">✓ Berhasil diimpor ke vault: ${savedName}</span>`);
+                    // Refresh file explorer jika berada di folder yang sama
+                    if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
+                } else {
+                    cliPrint(`<span class="cli-error">✗ Gagal: ${result.message}</span>`);
+                }
             },
 
             clear: async () => { cliOutput.innerHTML = ''; },
