@@ -71,30 +71,89 @@
             font-size: 11px;
             font-weight: bold;
         }
-        /* Terminal CLI */
-        #cliOutput {
-            scrollbar-width: thin;
-            scrollbar-color: rgba(56,189,248,0.3) transparent;
-        }
-        #cliOutput::-webkit-scrollbar { width: 4px; }
-        #cliOutput::-webkit-scrollbar-thumb { background: rgba(56,189,248,0.3); border-radius: 4px; }
-        #cliInput {
-            background: transparent;
-            outline: none;
-            border: none;
-            caret-color: #22d3ee;
-            color: #e2e8f0;
-            width: 100%;
-        }
-        .cli-prompt { color: #22d3ee; }
-        .cli-success { color: #4ade80; }
-        .cli-error   { color: #f87171; }
-        .cli-info    { color: #94a3b8; }
-        .cli-warn    { color: #fbbf24; }
-        .cli-folder  { color: #38bdf8; }
-        .cli-file    { color: #e2e8f0; }
+        /* ── Terminal CLI ── */
+        #cliOutput { scrollbar-width:thin; scrollbar-color:rgba(56,189,248,.3) transparent; }
+        #cliOutput::-webkit-scrollbar { width:4px; }
+        #cliOutput::-webkit-scrollbar-thumb { background:rgba(56,189,248,.3); border-radius:4px; }
+        #cliInput { background:transparent; outline:none; border:none; caret-color:#22d3ee; color:#e2e8f0; width:100%; }
+        .cli-prompt  { color:#22d3ee; }
+        .cli-success { color:#4ade80; }
+        .cli-error   { color:#f87171; }
+        .cli-info    { color:#94a3b8; }
+        .cli-warn    { color:#fbbf24; }
+        .cli-folder  { color:#38bdf8; }
+        .cli-file    { color:#e2e8f0; }
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
         .cursor-blink { display:inline-block; animation:blink 1s step-end infinite; }
+        /* Floating terminal panel */
+        #terminalPanel {
+            position:fixed; bottom:80px; right:24px; width:min(640px,95vw);
+            transform:translateY(20px); opacity:0; pointer-events:none;
+            transition:all .3s cubic-bezier(.4,0,.2,1); z-index:900;
+        }
+        #terminalPanel.open { transform:translateY(0); opacity:1; pointer-events:all; }
+        #termFab {
+            position:fixed; bottom:24px; right:24px; z-index:901;
+            width:52px; height:52px; border-radius:50%;
+            background:linear-gradient(135deg,#06b6d4,#3b82f6);
+            box-shadow:0 0 20px rgba(6,182,212,.5);
+            display:flex; align-items:center; justify-content:center;
+            cursor:pointer; border:none; transition:all .3s ease;
+            font-size:1.3rem;
+        }
+        #termFab:hover { transform:scale(1.1); box-shadow:0 0 30px rgba(6,182,212,.7); }
+        /* ── Toast Notifications ── */
+        #toastContainer { position:fixed; top:20px; right:20px; z-index:9999; display:flex; flex-direction:column; gap:10px; pointer-events:none; }
+        .toast {
+            display:flex; align-items:flex-start; gap:12px;
+            padding:14px 18px; border-radius:14px; min-width:280px; max-width:360px;
+            backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+            box-shadow:0 8px 32px rgba(0,0,0,.4);
+            animation:toastIn .35s cubic-bezier(.4,0,.2,1) forwards;
+            pointer-events:all;
+            font-family:'Outfit',sans-serif; font-size:13px;
+        }
+        .toast.success { background:rgba(4,47,27,.85); border:1px solid rgba(74,222,128,.3); color:#4ade80; }
+        .toast.error   { background:rgba(69,10,10,.85); border:1px solid rgba(248,113,113,.3); color:#f87171; }
+        .toast.info    { background:rgba(8,47,73,.85); border:1px solid rgba(56,189,248,.3); color:#38bdf8; }
+        .toast.warn    { background:rgba(69,42,0,.85); border:1px solid rgba(251,191,36,.3); color:#fbbf24; }
+        .toast-icon { font-size:1.1rem; flex-shrink:0; margin-top:1px; }
+        .toast-msg  { flex:1; line-height:1.5; color:#f8fafc; }
+        .toast-msg strong { display:block; font-size:11px; text-transform:uppercase; letter-spacing:.08em; margin-bottom:2px; }
+        .toast-close { background:none; border:none; cursor:pointer; opacity:.5; transition:opacity .2s; font-size:16px; color:inherit; padding:0; line-height:1; }
+        .toast-close:hover { opacity:1; }
+        @keyframes toastIn  { from{opacity:0;transform:translateX(40px)} to{opacity:1;transform:translateX(0)} }
+        @keyframes toastOut { from{opacity:1;transform:translateX(0)} to{opacity:0;transform:translateX(40px)} }
+        /* ── Styled Dialog ── */
+        #dialogOverlay {
+            position:fixed; inset:0; z-index:9990;
+            background:rgba(2,6,23,.8); backdrop-filter:blur(6px);
+            display:none; align-items:center; justify-content:center; padding:16px;
+        }
+        #dialogOverlay.show { display:flex; }
+        #dialogBox {
+            background:rgba(15,23,42,.95); border:1px solid rgba(56,189,248,.2);
+            border-radius:20px; padding:28px; width:100%; max-width:420px;
+            box-shadow:0 20px 60px rgba(0,0,0,.6);
+            animation:toastIn .25s ease;
+            font-family:'Outfit',sans-serif;
+        }
+        #dialogBox h4 { font-size:14px; font-weight:700; color:#38bdf8; margin-bottom:8px; }
+        #dialogBox p  { font-size:12px; color:#94a3b8; margin-bottom:16px; line-height:1.6; }
+        #dialogInput  { width:100%; padding:10px 14px; border-radius:10px; border:1px solid rgba(56,189,248,.25);
+                        background:rgba(2,6,23,.6); color:#f8fafc; font-size:13px; outline:none;
+                        font-family:'Fira Code',monospace; margin-bottom:16px; }
+        #dialogInput:focus { border-color:#38bdf8; }
+        .dialog-actions { display:flex; gap:10px; justify-content:flex-end; }
+        .dialog-btn-cancel { padding:8px 18px; border-radius:10px; border:1px solid rgba(255,255,255,.1);
+                             background:transparent; color:#94a3b8; font-size:12px; cursor:pointer;
+                             font-weight:600; transition:all .2s; }
+        .dialog-btn-cancel:hover { background:rgba(255,255,255,.05); color:#f8fafc; }
+        .dialog-btn-ok { padding:8px 20px; border-radius:10px; border:none;
+                         background:linear-gradient(135deg,#06b6d4,#3b82f6);
+                         color:white; font-size:12px; font-weight:700; cursor:pointer;
+                         box-shadow:0 0 14px rgba(6,182,212,.35); transition:all .2s; }
+        .dialog-btn-ok:hover { box-shadow:0 0 22px rgba(6,182,212,.6); }
     </style>
 </head>
 <body class="p-4 md:p-8 min-h-screen">
@@ -185,28 +244,50 @@
 
         </div>
 
-        <!-- CLI Terminal Panel -->
-        <div class="cyber-card rounded-2xl overflow-hidden">
-            <div class="flex items-center justify-between px-5 py-3 border-b border-cyan-500/10 bg-black/30">
-                <div class="flex items-center gap-3">
-                    <div class="flex gap-1.5">
-                        <div class="w-3 h-3 rounded-full bg-red-500/70"></div>
-                        <div class="w-3 h-3 rounded-full bg-yellow-500/70"></div>
-                        <div class="w-3 h-3 rounded-full bg-green-500/70"></div>
-                    </div>
-                    <span class="text-xs font-semibold text-cyan-400 font-mono-cyber tracking-widest">VAULT://TERMINAL</span>
-                </div>
-                <button id="cliClearBtn" class="text-[10px] text-slate-500 hover:text-cyan-400 font-mono-cyber transition cursor-pointer">clear</button>
-            </div>
-            <div id="cliOutput" class="font-mono-cyber text-xs p-4 h-72 overflow-y-auto space-y-1 bg-black/60"></div>
-            <div class="flex items-center gap-2 px-4 py-3 border-t border-cyan-500/10 bg-black/50">
-                <span class="cli-prompt font-mono-cyber text-xs select-none">vault@cyber:~$</span>
-                <input id="cliInput" type="text" class="font-mono-cyber text-xs flex-1" placeholder="Ketik perintah (help untuk daftar command)..." autocomplete="off" spellcheck="false">
-                <span class="cursor-blink cli-prompt font-mono-cyber text-sm">▮</span>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
+
+    <!-- Styled Dialog -->
+    <div id="dialogOverlay">
+        <div id="dialogBox">
+            <h4 id="dialogTitle">Konfirmasi</h4>
+            <p id="dialogMessage"></p>
+            <input id="dialogInput" type="text" class="hidden" placeholder="" />
+            <div class="dialog-actions">
+                <button class="dialog-btn-cancel" id="dialogCancel">Batal</button>
+                <button class="dialog-btn-ok" id="dialogOk">OK</button>
             </div>
         </div>
-
     </div>
+
+    <!-- Floating Terminal Panel -->
+    <div id="terminalPanel" class="cyber-card rounded-2xl overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-cyan-500/10 bg-black/40">
+            <div class="flex items-center gap-3">
+                <div class="flex gap-1.5">
+                    <div class="w-3 h-3 rounded-full bg-red-500/70"></div>
+                    <div class="w-3 h-3 rounded-full bg-yellow-500/70"></div>
+                    <div class="w-3 h-3 rounded-full bg-green-500/70"></div>
+                </div>
+                <span class="text-xs font-semibold text-cyan-400 font-mono-cyber tracking-widest">VAULT://TERMINAL</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <button id="cliClearBtn" class="text-[10px] text-slate-500 hover:text-cyan-400 font-mono-cyber transition cursor-pointer">clear</button>
+                <button id="termClose" class="text-slate-500 hover:text-white text-lg leading-none cursor-pointer">&times;</button>
+            </div>
+        </div>
+        <div id="cliOutput" class="font-mono-cyber text-xs p-4 h-72 overflow-y-auto space-y-1 bg-black/70"></div>
+        <div class="flex items-center gap-2 px-4 py-3 border-t border-cyan-500/10 bg-black/60">
+            <span class="cli-prompt font-mono-cyber text-xs select-none">vault@cyber:~$</span>
+            <input id="cliInput" type="text" class="font-mono-cyber text-xs flex-1" placeholder="help — daftar perintah" autocomplete="off" spellcheck="false">
+            <span class="cursor-blink cli-prompt font-mono-cyber text-sm">▮</span>
+        </div>
+    </div>
+
+    <!-- Floating Terminal FAB -->
+    <button id="termFab" title="Buka Terminal">⌨️</button>
 
     <!-- Preview Modal -->
     <div id="previewModal" class="fixed inset-0 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4 z-50">
@@ -222,93 +303,127 @@
         import { fetchFiles, uploadFile, deleteFile, renameFile, fetchFileBlob, createFolder, deleteMultiple } from './src/vault.js';
         import { formatBytes, getFileMeta } from './src/utils.js';
 
-        // ==================== VAULT CLI ENGINE ====================
-        const cliOutput  = document.getElementById('cliOutput');
-        const cliInput   = document.getElementById('cliInput');
-        const cliClearBtn = document.getElementById('cliClearBtn');
-        let cliHistory = [];
-        let cliHistoryIdx = -1;
-        let cliCurrentFolder = { id: null, name: 'root' };
-        let cliParentStack  = []; // stack [{id, name}] untuk navigasi back
+        // ==================== TOAST & DIALOG ENGINE ====================
+        const toastContainer = document.getElementById('toastContainer');
+        const dialogOverlay  = document.getElementById('dialogOverlay');
+        const dialogTitle    = document.getElementById('dialogTitle');
+        const dialogMessage  = document.getElementById('dialogMessage');
+        const dialogInput    = document.getElementById('dialogInput');
+        const dialogOk       = document.getElementById('dialogOk');
+        const dialogCancel   = document.getElementById('dialogCancel');
 
-        function cliPrint(text, cls = '') {
+        function toast(message, type = 'info', duration = 4000) {
+            const icons = { success:'✅', error:'❌', info:'ℹ️', warn:'⚠️' };
+            const labels = { success:'Berhasil', error:'Error', info:'Info', warn:'Peringatan' };
+            const el = document.createElement('div');
+            el.className = `toast ${type}`;
+            el.innerHTML = `
+                <span class="toast-icon">${icons[type]}</span>
+                <span class="toast-msg"><strong>${labels[type]}</strong>${message}</span>
+                <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>`;
+            toastContainer.appendChild(el);
+            setTimeout(() => {
+                el.style.animation = 'toastOut .35s ease forwards';
+                setTimeout(() => el.remove(), 350);
+            }, duration);
+        }
+
+        function showDialog(title, message, { hasInput = false, inputDefault = '', inputPlaceholder = '' } = {}) {
+            return new Promise((resolve) => {
+                dialogTitle.textContent = title;
+                dialogMessage.textContent = message;
+                dialogInput.value = inputDefault;
+                dialogInput.placeholder = inputPlaceholder;
+                dialogInput.classList.toggle('hidden', !hasInput);
+                dialogOverlay.classList.add('show');
+                if (hasInput) setTimeout(() => dialogInput.focus(), 50);
+
+                const cleanup = () => { dialogOverlay.classList.remove('show'); };
+                dialogOk.onclick = () => { cleanup(); resolve(hasInput ? dialogInput.value.trim() : true); };
+                dialogCancel.onclick = () => { cleanup(); resolve(null); };
+                dialogInput.onkeydown = (e) => { if (e.key === 'Enter') dialogOk.click(); if (e.key === 'Escape') dialogCancel.click(); };
+            });
+        }
+        // ==================== END TOAST & DIALOG ENGINE ====================
+
+        // ==================== VAULT CLI ENGINE ====================
+        const cliOutput   = document.getElementById('cliOutput');
+        const cliInput    = document.getElementById('cliInput');
+        const cliClearBtn = document.getElementById('cliClearBtn');
+        const termFab     = document.getElementById('termFab');
+        const termPanel   = document.getElementById('terminalPanel');
+        const termClose   = document.getElementById('termClose');
+        let cliHistory = [], cliHistoryIdx = -1;
+        let cliCurrentFolder = { id: null, name: 'root' };
+        let cliParentStack  = [];
+
+        // FAB Toggle
+        termFab.addEventListener('click', () => {
+            termPanel.classList.toggle('open');
+            if (termPanel.classList.contains('open')) cliInput.focus();
+        });
+        termClose.addEventListener('click', () => termPanel.classList.remove('open'));
+
+        function cliPrint(text) {
             const line = document.createElement('div');
             line.innerHTML = text;
-            if (cls) line.className = cls;
             cliOutput.appendChild(line);
             cliOutput.scrollTop = cliOutput.scrollHeight;
         }
-
         function cliSep() { cliPrint('<span class="cli-info">─────────────────────────────────────</span>'); }
 
-        // Welcome message
-        cliPrint('<span class="cli-prompt">⚡ Vault CLI v1.0 — ketik <strong>help</strong> untuk daftar perintah</span>');
+        cliPrint('<span class="cli-prompt">⚡ Vault CLI v2.0 — ketik <strong>help</strong> untuk panduan</span>');
         cliSep();
 
         const CLI_COMMANDS = {
             help: async () => {
-                cliPrint('<span class="cli-warn">Daftar perintah yang tersedia:</span>');
-                const cmds = [
-                    ['ls',             'Tampilkan isi folder aktif'],
-                    ['ls [folder-id]', 'Tampilkan isi folder tertentu'],
-                    ['cd [folder-id]', 'Masuk ke subfolder'],
-                    ['cd ..',          'Kembali ke folder induk'],
-                    ['pwd',            'Tampilkan folder aktif'],
-                    ['mkdir [nama]',   'Buat folder baru di direktori aktif'],
-                    ['rm [id]',        'Hapus file/folder berdasarkan ID'],
-                    ['rename [id] [nama baru]', 'Ganti nama file/folder'],
-                    ['clear',          'Bersihkan output terminal'],
-                ];
-                cmds.forEach(([cmd, desc]) => {
-                    cliPrint(`  <span class="cli-prompt">${cmd.padEnd(28)}</span><span class="cli-info">${desc}</span>`);
+                cliPrint('<span class="cli-warn">Daftar perintah:</span>');
+                [
+                    ['ls [folder-id?]',          'Tampilkan isi folder'],
+                    ['cd [folder-id | ..]',       'Navigasi folder'],
+                    ['pwd',                       'Folder aktif saat ini'],
+                    ['mkdir [nama]',              'Buat folder baru'],
+                    ['rm [id]',                   'Hapus file/folder'],
+                    ['rename [id] [nama baru]',   'Ganti nama item'],
+                    ['git status',                'Info vault & sesi saat ini'],
+                    ['git log',                   'Riwayat file terbaru'],
+                    ['git push',                  'Info cara push via drive.bat'],
+                    ['curl -o [nama] [url]',      'Download file dari URL ke vault'],
+                    ['clear',                     'Bersihkan terminal'],
+                ].forEach(([cmd, desc]) => {
+                    cliPrint(`  <span class="cli-prompt">${cmd.padEnd(30)}</span><span class="cli-info">${desc}</span>`);
                 });
             },
 
             pwd: async () => {
-                cliPrint(`<span class="cli-info">Direktori aktif: </span><span class="cli-prompt">${cliCurrentFolder.name}</span><span class="cli-info"> (id: ${cliCurrentFolder.id || 'root'})</span>`);
+                cliPrint(`<span class="cli-info">Direktori: </span><span class="cli-prompt">${cliCurrentFolder.name}</span><span class="cli-info"> [${cliCurrentFolder.id || 'root'}]</span>`);
             },
 
             ls: async (args) => {
-                const targetId = args[0] || cliCurrentFolder.id;
-                cliPrint(`<span class="cli-info">Memuat isi folder...</span>`);
-                const result = await fetchFiles(targetId);
-                if (result.status !== 'success') {
-                    cliPrint(`<span class="cli-error">Error: ${result.message}</span>`);
-                    return;
-                }
-                const items = result.data;
-                if (items.length === 0) {
-                    cliPrint('<span class="cli-info">Folder kosong.</span>');
-                    return;
-                }
-                cliPrint(`<span class="cli-info">Total: ${items.length} item di <strong>${result.currentFolderName}</strong></span>`);
+                cliPrint('<span class="cli-info">Memuat...</span>');
+                const result = await fetchFiles(args[0] || cliCurrentFolder.id);
+                if (result.status !== 'success') { cliPrint(`<span class="cli-error">Error: ${result.message}</span>`); return; }
+                if (!result.data.length) { cliPrint('<span class="cli-info">Folder kosong.</span>'); return; }
+                cliPrint(`<span class="cli-info">${result.data.length} item di <strong>${result.currentFolderName}</strong></span>`);
                 cliSep();
-                items.forEach(item => {
+                result.data.forEach(item => {
                     const icon = item.isFolder ? '📁' : '📄';
                     const cls  = item.isFolder ? 'cli-folder' : 'cli-file';
-                    const size = item.isFolder ? '<DIR>' : formatBytes(item.size);
-                    cliPrint(`  ${icon} <span class="${cls}">${item.name.padEnd(36)}</span> <span class="cli-info">${size.padEnd(12)} [${item.id}]</span>`);
+                    const size = item.isFolder ? '<DIR>  ' : formatBytes(item.size);
+                    cliPrint(`  ${icon} <span class="${cls}">${item.name}</span> <span class="cli-info">(${size}) [${item.id}]</span>`);
                 });
             },
 
             cd: async (args) => {
                 if (!args[0]) { cliPrint('<span class="cli-error">Penggunaan: cd [folder-id] | cd ..</span>'); return; }
-
                 if (args[0] === '..') {
-                    if (cliParentStack.length === 0) {
-                        cliPrint('<span class="cli-warn">Sudah di root folder.</span>');
-                        return;
-                    }
-                    const parent = cliParentStack.pop();
-                    cliCurrentFolder = parent;
-                    cliPrint(`<span class="cli-success">↑ Kembali ke: ${parent.name} (${parent.id || 'root'})</span>`);
+                    if (!cliParentStack.length) { cliPrint('<span class="cli-warn">Sudah di root.</span>'); return; }
+                    cliCurrentFolder = cliParentStack.pop();
+                    cliPrint(`<span class="cli-success">↑ Kembali ke: ${cliCurrentFolder.name}</span>`);
                     return;
                 }
-
-                cliPrint('<span class="cli-info">Memuat folder...</span>');
                 const result = await fetchFiles(args[0]);
                 if (result.status !== 'success') { cliPrint(`<span class="cli-error">Error: ${result.message}</span>`); return; }
-
                 cliParentStack.push({ ...cliCurrentFolder });
                 cliCurrentFolder = { id: result.currentFolderId, name: result.currentFolderName };
                 cliPrint(`<span class="cli-success">→ Masuk ke: ${result.currentFolderName}</span>`);
@@ -316,97 +431,103 @@
 
             mkdir: async (args) => {
                 const name = args.join(' ');
-                if (!name) { cliPrint('<span class="cli-error">Penggunaan: mkdir [nama folder]</span>'); return; }
-                cliPrint('<span class="cli-info">Membuat folder...</span>');
+                if (!name) { cliPrint('<span class="cli-error">Penggunaan: mkdir [nama]</span>'); return; }
                 const result = await createFolder(name, cliCurrentFolder.id);
                 if (result.status === 'success') {
-                    cliPrint(`<span class="cli-success">✓ Folder "${name}" berhasil dibuat! ID: ${result.data.id}</span>`);
-                } else {
-                    cliPrint(`<span class="cli-error">✗ ${result.message}</span>`);
-                }
+                    cliPrint(`<span class="cli-success">✓ Folder "${name}" dibuat! ID: ${result.data.id}</span>`);
+                } else { cliPrint(`<span class="cli-error">✗ ${result.message}</span>`); }
             },
 
             rm: async (args) => {
-                const id = args[0];
-                if (!id) { cliPrint('<span class="cli-error">Penggunaan: rm [file-id atau folder-id]</span>'); return; }
-                cliPrint(`<span class="cli-warn">Menghapus item ${id}...</span>`);
-                const result = await deleteFile(id);
-                if (result.status === 'success') {
-                    cliPrint(`<span class="cli-success">✓ Item berhasil dihapus.</span>`);
-                } else {
-                    cliPrint(`<span class="cli-error">✗ ${result.message}</span>`);
-                }
+                if (!args[0]) { cliPrint('<span class="cli-error">Penggunaan: rm [id]</span>'); return; }
+                cliPrint(`<span class="cli-warn">Menghapus ${args[0]}...</span>`);
+                const result = await deleteFile(args[0]);
+                cliPrint(result.status === 'success'
+                    ? `<span class="cli-success">✓ Dihapus.</span>`
+                    : `<span class="cli-error">✗ ${result.message}</span>`);
             },
 
             rename: async (args) => {
-                const id = args[0];
-                const newName = args.slice(1).join(' ');
+                const [id, ...rest] = args;
+                const newName = rest.join(' ');
                 if (!id || !newName) { cliPrint('<span class="cli-error">Penggunaan: rename [id] [nama baru]</span>'); return; }
-                cliPrint('<span class="cli-info">Mengganti nama...</span>');
                 const result = await renameFile(id, newName);
-                if (result.status === 'success') {
-                    cliPrint(`<span class="cli-success">✓ Berhasil diganti nama menjadi "${newName}"</span>`);
+                cliPrint(result.status === 'success'
+                    ? `<span class="cli-success">✓ Diganti menjadi "${newName}"</span>`
+                    : `<span class="cli-error">✗ ${result.message}</span>`);
+            },
+
+            git: async (args) => {
+                const sub = (args[0] || '').toLowerCase();
+                if (sub === 'status') {
+                    const cfg  = JSON.parse(localStorage.getItem('vault_config') || '{}');
+                    const url  = localStorage.getItem('vault_api_url') || 'N/A';
+                    cliPrint('<span class="cli-warn">== VAULT GIT STATUS ==</span>');
+                    cliPrint(`  <span class="cli-info">Vault Name  : </span><span class="cli-prompt">${cfg.vaultName || 'Cyber Vault'}</span>`);
+                    cliPrint(`  <span class="cli-info">Backend URL : </span><span class="cli-file">${url.substring(0,60)}...</span>`);
+                    cliPrint(`  <span class="cli-info">Folder      : </span><span class="cli-prompt">${cliCurrentFolder.name}</span>`);
+                    cliPrint(`  <span class="cli-info">Max Size    : </span><span class="cli-prompt">${cfg.maxFileSizeMB || 15} MB</span>`);
+                } else if (sub === 'log') {
+                    cliPrint('<span class="cli-info">Mengambil daftar file terbaru...</span>');
+                    const result = await fetchFiles(cliCurrentFolder.id);
+                    if (result.status !== 'success') { cliPrint(`<span class="cli-error">${result.message}</span>`); return; }
+                    cliPrint('<span class="cli-warn">== VAULT LOG (folder aktif) ==</span>');
+                    result.data.slice(0, 10).forEach((item, i) => {
+                        cliPrint(`  <span class="cli-info">#${String(i+1).padStart(2,'0')}</span> <span class="cli-prompt">${item.name}</span> <span class="cli-info">[${item.id}]</span>`);
+                    });
+                } else if (sub === 'push') {
+                    cliPrint('<span class="cli-warn">Untuk push project ke Google Drive, gunakan drive.bat di terminal lokal:</span>');
+                    cliPrint('  <span class="cli-file">drive push "pesan commit"</span>');
+                    cliPrint('<span class="cli-info">Pastikan d:\\vault sudah ada di PATH environment variables Windows Anda.</span>');
                 } else {
-                    cliPrint(`<span class="cli-error">✗ ${result.message}</span>`);
+                    cliPrint('<span class="cli-error">Perintah git yang tersedia: status | log | push</span>');
                 }
+            },
+
+            curl: async (args) => {
+                // Format: curl -o [nama_file] [url]
+                let fileName = null, url = null;
+                const oIdx = args.indexOf('-o');
+                if (oIdx !== -1 && args[oIdx + 1] && args[oIdx + 2]) {
+                    fileName = args[oIdx + 1];
+                    url = args[oIdx + 2];
+                } else if (args[0] && !args[0].startsWith('-')) {
+                    url = args[0];
+                    fileName = url.split('/').pop().split('?')[0] || 'download';
+                }
+                if (!url) { cliPrint('<span class="cli-error">Penggunaan: curl -o [nama_file] [url]</span>'); return; }
+                cliPrint(`<span class="cli-info">Menginstruksikan backend untuk mengunduh: ${url.substring(0,60)}</span>`);
+                cliPrint('<span class="cli-warn">⚠ Fitur curl-to-vault memerlukan endpoint backend tambahan (belum aktif).</span>');
+                cliPrint('<span class="cli-info">Untuk sekarang, gunakan fitur Upload di panel kiri untuk mengunggah file secara manual.</span>');
             },
 
             clear: async () => { cliOutput.innerHTML = ''; },
         };
 
-        // Input Handler
         cliInput.addEventListener('keydown', async (e) => {
             if (e.key === 'Enter') {
                 const raw = cliInput.value.trim();
                 if (!raw) return;
-
-                // Simpan ke history
                 cliHistory.unshift(raw);
                 if (cliHistory.length > 50) cliHistory.pop();
                 cliHistoryIdx = -1;
-
-                // Tampilkan prompt + command
                 cliPrint(`<span class="cli-prompt">vault@cyber:~$ </span><span>${raw}</span>`);
                 cliInput.value = '';
-
-                // Parse
                 const parts = raw.trim().split(/\s+/);
-                const cmd   = parts[0].toLowerCase();
-                const args  = parts.slice(1);
-
-                if (CLI_COMMANDS[cmd]) {
-                    await CLI_COMMANDS[cmd](args);
-                } else {
-                    cliPrint(`<span class="cli-error">Command tidak dikenali: '${cmd}'. Ketik 'help' untuk daftar perintah.</span>`);
-                }
+                const cmd = parts[0].toLowerCase();
+                const args = parts.slice(1);
+                if (CLI_COMMANDS[cmd]) { await CLI_COMMANDS[cmd](args); }
+                else { cliPrint(`<span class="cli-error">Command tidak dikenali: '${cmd}'. Ketik help.</span>`); }
             }
-
-            // History navigation (↑ / ↓)
-            if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                if (cliHistoryIdx < cliHistory.length - 1) {
-                    cliHistoryIdx++;
-                    cliInput.value = cliHistory[cliHistoryIdx];
-                }
-            }
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                if (cliHistoryIdx > 0) {
-                    cliHistoryIdx--;
-                    cliInput.value = cliHistory[cliHistoryIdx];
-                } else {
-                    cliHistoryIdx = -1;
-                    cliInput.value = '';
-                }
-            }
+            if (e.key === 'ArrowUp') { e.preventDefault(); if (cliHistoryIdx < cliHistory.length - 1) { cliHistoryIdx++; cliInput.value = cliHistory[cliHistoryIdx]; } }
+            if (e.key === 'ArrowDown') { e.preventDefault(); if (cliHistoryIdx > 0) { cliHistoryIdx--; cliInput.value = cliHistory[cliHistoryIdx]; } else { cliHistoryIdx = -1; cliInput.value = ''; } }
         });
-
-        // Clear button
-        cliClearBtn.addEventListener('click', () => { cliOutput.innerHTML = ''; });
-
-        // Click to focus terminal
+        cliClearBtn.addEventListener('click', () => cliOutput.innerHTML = '');
         cliOutput.addEventListener('click', () => cliInput.focus());
         // ==================== END CLI ENGINE ====================
+
+
+
 
         // 1. Jalankan Proteksi Halaman
         checkAuth();
@@ -648,11 +769,11 @@
                     e.stopPropagation();
                     const id = btn.getAttribute('data-id');
                     const oldName = btn.getAttribute('data-name');
-                    const newName = prompt("Masukkan nama modifikasi item:", oldName);
+                    const newName = await showDialog('Rename Item', `Masukkan nama baru untuk "${oldName}"`, { hasInput: true, inputDefault: oldName, inputPlaceholder: 'Nama baru...' });
                     if (newName && newName !== oldName) {
-                        btn.innerText = "WAIT..";
+                        btn.innerText = 'WAIT..';
                         const res = await renameFile(id, newName);
-                        alert(res.message);
+                        toast(res.message, res.status === 'success' ? 'success' : 'error');
                         loadAndRender(currentFolderId);
                     }
                 });
@@ -663,10 +784,12 @@
                 btn.addEventListener('click', async (e) => {
                     e.stopPropagation();
                     const id = btn.getAttribute('data-id');
-                    if (confirm("Kirim perintah penghancuran item di cloud?")) {
-                        btn.innerText = "WAIT..";
+                    const name = btn.getAttribute('data-name') || id;
+                    const confirmed = await showDialog('Konfirmasi Hapus', `Kirim perintah penghancuran item "${name}" ke cloud Google Drive?`);
+                    if (confirmed) {
+                        btn.innerText = 'WAIT..';
                         const res = await deleteFile(id);
-                        alert(res.message);
+                        toast(res.message, res.status === 'success' ? 'success' : 'error');
                         loadAndRender(currentFolderId);
                     }
                 });
@@ -712,19 +835,16 @@
         // Bulk Delete Executer
         bulkDeleteBtn.addEventListener('click', async () => {
             const selectedItems = localFilesState.filter(item => item.selected);
-            if (selectedItems.length === 0) return;
-
-            if (confirm(`Hancurkan ${selectedItems.length} item secara permanen di Google Drive?`)) {
-                bulkDeleteBtn.innerText = "DESTROYING...";
+            if (!selectedItems.length) return;
+            const confirmed = await showDialog('Bulk Delete', `Hancurkan ${selectedItems.length} item terpilih secara permanen di Google Drive?`);
+            if (confirmed) {
+                bulkDeleteBtn.innerText = 'DESTROYING...';
                 bulkDeleteBtn.disabled = true;
-
-                const fileIds = selectedItems.filter(item => !item.isFolder).map(item => item.id);
-                const folderIds = selectedItems.filter(item => item.isFolder).map(item => item.id);
-
+                const fileIds   = selectedItems.filter(i => !i.isFolder).map(i => i.id);
+                const folderIds = selectedItems.filter(i =>  i.isFolder).map(i => i.id);
                 const res = await deleteMultiple(fileIds, folderIds);
-                alert(res.message);
-                
-                bulkDeleteBtn.innerText = "Hapus Terpilih 🗑️";
+                toast(res.message, res.status === 'success' ? 'success' : 'error');
+                bulkDeleteBtn.innerText = 'Hapus Terpilih 🗑️';
                 bulkDeleteBtn.disabled = false;
                 loadAndRender(currentFolderId);
             }
@@ -732,10 +852,10 @@
 
         // Create Folder Action
         createFolderBtn.addEventListener('click', async () => {
-            const folderName = prompt("Masukkan nama folder baru:");
-            if (folderName && folderName.trim()) {
-                const res = await createFolder(folderName.trim(), currentFolderId);
-                alert(res.message);
+            const folderName = await showDialog('Buat Folder Baru', 'Masukkan nama folder yang ingin dibuat:', { hasInput: true, inputPlaceholder: 'Nama folder...' });
+            if (folderName) {
+                const res = await createFolder(folderName, currentFolderId);
+                toast(res.message, res.status === 'success' ? 'success' : 'error');
                 loadAndRender(currentFolderId);
             }
         });
@@ -750,7 +870,7 @@
         // Bulk Upload Queue Executer
         document.getElementById('uploadBtn').addEventListener('click', async () => {
             const files = fInput.files;
-            if (files.length === 0) return alert("Suntik file-filenya dulu bro!");
+            if (!files.length) return toast('Pilih file terlebih dahulu!', 'warn');
 
             statusConsole.classList.remove('hidden');
             statusConsole.innerHTML = "";
