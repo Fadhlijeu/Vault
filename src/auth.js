@@ -1,5 +1,5 @@
 // URL script Google Drive lu.
-const API_URL = "https://script.google.com/macros/s/AKfycbx4JeQDtahL1GUWUOVouTPUACAa1wONQ06h53FtkUa67vBiQlEIZY16bTeigSe_zbpi/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbw0Ixyj0HHunDmFRxcn-b_p3Liej7u7shw_QOMakyKmrvxNacwbc_Jr5gpEkRZ7SlrF/exec";
 
 export function getApiUrl() {
     return API_URL;
