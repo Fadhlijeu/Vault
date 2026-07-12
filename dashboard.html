@@ -375,6 +375,25 @@
         cliPrint('<span class="cli-prompt">⚡ Vault CLI v2.0 — ketik <strong>help</strong> untuk panduan</span>');
         cliSep();
 
+        // Normalisasi URL agar repo GitHub bisa langsung di-curl
+        // github.com/OWNER/REPO                -> archive zip (branch main)
+        // github.com/OWNER/REPO/tree/BRANCH    -> archive zip branch tsb
+        // github.com/OWNER/REPO/blob/...        -> raw file
+        function normalizeCurlUrl(raw) {
+            const u = raw.trim();
+            let m;
+            if ((m = u.match(/^https?:\/\/github\.com\/([^\/]+)\/([^\/]+)\/tree\/([^\/]+)/))) {
+                return `https://github.com/${m[1]}/${m[2]}/archive/refs/heads/${m[3]}.zip`;
+            }
+            if ((m = u.match(/^https?:\/\/github\.com\/([^\/]+)\/([^\/]+)\/?$/))) {
+                return `https://github.com/${m[1]}/${m[2]}/archive/refs/heads/main.zip`;
+            }
+            if ((m = u.match(/^https?:\/\/github\.com\/([^\/]+)\/([^\/]+)\/blob\/(.+)$/))) {
+                return `https://raw.githubusercontent.com/${m[1]}/${m[2]}/${m[3]}`;
+            }
+            return u;
+        }
+
         const CLI_COMMANDS = {
             help: async () => {
                 cliPrint('<span class="cli-warn">Daftar perintah:</span>');
@@ -497,8 +516,13 @@
                 }
                 if (!url) { cliPrint('<span class="cli-error">Penggunaan: curl -o [nama_file] [url]</span>'); return; }
 
-                cliPrint(`<span class="cli-info">⏳ Mengunduh dari: ${url.substring(0,70)}${url.length > 70 ? '…' : ''}</span>`);
-                const result = await importFromUrl(url, fileName, cliCurrentFolder.id);
+                const finalUrl = normalizeCurlUrl(url);
+                if (finalUrl !== url) {
+                    cliPrint(`<span class="cli-info">↪ URL GitHub repo terdeteksi, diarahkan ke: ${finalUrl.substring(0,70)}${finalUrl.length > 70 ? '…' : ''}</span>`);
+                }
+
+                cliPrint(`<span class="cli-info">⏳ Mengunduh dari: ${finalUrl.substring(0,70)}${finalUrl.length > 70 ? '…' : ''}</span>`);
+                const result = await importFromUrl(finalUrl, fileName, cliCurrentFolder.id);
                 if (result.status === 'success') {
                     const savedName = (result.data && result.data.name) || fileName || 'file';
                     cliPrint(`<span class="cli-success">✓ Berhasil diimpor ke vault: ${savedName}</span>`);

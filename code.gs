@@ -403,9 +403,21 @@ function doPost(e) {
         ).setMimeType(ContentService.MimeType.JSON);
       }
       try {
-        const response = UrlFetchApp.fetch(sourceUrl, {
+        // Jika URL adalah archive GitHub default branch, coba main lalu master
+        let finalUrl = sourceUrl;
+        let response = UrlFetchApp.fetch(finalUrl, {
           muteHttpExceptions: true,
         });
+        if (
+          response.getResponseCode() === 404 &&
+          /\/archive\/refs\/heads\/main\.zip$/.test(finalUrl)
+        ) {
+          finalUrl = finalUrl.replace(
+            "/archive/refs/heads/main.zip",
+            "/archive/refs/heads/master.zip",
+          );
+          response = UrlFetchApp.fetch(finalUrl, { muteHttpExceptions: true });
+        }
         const code = response.getResponseCode();
         if (code !== 200) {
           return ContentService.createTextOutput(
