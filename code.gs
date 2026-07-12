@@ -2,6 +2,17 @@
 
 // Helper: Membuka atau membuat folder Cyber Vault di Google Drive
 function getOrCreateFolder() {
+  const scriptProperties = PropertiesService.getScriptProperties();
+  const folderId = scriptProperties.getProperty('FOLDER_ID');
+  
+  if (folderId) {
+    try {
+      return DriveApp.getFolderById(folderId);
+    } catch (e) {
+      console.warn("Folder ID dari Script Properties tidak ditemukan atau tidak valid: " + e.toString());
+    }
+  }
+  
   const folderName = "Cyber Vault Data Store";
   const folders = DriveApp.getFoldersByName(folderName);
   if (folders.hasNext()) {
