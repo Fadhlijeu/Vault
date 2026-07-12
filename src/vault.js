@@ -6,6 +6,7 @@ const API_URL = getApiUrl();
 export async function fetchFiles() {
     const token = checkToken();
     try {
+        // Kita pastikan token terkirim lewat URL parameter (?token=...)
         const response = await fetch(`${API_URL}?token=${encodeURIComponent(token)}`);
         const result = await response.json();
         return result;
