@@ -1,4 +1,4 @@
-// URL script Google Drive lu. (Nanti diacak di Colab)
+// URL script Google Drive lu.
 const API_URL = "https://script.google.com/macros/s/AKfycbx4JeQDtahL1GUWUOVouTPUACAa1wONQ06h53FtkUa67vBiQlEIZY16bTeigSe_zbpi/exec";
 
 export function getApiUrl() {
@@ -13,6 +13,13 @@ export function login(token) {
 
 export function checkToken() {
     return sessionStorage.getItem('vault_token');
+}
+
+// FUNGSI INI YANG HILANG KEMARIN BIKIN ERROR:
+export function checkAuth() {
+    if (!checkToken()) {
+        window.location.href = 'index.html';
+    }
 }
 
 export function logout() {
