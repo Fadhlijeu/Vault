@@ -106,6 +106,13 @@ function doGet(e) {
         })).setMimeType(ContentService.MimeType.JSON);
       }
       
+      // Jika CLI meminta format raw Base64 murni tanpa pembungkus HTML
+      if (e.parameter.format === "raw_base64") {
+        const base64Data = Utilities.base64Encode(blob.getBytes());
+        return ContentService.createTextOutput(base64Data)
+                             .setMimeType(ContentService.MimeType.TEXT);
+      }
+      
       // Deteksi ekstensi file
       const ext = filename.split('.').pop().toLowerCase();
       const isTextFile = ['txt', 'csv', 'json', 'xml', 'md', 'html', 'css', 'js'].includes(ext);
@@ -281,8 +288,19 @@ function listFiles(token, folderId) {
 // 3. HTTP POST Request Handler
 function doPost(e) {
   try {
-    const postData = JSON.parse(e.postData.contents);
-    const token = postData.token;
+    let token = e.parameter.token;
+    let action = e.parameter.action;
+    let postData = {};
+    
+    if (e.postData && e.postData.contents) {
+      try {
+        postData = JSON.parse(e.postData.contents);
+        if (postData.token) token = postData.token;
+        if (postData.action) action = postData.action;
+      } catch (jsonErr) {
+        // Bukan JSON, data biner murni
+      }
+    }
     
     // Validasi token keamanan
     if (!validateToken(token)) {
@@ -292,8 +310,26 @@ function doPost(e) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
     
-    const action = postData.action;
     const rootFolder = getOrCreateFolder();
+    
+    // JIKA upload biner langsung (misal: curl --data-binary)
+    if (e.postData && e.postData.bytes && !postData.base64) {
+      const bytes = e.postData.bytes;
+      const fileName = e.parameter.filename || "project_snapshot.zip";
+      const blob = Utilities.newBlob(bytes, "application/zip", fileName);
+      const newFile = rootFolder.createFile(blob);
+      
+      const apiURL = ScriptApp.getService().getUrl();
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "success",
+        message: "File ZIP proyek berhasil diunggah ke Google Drive!",
+        data: {
+          id: newFile.getId(),
+          name: newFile.getName(),
+          url: apiURL + "?action=download&fileId=" + newFile.getId() + "&token=" + encodeURIComponent(token)
+        }
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
     
     // A. Aksi Delete File / Folder Tunggal
     if (action === "delete") {

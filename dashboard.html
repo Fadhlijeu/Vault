@@ -71,6 +71,30 @@
             font-size: 11px;
             font-weight: bold;
         }
+        /* Terminal CLI */
+        #cliOutput {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(56,189,248,0.3) transparent;
+        }
+        #cliOutput::-webkit-scrollbar { width: 4px; }
+        #cliOutput::-webkit-scrollbar-thumb { background: rgba(56,189,248,0.3); border-radius: 4px; }
+        #cliInput {
+            background: transparent;
+            outline: none;
+            border: none;
+            caret-color: #22d3ee;
+            color: #e2e8f0;
+            width: 100%;
+        }
+        .cli-prompt { color: #22d3ee; }
+        .cli-success { color: #4ade80; }
+        .cli-error   { color: #f87171; }
+        .cli-info    { color: #94a3b8; }
+        .cli-warn    { color: #fbbf24; }
+        .cli-folder  { color: #38bdf8; }
+        .cli-file    { color: #e2e8f0; }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+        .cursor-blink { display:inline-block; animation:blink 1s step-end infinite; }
     </style>
 </head>
 <body class="p-4 md:p-8 min-h-screen">
@@ -160,6 +184,28 @@
             </div>
 
         </div>
+
+        <!-- CLI Terminal Panel -->
+        <div class="cyber-card rounded-2xl overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-3 border-b border-cyan-500/10 bg-black/30">
+                <div class="flex items-center gap-3">
+                    <div class="flex gap-1.5">
+                        <div class="w-3 h-3 rounded-full bg-red-500/70"></div>
+                        <div class="w-3 h-3 rounded-full bg-yellow-500/70"></div>
+                        <div class="w-3 h-3 rounded-full bg-green-500/70"></div>
+                    </div>
+                    <span class="text-xs font-semibold text-cyan-400 font-mono-cyber tracking-widest">VAULT://TERMINAL</span>
+                </div>
+                <button id="cliClearBtn" class="text-[10px] text-slate-500 hover:text-cyan-400 font-mono-cyber transition cursor-pointer">clear</button>
+            </div>
+            <div id="cliOutput" class="font-mono-cyber text-xs p-4 h-72 overflow-y-auto space-y-1 bg-black/60"></div>
+            <div class="flex items-center gap-2 px-4 py-3 border-t border-cyan-500/10 bg-black/50">
+                <span class="cli-prompt font-mono-cyber text-xs select-none">vault@cyber:~$</span>
+                <input id="cliInput" type="text" class="font-mono-cyber text-xs flex-1" placeholder="Ketik perintah (help untuk daftar command)..." autocomplete="off" spellcheck="false">
+                <span class="cursor-blink cli-prompt font-mono-cyber text-sm">▮</span>
+            </div>
+        </div>
+
     </div>
 
     <!-- Preview Modal -->
@@ -175,6 +221,192 @@
         import { checkAuth, logout } from './src/auth.js';
         import { fetchFiles, uploadFile, deleteFile, renameFile, fetchFileBlob, createFolder, deleteMultiple } from './src/vault.js';
         import { formatBytes, getFileMeta } from './src/utils.js';
+
+        // ==================== VAULT CLI ENGINE ====================
+        const cliOutput  = document.getElementById('cliOutput');
+        const cliInput   = document.getElementById('cliInput');
+        const cliClearBtn = document.getElementById('cliClearBtn');
+        let cliHistory = [];
+        let cliHistoryIdx = -1;
+        let cliCurrentFolder = { id: null, name: 'root' };
+        let cliParentStack  = []; // stack [{id, name}] untuk navigasi back
+
+        function cliPrint(text, cls = '') {
+            const line = document.createElement('div');
+            line.innerHTML = text;
+            if (cls) line.className = cls;
+            cliOutput.appendChild(line);
+            cliOutput.scrollTop = cliOutput.scrollHeight;
+        }
+
+        function cliSep() { cliPrint('<span class="cli-info">─────────────────────────────────────</span>'); }
+
+        // Welcome message
+        cliPrint('<span class="cli-prompt">⚡ Vault CLI v1.0 — ketik <strong>help</strong> untuk daftar perintah</span>');
+        cliSep();
+
+        const CLI_COMMANDS = {
+            help: async () => {
+                cliPrint('<span class="cli-warn">Daftar perintah yang tersedia:</span>');
+                const cmds = [
+                    ['ls',             'Tampilkan isi folder aktif'],
+                    ['ls [folder-id]', 'Tampilkan isi folder tertentu'],
+                    ['cd [folder-id]', 'Masuk ke subfolder'],
+                    ['cd ..',          'Kembali ke folder induk'],
+                    ['pwd',            'Tampilkan folder aktif'],
+                    ['mkdir [nama]',   'Buat folder baru di direktori aktif'],
+                    ['rm [id]',        'Hapus file/folder berdasarkan ID'],
+                    ['rename [id] [nama baru]', 'Ganti nama file/folder'],
+                    ['clear',          'Bersihkan output terminal'],
+                ];
+                cmds.forEach(([cmd, desc]) => {
+                    cliPrint(`  <span class="cli-prompt">${cmd.padEnd(28)}</span><span class="cli-info">${desc}</span>`);
+                });
+            },
+
+            pwd: async () => {
+                cliPrint(`<span class="cli-info">Direktori aktif: </span><span class="cli-prompt">${cliCurrentFolder.name}</span><span class="cli-info"> (id: ${cliCurrentFolder.id || 'root'})</span>`);
+            },
+
+            ls: async (args) => {
+                const targetId = args[0] || cliCurrentFolder.id;
+                cliPrint(`<span class="cli-info">Memuat isi folder...</span>`);
+                const result = await fetchFiles(targetId);
+                if (result.status !== 'success') {
+                    cliPrint(`<span class="cli-error">Error: ${result.message}</span>`);
+                    return;
+                }
+                const items = result.data;
+                if (items.length === 0) {
+                    cliPrint('<span class="cli-info">Folder kosong.</span>');
+                    return;
+                }
+                cliPrint(`<span class="cli-info">Total: ${items.length} item di <strong>${result.currentFolderName}</strong></span>`);
+                cliSep();
+                items.forEach(item => {
+                    const icon = item.isFolder ? '📁' : '📄';
+                    const cls  = item.isFolder ? 'cli-folder' : 'cli-file';
+                    const size = item.isFolder ? '<DIR>' : formatBytes(item.size);
+                    cliPrint(`  ${icon} <span class="${cls}">${item.name.padEnd(36)}</span> <span class="cli-info">${size.padEnd(12)} [${item.id}]</span>`);
+                });
+            },
+
+            cd: async (args) => {
+                if (!args[0]) { cliPrint('<span class="cli-error">Penggunaan: cd [folder-id] | cd ..</span>'); return; }
+
+                if (args[0] === '..') {
+                    if (cliParentStack.length === 0) {
+                        cliPrint('<span class="cli-warn">Sudah di root folder.</span>');
+                        return;
+                    }
+                    const parent = cliParentStack.pop();
+                    cliCurrentFolder = parent;
+                    cliPrint(`<span class="cli-success">↑ Kembali ke: ${parent.name} (${parent.id || 'root'})</span>`);
+                    return;
+                }
+
+                cliPrint('<span class="cli-info">Memuat folder...</span>');
+                const result = await fetchFiles(args[0]);
+                if (result.status !== 'success') { cliPrint(`<span class="cli-error">Error: ${result.message}</span>`); return; }
+
+                cliParentStack.push({ ...cliCurrentFolder });
+                cliCurrentFolder = { id: result.currentFolderId, name: result.currentFolderName };
+                cliPrint(`<span class="cli-success">→ Masuk ke: ${result.currentFolderName}</span>`);
+            },
+
+            mkdir: async (args) => {
+                const name = args.join(' ');
+                if (!name) { cliPrint('<span class="cli-error">Penggunaan: mkdir [nama folder]</span>'); return; }
+                cliPrint('<span class="cli-info">Membuat folder...</span>');
+                const result = await createFolder(name, cliCurrentFolder.id);
+                if (result.status === 'success') {
+                    cliPrint(`<span class="cli-success">✓ Folder "${name}" berhasil dibuat! ID: ${result.data.id}</span>`);
+                } else {
+                    cliPrint(`<span class="cli-error">✗ ${result.message}</span>`);
+                }
+            },
+
+            rm: async (args) => {
+                const id = args[0];
+                if (!id) { cliPrint('<span class="cli-error">Penggunaan: rm [file-id atau folder-id]</span>'); return; }
+                cliPrint(`<span class="cli-warn">Menghapus item ${id}...</span>`);
+                const result = await deleteFile(id);
+                if (result.status === 'success') {
+                    cliPrint(`<span class="cli-success">✓ Item berhasil dihapus.</span>`);
+                } else {
+                    cliPrint(`<span class="cli-error">✗ ${result.message}</span>`);
+                }
+            },
+
+            rename: async (args) => {
+                const id = args[0];
+                const newName = args.slice(1).join(' ');
+                if (!id || !newName) { cliPrint('<span class="cli-error">Penggunaan: rename [id] [nama baru]</span>'); return; }
+                cliPrint('<span class="cli-info">Mengganti nama...</span>');
+                const result = await renameFile(id, newName);
+                if (result.status === 'success') {
+                    cliPrint(`<span class="cli-success">✓ Berhasil diganti nama menjadi "${newName}"</span>`);
+                } else {
+                    cliPrint(`<span class="cli-error">✗ ${result.message}</span>`);
+                }
+            },
+
+            clear: async () => { cliOutput.innerHTML = ''; },
+        };
+
+        // Input Handler
+        cliInput.addEventListener('keydown', async (e) => {
+            if (e.key === 'Enter') {
+                const raw = cliInput.value.trim();
+                if (!raw) return;
+
+                // Simpan ke history
+                cliHistory.unshift(raw);
+                if (cliHistory.length > 50) cliHistory.pop();
+                cliHistoryIdx = -1;
+
+                // Tampilkan prompt + command
+                cliPrint(`<span class="cli-prompt">vault@cyber:~$ </span><span>${raw}</span>`);
+                cliInput.value = '';
+
+                // Parse
+                const parts = raw.trim().split(/\s+/);
+                const cmd   = parts[0].toLowerCase();
+                const args  = parts.slice(1);
+
+                if (CLI_COMMANDS[cmd]) {
+                    await CLI_COMMANDS[cmd](args);
+                } else {
+                    cliPrint(`<span class="cli-error">Command tidak dikenali: '${cmd}'. Ketik 'help' untuk daftar perintah.</span>`);
+                }
+            }
+
+            // History navigation (↑ / ↓)
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (cliHistoryIdx < cliHistory.length - 1) {
+                    cliHistoryIdx++;
+                    cliInput.value = cliHistory[cliHistoryIdx];
+                }
+            }
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (cliHistoryIdx > 0) {
+                    cliHistoryIdx--;
+                    cliInput.value = cliHistory[cliHistoryIdx];
+                } else {
+                    cliHistoryIdx = -1;
+                    cliInput.value = '';
+                }
+            }
+        });
+
+        // Clear button
+        cliClearBtn.addEventListener('click', () => { cliOutput.innerHTML = ''; });
+
+        // Click to focus terminal
+        cliOutput.addEventListener('click', () => cliInput.focus());
+        // ==================== END CLI ENGINE ====================
 
         // 1. Jalankan Proteksi Halaman
         checkAuth();
