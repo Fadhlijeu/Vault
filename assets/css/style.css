@@ -1,0 +1,58 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+
+:root {
+    --bg-base: #050505;
+    --panel-bg: rgba(20, 20, 25, 0.6);
+    --primary: #00f0ff;
+    --primary-glow: rgba(0, 240, 255, 0.4);
+    --border-color: rgba(255, 255, 255, 0.08);
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-base);
+    background-image: radial-gradient(circle at 50% -20%, #1e293b 0%, var(--bg-base) 70%);
+    color: #e2e8f0;
+    min-height: 100vh;
+    margin: 0;
+}
+
+/* Efek Kaca Premium untuk Panel */
+.glass-panel {
+    background: var(--panel-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+}
+
+/* Input Form ala Cyber */
+.input-cyber {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--border-color);
+    color: var(--primary);
+    transition: all 0.3s ease;
+}
+
+.input-cyber:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 12px var(--primary-glow);
+}
+
+.input-cyber::placeholder {
+    color: #475569;
+}
+
+/* Tombol Glowing */
+.btn-cyber {
+    background: linear-gradient(135deg, #0284c7, #0369a1);
+    color: white;
+    transition: all 0.3s ease;
+}
+
+.btn-cyber:hover {
+    box-shadow: 0 0 20px var(--primary-glow);
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #0ea5e9, #0284c7);
+}
