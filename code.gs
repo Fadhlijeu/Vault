@@ -218,33 +218,57 @@ function doGet(e) {
     }
   }
   
-  // D. List Files
-  return listFiles(token);
+  // D. List Files & Folders
+  const folderId = e.parameter.folderId;
+  return listFiles(token, folderId);
 }
 
-// Helper: List semua file dalam folder Cyber Vault
-function listFiles(token) {
+// Helper: List semua file dan folder dalam folder Cyber Vault
+function listFiles(token, folderId) {
   try {
-    const folder = getOrCreateFolder();
-    const files = folder.getFiles();
+    const rootFolder = getOrCreateFolder();
+    const parentFolder = folderId ? DriveApp.getFolderById(folderId) : rootFolder;
     const fileList = [];
     
     // Gunakan URL Web App saat ini sebagai base untuk API
     const apiURL = ScriptApp.getService().getUrl();
     
+    // Cek apakah folder saat ini adalah root folder brankas
+    const isRoot = (parentFolder.getId() === rootFolder.getId());
+    const parentFolderId = isRoot ? null : (parentFolder.getParents().hasNext() ? parentFolder.getParents().next().getId() : rootFolder.getId());
+
+    // 1. Ambil Subfolder
+    const subfolders = parentFolder.getFolders();
+    while (subfolders.hasNext()) {
+      const subfolder = subfolders.next();
+      fileList.push({
+        id: subfolder.getId(),
+        name: subfolder.getName(),
+        size: 0,
+        isFolder: true,
+        url: ""
+      });
+    }
+    
+    // 2. Ambil File
+    const files = parentFolder.getFiles();
     while (files.hasNext()) {
       const file = files.next();
       fileList.push({
         id: file.getId(),
         name: file.getName(),
         size: file.getSize(),
+        isFolder: false,
         url: apiURL + "?action=download&fileId=" + file.getId() + "&token=" + encodeURIComponent(token)
       });
     }
     
     return ContentService.createTextOutput(JSON.stringify({ 
       status: "success", 
-      data: fileList 
+      data: fileList,
+      currentFolderName: parentFolder.getName(),
+      currentFolderId: parentFolder.getId(),
+      parentFolderId: parentFolderId
     })).setMimeType(ContentService.MimeType.JSON);
   } catch (error) {
     return ContentService.createTextOutput(JSON.stringify({ 
@@ -269,55 +293,92 @@ function doPost(e) {
     }
     
     const action = postData.action;
-    const folder = getOrCreateFolder();
+    const rootFolder = getOrCreateFolder();
     
-    // A. Aksi Delete File
+    // A. Aksi Delete File / Folder Tunggal
     if (action === "delete") {
       const fileId = postData.fileId;
-      const file = DriveApp.getFileById(fileId);
-      if (file.getParents().next().getId() === folder.getId()) {
+      try {
+        const file = DriveApp.getFileById(fileId);
         file.setTrashed(true);
-        return ContentService.createTextOutput(JSON.stringify({ 
-          status: "success", 
-          message: "File berhasil dihapus!" 
-        })).setMimeType(ContentService.MimeType.JSON);
-      } else {
-        return ContentService.createTextOutput(JSON.stringify({ 
-          status: "error", 
-          message: "Akses ditolak: File tidak berada di dalam brankas!" 
-        })).setMimeType(ContentService.MimeType.JSON);
+      } catch (err) {
+        const folder = DriveApp.getFolderById(fileId);
+        folder.setTrashed(true);
       }
+      return ContentService.createTextOutput(JSON.stringify({ 
+        status: "success", 
+        message: "Item berhasil dihapus!" 
+      })).setMimeType(ContentService.MimeType.JSON);
     }
     
-    // B. Aksi Rename File
+    // B. Aksi Rename File / Folder
     if (action === "rename") {
       const fileId = postData.fileId;
       const newName = postData.newName;
-      const file = DriveApp.getFileById(fileId);
-      
-      if (file.getParents().next().getId() === folder.getId()) {
-        file.setName(newName);
-        return ContentService.createTextOutput(JSON.stringify({ 
-          status: "success", 
-          message: "Nama file berhasil diubah!" 
-        })).setMimeType(ContentService.MimeType.JSON);
-      } else {
-        return ContentService.createTextOutput(JSON.stringify({ 
-          status: "error", 
-          message: "Akses ditolak: File tidak berada di dalam brankas!" 
-        })).setMimeType(ContentService.MimeType.JSON);
+      let item;
+      try {
+        item = DriveApp.getFileById(fileId);
+      } catch (err) {
+        item = DriveApp.getFolderById(fileId);
       }
+      item.setName(newName);
+      return ContentService.createTextOutput(JSON.stringify({ 
+        status: "success", 
+        message: "Nama item berhasil diubah!" 
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // C. Aksi Buat Folder Baru
+    if (action === "createFolder") {
+      const folderName = postData.folderName;
+      const parentId = postData.parentFolderId;
+      const parentFolder = parentId ? DriveApp.getFolderById(parentId) : rootFolder;
+      const newFolder = parentFolder.createFolder(folderName);
+      
+      return ContentService.createTextOutput(JSON.stringify({ 
+        status: "success", 
+        message: "Folder berhasil dibuat!",
+        data: {
+          id: newFolder.getId(),
+          name: newFolder.getName()
+        }
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // D. Aksi Bulk Delete (Hapus Banyak File & Folder)
+    if (action === "deleteMultiple") {
+      const fileIds = postData.fileIds || [];
+      const folderIds = postData.folderIds || [];
+      
+      fileIds.forEach(id => {
+        try {
+          DriveApp.getFileById(id).setTrashed(true);
+        } catch (err) {}
+      });
+      
+      folderIds.forEach(id => {
+        try {
+          DriveApp.getFolderById(id).setTrashed(true);
+        } catch (err) {}
+      });
+      
+      return ContentService.createTextOutput(JSON.stringify({ 
+        status: "success", 
+        message: "Item-item terpilih berhasil dihapus!" 
+      })).setMimeType(ContentService.MimeType.JSON);
     }
     
-    // C. Default: Aksi Upload File
+    // E. Default: Aksi Upload File
     if (postData.base64) {
       const base64Data = postData.base64;
       const fileName = postData.name;
       const fileType = postData.type;
+      const parentId = postData.parentFolderId;
       
+      const parentFolder = parentId ? DriveApp.getFolderById(parentId) : rootFolder;
       const decodedBytes = Utilities.base64Decode(base64Data);
       const blob = Utilities.newBlob(decodedBytes, fileType, fileName);
-      const newFile = folder.createFile(blob);
+      const newFile = parentFolder.createFile(blob);
       
       return ContentService.createTextOutput(JSON.stringify({ 
         status: "success", 

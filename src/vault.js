@@ -1,11 +1,15 @@
 import { getApiUrl, checkToken } from './auth.js';
 
-// 1. Ambil Daftar File (List)
-export async function fetchFiles() {
+// 1. Ambil Daftar File dan Folder (List)
+export async function fetchFiles(folderId = null) {
     const token = checkToken();
     const apiUrl = getApiUrl();
     try {
-        const response = await fetch(`${apiUrl}?token=${encodeURIComponent(token)}`);
+        let url = `${apiUrl}?token=${encodeURIComponent(token)}`;
+        if (folderId) {
+            url += `&folderId=${encodeURIComponent(folderId)}`;
+        }
+        const response = await fetch(url);
         const result = await response.json();
         return result;
     } catch (error) {
@@ -15,7 +19,7 @@ export async function fetchFiles() {
 }
 
 // 2. Unggah File Baru (Add)
-export function uploadFile(file, onProgress, onComplete) {
+export function uploadFile(file, parentFolderId, onProgress, onComplete) {
     const token = checkToken();
     const apiUrl = getApiUrl();
     const reader = new FileReader();
@@ -31,7 +35,7 @@ export function uploadFile(file, onProgress, onComplete) {
             return;
         }
 
-        onProgress("Mengirim data ke Google Drive...");
+        onProgress(`Mengirim ${file.name} ke cloud...`);
         try {
             const response = await fetch(apiUrl, {
                 method: "POST",
@@ -39,7 +43,8 @@ export function uploadFile(file, onProgress, onComplete) {
                     token: token,
                     base64: base64Data,
                     name: file.name,
-                    type: file.type
+                    type: file.type,
+                    parentFolderId: parentFolderId
                 })
             });
             const data = await response.json();
@@ -51,7 +56,7 @@ export function uploadFile(file, onProgress, onComplete) {
     reader.readAsDataURL(file);
 }
 
-// 3. Hapus File (Delete)
+// 3. Hapus File Tunggal (Delete)
 export async function deleteFile(fileId) {
     const token = checkToken();
     const apiUrl = getApiUrl();
@@ -103,5 +108,45 @@ export async function fetchFileBlob(fileId) {
     } catch (error) {
         console.error("Error fetching file blob:", error);
         return null;
+    }
+}
+
+// 6. Buat Folder Baru
+export async function createFolder(folderName, parentFolderId = null) {
+    const token = checkToken();
+    const apiUrl = getApiUrl();
+    try {
+        const response = await fetch(apiUrl, {
+            method: "POST",
+            body: JSON.stringify({
+                token: token,
+                action: "createFolder",
+                folderName: folderName,
+                parentFolderId: parentFolderId
+            })
+        });
+        return await response.json();
+    } catch (error) {
+        return { status: "error", message: "Gagal membuat folder." };
+    }
+}
+
+// 7. Hapus Banyak Item (Bulk Delete)
+export async function deleteMultiple(fileIds = [], folderIds = []) {
+    const token = checkToken();
+    const apiUrl = getApiUrl();
+    try {
+        const response = await fetch(apiUrl, {
+            method: "POST",
+            body: JSON.stringify({
+                token: token,
+                action: "deleteMultiple",
+                fileIds: fileIds,
+                folderIds: folderIds
+            })
+        });
+        return await response.json();
+    } catch (error) {
+        return { status: "error", message: "Gagal menghapus item terpilih." };
     }
 }
