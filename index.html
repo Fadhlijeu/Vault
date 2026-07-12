@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brankas Pribadi</title>
+    <style>
+        /* Lu bebas ganti-ganti style CSS di sini nanti */
+        body { font-family: Arial, sans-serif; padding: 30px; background: #121212; color: white; text-align: center; }
+        .container { max-width: 500px; margin: auto; background: #222; padding: 20px; border-radius: 8px; }
+        input[type="file"] { margin: 20px 0; display: block; width: 100%; }
+        button { background: #007bff; color: white; border: none; padding: 10px; width: 100%; border-radius: 5px; cursor: pointer; }
+        #status { margin-top: 15px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Vault File Pribadi</h2>
+    <p>Upload file ke Google Drive secara aman</p>
+    
+    <input type="file" id="fileInput">
+    <button onclick="uploadKeDrive()">Kirim ke Vault</button>
+    
+    <div id="status"></div>
+</div>
+
+<script>
+    // PENTING: Ganti teks di bawah ini dengan URL Web App yang baru lu copy tadi!
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxG3cRuLiXvqehUtMACtpxQ_DurvPZj2kIGdjZ8qU09PU1zOA29eLXau06IhEltwWjK/exec";
+
+    function uploadKeDrive() {
+        const fileInput = document.getElementById('fileInput');
+        const statusDiv = document.getElementById('status');
+        
+        if (fileInput.files.length === 0) {
+            alert("Pilih filenya dulu!");
+            return;
+        }
+
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+        
+        statusDiv.innerText = "Sedang mengirim file...";
+        statusDiv.style.color = "orange";
+
+        reader.onload = function(e) {
+            const base64Data = e.target.result.split(',')[1];
+            const payload = {
+                base64: base64Data,
+                type: file.type,
+                name: file.name
+            };
+
+            fetch(WEB_APP_URL, {
+                method: "POST",
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.status === "success") {
+                    statusDiv.innerText = "File berhasil masuk brankas Drive!";
+                    statusDiv.style.color = "lightgreen";
+                    fileInput.value = ""; // Reset input
+                } else {
+                    statusDiv.innerText = "Gagal: " + data.message;
+                    statusDiv.style.color = "red";
+                }
+            })
+            .catch(err => {
+                statusDiv.innerText = "Error koneksi/CORS.";
+                statusDiv.style.color = "red";
+                console.error(err);
+            });
+        };
+
+        reader.readAsDataURL(file);
+    }
+</script>
+</body>
+</html>
