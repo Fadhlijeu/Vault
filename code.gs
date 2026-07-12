@@ -1,0 +1,332 @@
+// code.gs - Google Apps Script Backend for Cyber Vault
+
+// Helper: Membuka atau membuat folder Cyber Vault di Google Drive
+function getOrCreateFolder() {
+  const folderName = "Cyber Vault Data Store";
+  const folders = DriveApp.getFoldersByName(folderName);
+  if (folders.hasNext()) {
+    return folders.next();
+  }
+  return DriveApp.createFolder(folderName);
+}
+
+// Helper: Memvalidasi token (handshake key)
+function validateToken(token) {
+  if (!token) return false;
+  const scriptProperties = PropertiesService.getScriptProperties();
+  const correctKey = scriptProperties.getProperty('HANDSHAKE_KEY');
+  
+  // Inisialisasi otomatis jika belum ada (memudahkan setup awal)
+  if (!correctKey) {
+    scriptProperties.setProperty('HANDSHAKE_KEY', 'default-cyber-secret-1337');
+    scriptProperties.setProperty('SYSTEM_CONFIG', JSON.stringify({
+      "vaultName": "Cyber Vault Secure Storage",
+      "maxFileSizeMB": 15,
+      "allowedExtensions": ["png", "jpg", "jpeg", "gif", "webp", "pdf", "txt", "zip", "mp4"]
+    }));
+    return token === 'default-cyber-secret-1337';
+  }
+  return token === correctKey;
+}
+
+// 1. Secret Storage: Ambil konfigurasi sistem
+function getConfigs(requestKey) {
+  const scriptProperties = PropertiesService.getScriptProperties();
+  const correctKey = scriptProperties.getProperty('HANDSHAKE_KEY');
+  
+  if (requestKey === correctKey) {
+    const systemConfigStr = scriptProperties.getProperty('SYSTEM_CONFIG');
+    const systemConfig = systemConfigStr ? JSON.parse(systemConfigStr) : {};
+    return {
+      status: "success",
+      config: systemConfig
+    };
+  } else {
+    return {
+      status: "error",
+      message: "Handshake Key tidak valid!"
+    };
+  }
+}
+
+// 2. HTTP GET Request Handler
+function doGet(e) {
+  const action = e.parameter.action;
+  const token = e.parameter.token;
+  
+  // A. Handshake Endpoint
+  if (action === "handshake") {
+    const key = e.parameter.key;
+    const result = getConfigs(key);
+    return ContentService.createTextOutput(JSON.stringify(result))
+                         .setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  // B. Validasi Token untuk Aksi Lainnya
+  if (!validateToken(token)) {
+    return ContentService.createTextOutput(JSON.stringify({ 
+      status: "error", 
+      message: "Akses Ditolak: Token Tidak Valid!" 
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+  
+  // C. Fixed Proxy Download Handler
+  if (action === "download") {
+    const fileId = e.parameter.fileId;
+    if (!fileId) {
+      return ContentService.createTextOutput("Error: Parameter fileId dibutuhkan.")
+                           .setMimeType(ContentService.MimeType.TEXT);
+    }
+    
+    try {
+      const file = DriveApp.getFileById(fileId);
+      const blob = file.getBlob();
+      const filename = file.getName();
+      const contentType = blob.getContentType();
+      
+      // Jika frontend meminta format JSON Base64 untuk preview aman
+      if (e.parameter.format === "base64") {
+        const base64Data = Utilities.base64Encode(blob.getBytes());
+        return ContentService.createTextOutput(JSON.stringify({
+          status: "success",
+          base64: base64Data,
+          mimeType: contentType,
+          filename: filename
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+      
+      // Deteksi ekstensi file
+      const ext = filename.split('.').pop().toLowerCase();
+      const isTextFile = ['txt', 'csv', 'json', 'xml', 'md', 'html', 'css', 'js'].includes(ext);
+      
+      if (isTextFile) {
+        // Untuk file teks, kita bisa langsung kirim via ContentService dengan header download
+        const textContent = blob.getDataAsString();
+        return ContentService.createTextOutput(textContent)
+                             .setMimeType(ContentService.MimeType.TEXT)
+                             .downloadAsFile(filename);
+      } else {
+        // Untuk file biner (gambar, pdf, video, zip), kirim via Base64 HTML Stream Download
+        const base64Data = Utilities.base64Encode(blob.getBytes());
+        
+        const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Downloading \${filename}...</title>
+  <style>
+    body {
+      background-color: #0f172a;
+      color: #38bdf8;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .card {
+      text-align: center;
+      padding: 30px;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      background: rgba(30, 41, 59, 0.7);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(12px);
+      max-width: 400px;
+      width: 90%;
+    }
+    h2 {
+      margin: 0 0 10px 0;
+      letter-spacing: 0.1em;
+      font-size: 1.5rem;
+    }
+    p {
+      color: #94a3b8;
+      font-size: 0.9rem;
+      margin: 5px 0;
+    }
+    .spinner {
+      border: 3px solid rgba(56, 189, 248, 0.1);
+      border-top: 3px solid #38bdf8;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto 0 auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>CYBER VAULT</h2>
+    <p>Proxy Stream Download</p>
+    <p style="color: #f1f5f9; font-weight: 600; margin-top: 15px; word-break: break-all;">\${filename}</p>
+    <div class="spinner"></div>
+  </div>
+  
+  <script>
+    (function() {
+      const b64 = "\${base64Data}";
+      const filename = "\${filename}";
+      const mime = "\${contentType}";
+      
+      const byteCharacters = atob(b64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], {type: mime});
+      
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Tutup tab setelah download dimulai
+      setTimeout(() => { window.close(); }, 2000);
+    })();
+  </script>
+</body>
+</html>`;
+        
+        return HtmlService.createHtmlOutput(html)
+                          .setTitle("Downloading " + filename);
+      }
+    } catch (error) {
+      return ContentService.createTextOutput("Error: Gagal memproses file. " + error.toString())
+                           .setMimeType(ContentService.MimeType.TEXT);
+    }
+  }
+  
+  // D. List Files
+  return listFiles(token);
+}
+
+// Helper: List semua file dalam folder Cyber Vault
+function listFiles(token) {
+  try {
+    const folder = getOrCreateFolder();
+    const files = folder.getFiles();
+    const fileList = [];
+    
+    // Gunakan URL Web App saat ini sebagai base untuk API
+    const apiURL = ScriptApp.getService().getUrl();
+    
+    while (files.hasNext()) {
+      const file = files.next();
+      fileList.push({
+        id: file.getId(),
+        name: file.getName(),
+        size: file.getSize(),
+        url: apiURL + "?action=download&fileId=" + file.getId() + "&token=" + encodeURIComponent(token)
+      });
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({ 
+      status: "success", 
+      data: fileList 
+    })).setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({ 
+      status: "error", 
+      message: "Gagal mengambil data file: " + error.toString() 
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// 3. HTTP POST Request Handler
+function doPost(e) {
+  try {
+    const postData = JSON.parse(e.postData.contents);
+    const token = postData.token;
+    
+    // Validasi token keamanan
+    if (!validateToken(token)) {
+      return ContentService.createTextOutput(JSON.stringify({ 
+        status: "error", 
+        message: "Akses Ditolak: Token Tidak Valid!" 
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    const action = postData.action;
+    const folder = getOrCreateFolder();
+    
+    // A. Aksi Delete File
+    if (action === "delete") {
+      const fileId = postData.fileId;
+      const file = DriveApp.getFileById(fileId);
+      if (file.getParents().next().getId() === folder.getId()) {
+        file.setTrashed(true);
+        return ContentService.createTextOutput(JSON.stringify({ 
+          status: "success", 
+          message: "File berhasil dihapus!" 
+        })).setMimeType(ContentService.MimeType.JSON);
+      } else {
+        return ContentService.createTextOutput(JSON.stringify({ 
+          status: "error", 
+          message: "Akses ditolak: File tidak berada di dalam brankas!" 
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+    
+    // B. Aksi Rename File
+    if (action === "rename") {
+      const fileId = postData.fileId;
+      const newName = postData.newName;
+      const file = DriveApp.getFileById(fileId);
+      
+      if (file.getParents().next().getId() === folder.getId()) {
+        file.setName(newName);
+        return ContentService.createTextOutput(JSON.stringify({ 
+          status: "success", 
+          message: "Nama file berhasil diubah!" 
+        })).setMimeType(ContentService.MimeType.JSON);
+      } else {
+        return ContentService.createTextOutput(JSON.stringify({ 
+          status: "error", 
+          message: "Akses ditolak: File tidak berada di dalam brankas!" 
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+    }
+    
+    // C. Default: Aksi Upload File
+    if (postData.base64) {
+      const base64Data = postData.base64;
+      const fileName = postData.name;
+      const fileType = postData.type;
+      
+      const decodedBytes = Utilities.base64Decode(base64Data);
+      const blob = Utilities.newBlob(decodedBytes, fileType, fileName);
+      const newFile = folder.createFile(blob);
+      
+      return ContentService.createTextOutput(JSON.stringify({ 
+        status: "success", 
+        message: "File berhasil diunggah!",
+        data: {
+          id: newFile.getId(),
+          name: newFile.getName()
+        }
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({ 
+      status: "error", 
+      message: "Aksi tidak dikenal!" 
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({ 
+      status: "error", 
+      message: "Server Error: " + error.toString() 
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}

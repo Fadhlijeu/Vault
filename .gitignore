@@ -1,0 +1,9 @@
+# Environment configurations
+config.json
+
+# Local storage and environment details
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local

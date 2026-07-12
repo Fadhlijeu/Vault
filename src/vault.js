@@ -1,13 +1,11 @@
 import { getApiUrl, checkToken } from './auth.js';
 
-const API_URL = getApiUrl();
-
 // 1. Ambil Daftar File (List)
 export async function fetchFiles() {
     const token = checkToken();
+    const apiUrl = getApiUrl();
     try {
-        // Kita pastikan token terkirim lewat URL parameter (?token=...)
-        const response = await fetch(`${API_URL}?token=${encodeURIComponent(token)}`);
+        const response = await fetch(`${apiUrl}?token=${encodeURIComponent(token)}`);
         const result = await response.json();
         return result;
     } catch (error) {
@@ -19,6 +17,7 @@ export async function fetchFiles() {
 // 2. Unggah File Baru (Add)
 export function uploadFile(file, onProgress, onComplete) {
     const token = checkToken();
+    const apiUrl = getApiUrl();
     const reader = new FileReader();
     
     onProgress("Mengonversi file ke format aman...");
@@ -34,7 +33,7 @@ export function uploadFile(file, onProgress, onComplete) {
 
         onProgress("Mengirim data ke Google Drive...");
         try {
-            const response = await fetch(API_URL, {
+            const response = await fetch(apiUrl, {
                 method: "POST",
                 body: JSON.stringify({
                     token: token,
@@ -55,8 +54,9 @@ export function uploadFile(file, onProgress, onComplete) {
 // 3. Hapus File (Delete)
 export async function deleteFile(fileId) {
     const token = checkToken();
+    const apiUrl = getApiUrl();
     try {
-        const response = await fetch(API_URL, {
+        const response = await fetch(apiUrl, {
             method: "POST",
             body: JSON.stringify({ token: token, action: "delete", fileId: fileId })
         });
@@ -69,13 +69,39 @@ export async function deleteFile(fileId) {
 // 4. Ganti Nama File (Edit/Rename)
 export async function renameFile(fileId, newName) {
     const token = checkToken();
+    const apiUrl = getApiUrl();
     try {
-        const response = await fetch(API_URL, {
+        const response = await fetch(apiUrl, {
             method: "POST",
             body: JSON.stringify({ token: token, action: "rename", fileId: fileId, newName: newName })
         });
         return await response.json();
     } catch (error) {
         return { status: "error", message: "Gagal mengganti nama file." };
+    }
+}
+
+// 5. Ambil data Blob file untuk pratinjau (Preview) biner secara aman
+export async function fetchFileBlob(fileId) {
+    const token = checkToken();
+    const apiUrl = getApiUrl();
+    try {
+        const response = await fetch(`${apiUrl}?token=${encodeURIComponent(token)}&action=download&fileId=${fileId}&format=base64`);
+        const result = await response.json();
+        
+        if (result.status === "success") {
+            const byteCharacters = atob(result.base64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            return new Blob([byteArray], { type: result.mimeType });
+        } else {
+            throw new Error(result.message || "Gagal mengambil file data.");
+        }
+    } catch (error) {
+        console.error("Error fetching file blob:", error);
+        return null;
     }
 }

@@ -69,7 +69,7 @@
 
     <script type="module">
         import { checkAuth, logout } from './src/auth.js';
-        import { fetchFiles, uploadFile, deleteFile, renameFile } from './src/vault.js';
+        import { fetchFiles, uploadFile, deleteFile, renameFile, fetchFileBlob } from './src/vault.js';
         import { formatBytes, getFileMeta } from './src/utils.js';
 
         // 1. Jalankan Proteksi Halaman
@@ -261,22 +261,34 @@
             );
         });
 
-        function openModalViewer(file) {
+        async function openModalViewer(file) {
             const modal = document.getElementById('previewModal');
             const title = document.getElementById('modalTitle');
             const body = document.getElementById('modalBody');
             
             title.innerText = `PREVIEW INTERFACE > ${file.name}`;
-            body.innerHTML = "";
+            body.innerHTML = `<div class="text-center py-20 text-xs tracking-widest text-cyan-400 animate-pulse font-mono">⚡ LOADING SECURE STREAM...</div>`;
             modal.classList.remove('hidden');
             modal.classList.add('flex');
 
             const ext = file.name.split('.').pop().toLowerCase();
             
             if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) {
-                body.innerHTML = `<img src="${file.url}" class="max-h-[70vh] rounded-lg border border-white/5 object-contain" />`;
+                const blob = await fetchFileBlob(file.id);
+                if (blob) {
+                    const objectUrl = URL.createObjectURL(blob);
+                    body.innerHTML = `<img src="${objectUrl}" class="max-h-[70vh] rounded-lg border border-white/5 object-contain" />`;
+                } else {
+                    body.innerHTML = `<div class="text-center py-20 text-xs text-red-400 font-mono">❌ Gagal memuat pratinjau gambar.</div>`;
+                }
             } else if (['mp4', 'mkv', 'mov'].includes(ext)) {
-                body.innerHTML = `<video src="${file.url}" controls class="max-h-[70vh] w-full rounded-lg" autoplay></video>`;
+                const blob = await fetchFileBlob(file.id);
+                if (blob) {
+                    const objectUrl = URL.createObjectURL(blob);
+                    body.innerHTML = `<video src="${objectUrl}" controls class="max-h-[70vh] w-full rounded-lg" autoplay></video>`;
+                } else {
+                    body.innerHTML = `<div class="text-center py-20 text-xs text-red-400 font-mono">❌ Gagal memuat pratinjau video.</div>`;
+                }
             } else {
                 body.innerHTML = `
                     <div class="text-center p-6 space-y-4">
