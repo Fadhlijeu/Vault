@@ -171,3 +171,24 @@ export async function importFromUrl(url, name = null, parentFolderId = null) {
         return { status: "error", message: "Gagal mengimpor file dari URL." };
     }
 }
+
+// 9. Pindahkan Item (Move File/Folder)
+export async function moveItems(fileIds = [], folderIds = [], targetFolderId = null) {
+    const token = checkToken();
+    const apiUrl = getApiUrl();
+    try {
+        const response = await fetch(apiUrl, {
+            method: "POST",
+            body: JSON.stringify({
+                token: token,
+                action: "move",
+                fileIds: fileIds,
+                folderIds: folderIds,
+                targetFolderId: targetFolderId
+            })
+        });
+        return await response.json();
+    } catch (error) {
+        return { status: "error", message: "Gagal memindahkan item." };
+    }
+}

@@ -231,9 +231,14 @@
                         <label for="selectAllCheckbox" class="text-xs font-semibold text-slate-300 cursor-pointer">Pilih Semua</label>
                         <span id="selectedCountText" class="text-xs text-cyan-400 font-mono-cyber font-semibold">0 terpilih</span>
                     </div>
-                    <button id="bulkDeleteBtn" class="px-3 py-1.5 bg-red-500/20 hover:bg-red-500 border border-red-500/30 hover:border-red-500 text-red-400 hover:text-white rounded-lg text-xs font-bold tracking-wider transition cursor-pointer uppercase">
-                        Hapus Terpilih 🗑️
-                    </button>
+                    <div class="flex gap-2">
+                        <button id="bulkMoveBtn" class="px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500 border border-blue-500/30 hover:border-blue-500 text-blue-400 hover:text-white rounded-lg text-xs font-bold tracking-wider transition cursor-pointer uppercase">
+                            Pindah Terpilih 📦
+                        </button>
+                        <button id="bulkDeleteBtn" class="px-3 py-1.5 bg-red-500/20 hover:bg-red-500 border border-red-500/30 hover:border-red-500 text-red-400 hover:text-white rounded-lg text-xs font-bold tracking-wider transition cursor-pointer uppercase">
+                            Hapus Terpilih 🗑️
+                        </button>
+                    </div>
                 </div>
 
                 <!-- File Viewer Container -->
@@ -300,7 +305,7 @@
 
     <script type="module">
         import { checkAuth, logout } from './src/auth.js';
-        import { fetchFiles, uploadFile, deleteFile, renameFile, fetchFileBlob, createFolder, deleteMultiple, importFromUrl } from './src/vault.js';
+        import { fetchFiles, uploadFile, deleteFile, renameFile, fetchFileBlob, createFolder, deleteMultiple, importFromUrl, moveItems } from './src/vault.js';
         import { formatBytes, getFileMeta } from './src/utils.js';
 
         // ==================== TOAST & DIALOG ENGINE ====================
@@ -404,6 +409,7 @@
                     ['mkdir [nama]',              'Buat folder baru'],
                     ['rm [id]',                   'Hapus file/folder'],
                     ['rename [id] [nama baru]',   'Ganti nama item'],
+                    ['mv [id] [folder-id/root]',  'Pindahkan file/folder ke folder tujuan'],
                     ['git status',                'Info vault & sesi saat ini'],
                     ['git log',                   'Riwayat file terbaru'],
                     ['git push',                  'Info cara push via drive.bat'],
@@ -474,6 +480,21 @@
                 cliPrint(result.status === 'success'
                     ? `<span class="cli-success">✓ Diganti menjadi "${newName}"</span>`
                     : `<span class="cli-error">✗ ${result.message}</span>`);
+            },
+
+            mv: async (args) => {
+                const [id, targetFolderId] = args;
+                if (!id || !targetFolderId) { cliPrint('<span class="cli-error">Penggunaan: mv [id] [id_tujuan/root]</span>'); return; }
+                cliPrint(`<span class="cli-warn">Memindahkan ${id} ke ${targetFolderId}...</span>`);
+                const isRoot = targetFolderId.toLowerCase() === 'root';
+                const destId = isRoot ? null : targetFolderId;
+                const res = await moveItems([id], [id], destId);
+                if (res.status === 'success') {
+                    cliPrint(`<span class="cli-success">✓ Item berhasil dipindahkan!</span>`);
+                    if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
+                } else {
+                    cliPrint(`<span class="cli-error">✗ ${res.message}</span>`);
+                }
             },
 
             git: async (args) => {
@@ -583,6 +604,7 @@
         const bulkActionBar = document.getElementById('bulkActionBar');
         const selectAllCheckbox = document.getElementById('selectAllCheckbox');
         const selectedCountText = document.getElementById('selectedCountText');
+        const bulkMoveBtn = document.getElementById('bulkMoveBtn');
         const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
         const breadcrumbs = document.getElementById('breadcrumbs');
 
@@ -707,6 +729,7 @@
                                 </div>
                                 <div class="flex gap-2">
                                     <button data-id="${item.id}" data-name="${item.name}" class="action-rename bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition cursor-pointer uppercase">Rename</button>
+                                    <button data-id="${item.id}" data-name="${item.name}" data-isfolder="true" class="action-move bg-blue-500/10 hover:bg-blue-500 text-blue-400 hover:text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition cursor-pointer uppercase">Move</button>
                                     <button data-id="${item.id}" class="action-delete bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition cursor-pointer uppercase">Delete</button>
                                 </div>
                             </div>`;
@@ -725,6 +748,7 @@
                                 </div>
                                 <div class="flex gap-2">
                                     <button data-id="${item.id}" data-name="${item.name}" class="action-rename bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition cursor-pointer uppercase">Rename</button>
+                                    <button data-id="${item.id}" data-name="${item.name}" data-isfolder="false" class="action-move bg-blue-500/10 hover:bg-blue-500 text-blue-400 hover:text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition cursor-pointer uppercase">Move</button>
                                     <button data-id="${item.id}" class="action-delete bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition cursor-pointer uppercase">Delete</button>
                                 </div>
                             </div>`;
@@ -749,8 +773,9 @@
                                     <span class="text-[10px] text-slate-500 mt-1">Folder</span>
                                 </div>
                                 <div class="flex gap-1 w-full mt-2">
-                                    <button data-id="${item.id}" data-name="${item.name}" class="action-rename w-1/2 bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-white py-1 rounded-md text-[9px] font-bold transition cursor-pointer">EDIT</button>
-                                    <button data-id="${item.id}" class="action-delete w-1/2 bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white py-1 rounded-md text-[9px] font-bold transition cursor-pointer">DEL</button>
+                                    <button data-id="${item.id}" data-name="${item.name}" class="action-rename w-1/3 bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-white py-1 rounded-md text-[9px] font-bold transition cursor-pointer">EDIT</button>
+                                    <button data-id="${item.id}" data-name="${item.name}" data-isfolder="true" class="action-move w-1/3 bg-blue-500/10 hover:bg-blue-500 text-blue-400 hover:text-white py-1 rounded-md text-[9px] font-bold transition cursor-pointer">MOVE</button>
+                                    <button data-id="${item.id}" class="action-delete w-1/3 bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white py-1 rounded-md text-[9px] font-bold transition cursor-pointer">DEL</button>
                                 </div>
                             </div>`;
                     } else {
@@ -763,8 +788,9 @@
                                     <span class="text-[10px] text-slate-500 mt-1">${formatBytes(item.size)}</span>
                                 </div>
                                 <div class="flex gap-1 w-full mt-2">
-                                    <button data-id="${item.id}" data-name="${item.name}" class="action-rename w-1/2 bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-white py-1 rounded-md text-[9px] font-bold transition cursor-pointer">EDIT</button>
-                                    <button data-id="${item.id}" class="action-delete w-1/2 bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white py-1 rounded-md text-[9px] font-bold transition cursor-pointer">DEL</button>
+                                    <button data-id="${item.id}" data-name="${item.name}" class="action-rename w-1/3 bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-white py-1 rounded-md text-[9px] font-bold transition cursor-pointer">EDIT</button>
+                                    <button data-id="${item.id}" data-name="${item.name}" data-isfolder="false" class="action-move w-1/3 bg-blue-500/10 hover:bg-blue-500 text-blue-400 hover:text-white py-1 rounded-md text-[9px] font-bold transition cursor-pointer">MOVE</button>
+                                    <button data-id="${item.id}" class="action-delete w-1/3 bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white py-1 rounded-md text-[9px] font-bold transition cursor-pointer">DEL</button>
                                 </div>
                             </div>`;
                     }
@@ -827,6 +853,25 @@
                 });
             });
 
+            // 4b. Aksi Pindah (Move File/Folder)
+            document.querySelectorAll('.action-move').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const id = btn.getAttribute('data-id');
+                    const name = btn.getAttribute('data-name') || id;
+                    const isFolder = btn.getAttribute('data-isfolder') === 'true';
+                    const targetId = await showDialog('Pindahkan Item', `Pindahkan "${name}" ke folder mana? Masukkan ID folder tujuan (atau ketik "root" untuk kembali ke folder utama):`, { hasInput: true, inputDefault: '', inputPlaceholder: 'ID Folder tujuan...' });
+                    if (targetId !== null) {
+                        btn.innerText = 'MOVING..';
+                        const fileIds = isFolder ? [] : [id];
+                        const folderIds = isFolder ? [id] : [];
+                        const res = await moveItems(fileIds, folderIds, targetId.toLowerCase() === 'root' ? null : targetId);
+                        toast(res.message, res.status === 'success' ? 'success' : 'error');
+                        loadAndRender(currentFolderId);
+                    }
+                });
+            });
+
             // 5. Aksi Checkbox Pemilihan Item (Bulk Select)
             document.querySelectorAll('.item-select-checkbox').forEach(checkbox => {
                 checkbox.addEventListener('change', (e) => {
@@ -878,6 +923,24 @@
                 toast(res.message, res.status === 'success' ? 'success' : 'error');
                 bulkDeleteBtn.innerText = 'Hapus Terpilih 🗑️';
                 bulkDeleteBtn.disabled = false;
+                loadAndRender(currentFolderId);
+            }
+        });
+
+        // Bulk Move Executer
+        bulkMoveBtn.addEventListener('click', async () => {
+            const selectedItems = localFilesState.filter(item => item.selected);
+            if (!selectedItems.length) return;
+            const targetId = await showDialog('Bulk Move', `Pindahkan ${selectedItems.length} item terpilih ke folder mana? Masukkan ID folder tujuan (atau ketik "root" untuk kembali ke folder utama):`, { hasInput: true, inputDefault: '', inputPlaceholder: 'ID Folder tujuan...' });
+            if (targetId !== null) {
+                bulkMoveBtn.innerText = 'MOVING...';
+                bulkMoveBtn.disabled = true;
+                const fileIds   = selectedItems.filter(i => !i.isFolder).map(i => i.id);
+                const folderIds = selectedItems.filter(i =>  i.isFolder).map(i => i.id);
+                const res = await moveItems(fileIds, folderIds, targetId.toLowerCase() === 'root' ? null : targetId);
+                toast(res.message, res.status === 'success' ? 'success' : 'error');
+                bulkMoveBtn.innerText = 'Pindah Terpilih 📦';
+                bulkMoveBtn.disabled = false;
                 loadAndRender(currentFolderId);
             }
         });

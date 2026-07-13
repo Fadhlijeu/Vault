@@ -163,7 +163,7 @@ function doGet(e) {
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Downloading \${filename}...</title>
+  <title>Downloading ${filename}...</title>
   <style>
     body {
       background-color: #0f172a;
@@ -216,15 +216,15 @@ function doGet(e) {
   <div class="card">
     <h2>CYBER VAULT</h2>
     <p>Proxy Stream Download</p>
-    <p style="color: #f1f5f9; font-weight: 600; margin-top: 15px; word-break: break-all;">\${filename}</p>
+    <p style="color: #f1f5f9; font-weight: 600; margin-top: 15px; word-break: break-all;">${filename}</p>
     <div class="spinner"></div>
   </div>
   
   <script>
     (function() {
-      const b64 = "\${base64Data}";
-      const filename = "\${filename}";
-      const mime = "\${contentType}";
+      const b64 = "${base64Data}";
+      const filename = "${filename}";
+      const mime = "${contentType}";
       
       const byteCharacters = atob(b64);
       const byteNumbers = new Array(byteCharacters.length);
@@ -556,7 +556,36 @@ function doPost(e) {
       ).setMimeType(ContentService.MimeType.JSON);
     }
 
-    // E. Default: Aksi Upload File
+    // E. Aksi Pindah File / Folder (Move Item)
+    if (action === "move") {
+      const targetFolderId = postData.targetFolderId;
+      const fileIds = postData.fileIds || [];
+      const folderIds = postData.folderIds || [];
+      const targetFolder = targetFolderId === "root" || !targetFolderId
+        ? rootFolder
+        : DriveApp.getFolderById(targetFolderId);
+
+      fileIds.forEach((id) => {
+        try {
+          DriveApp.getFileById(id).moveTo(targetFolder);
+        } catch (err) {}
+      });
+
+      folderIds.forEach((id) => {
+        try {
+          DriveApp.getFolderById(id).moveTo(targetFolder);
+        } catch (err) {}
+      });
+
+      return ContentService.createTextOutput(
+        JSON.stringify({
+          status: "success",
+          message: "Item berhasil dipindahkan!",
+        }),
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // F. Default: Aksi Upload File
     if (postData.base64) {
       const base64Data = postData.base64;
       const fileName = postData.name;
