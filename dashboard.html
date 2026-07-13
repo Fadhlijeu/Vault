@@ -385,7 +385,9 @@
         // github.com/OWNER/REPO/tree/BRANCH    -> archive zip branch tsb
         // github.com/OWNER/REPO/blob/...        -> raw file
         function normalizeCurlUrl(raw) {
-            const u = raw.trim();
+            let u = raw.trim();
+            // Hapus suffix .git di akhir URL jika ada
+            u = u.replace(/\.git$/, '');
             let m;
             if ((m = u.match(/^https?:\/\/github\.com\/([^\/]+)\/([^\/]+)\/tree\/([^\/]+)/))) {
                 return `https://github.com/${m[1]}/${m[2]}/archive/refs/heads/${m[3]}.zip`;
