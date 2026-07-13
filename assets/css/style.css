@@ -1,58 +1,151 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;600;700&display=swap');
 
 :root {
-    --bg-base: #050505;
-    --panel-bg: rgba(20, 20, 25, 0.6);
-    --primary: #00f0ff;
-    --primary-glow: rgba(0, 240, 255, 0.4);
-    --border-color: rgba(255, 255, 255, 0.08);
+    --bg-base: #020617;
+    --panel-bg: rgba(15, 23, 42, 0.45);
+    --primary: #06b6d4;
+    --primary-glow: rgba(6, 182, 212, 0.25);
+    --border-color: rgba(6, 182, 212, 0.12);
 }
 
 body {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Outfit', 'Inter', sans-serif;
     background-color: var(--bg-base);
-    background-image: radial-gradient(circle at 50% -20%, #1e293b 0%, var(--bg-base) 70%);
-    color: #e2e8f0;
+    background-image: 
+        radial-gradient(at 0% 0%, rgba(6, 182, 212, 0.15) 0, transparent 40%), 
+        radial-gradient(at 100% 0%, rgba(59, 130, 246, 0.15) 0, transparent 40%),
+        radial-gradient(at 50% 100%, rgba(15, 23, 42, 0.95) 0, #020617 100%);
+    color: #f1f5f9;
     min-height: 100vh;
     margin: 0;
+    position: relative;
+    overflow-x: hidden;
+}
+
+/* Circuit grid layout behind body */
+body::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: 
+        linear-gradient(rgba(6, 182, 212, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(6, 182, 212, 0.04) 1px, transparent 1px);
+    background-size: 35px 35px;
+    pointer-events: none;
+    z-index: -1;
 }
 
 /* Efek Kaca Premium untuk Panel */
 .glass-panel {
     background: var(--panel-bg);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--border-color);
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6);
+    box-shadow: 0 20px 40px 0 rgba(0, 0, 0, 0.55);
+}
+
+/* Custom Cards */
+.cyber-card {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.3);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.cyber-card:hover {
+    border-color: rgba(6, 182, 212, 0.3);
+    box-shadow: 0 4px 25px 0 rgba(6, 182, 212, 0.15);
+}
+
+/* File explorer tree styles */
+.tree-node-item {
+    transition: all 0.2s ease;
+    border-left: 2px solid transparent;
+}
+.tree-node-item:hover {
+    border-left-color: var(--primary);
+    background: rgba(6, 182, 212, 0.08);
+}
+
+/* Scrollbar Customization */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.25);
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(6, 182, 212, 0.3);
+    border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(6, 182, 212, 0.6);
 }
 
 /* Input Form ala Cyber */
 .input-cyber {
-    background: rgba(0, 0, 0, 0.4);
+    background: rgba(0, 0, 0, 0.55);
     border: 1px solid var(--border-color);
-    color: var(--primary);
-    transition: all 0.3s ease;
+    color: #e2e8f0;
+    transition: all 0.25s ease;
 }
 
 .input-cyber:focus {
     outline: none;
     border-color: var(--primary);
-    box-shadow: 0 0 12px var(--primary-glow);
+    box-shadow: 0 0 10px var(--primary-glow);
 }
 
 .input-cyber::placeholder {
     color: #475569;
 }
 
+/* Checkbox Custom styling */
+.checkbox-cyber {
+    appearance: none;
+    background-color: rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--border-color);
+    padding: 6px;
+    border-radius: 4px;
+    display: inline-block;
+    position: relative;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.checkbox-cyber:checked {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    box-shadow: 0 0 6px var(--primary);
+}
+
+.checkbox-cyber:checked:after {
+    content: '✔';
+    font-size: 8px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+}
+
 /* Tombol Glowing */
 .btn-cyber {
     background: linear-gradient(135deg, #0284c7, #0369a1);
     color: white;
-    transition: all 0.3s ease;
+    box-shadow: 0 2px 10px rgba(2, 132, 199, 0.2);
+    transition: all 0.25s ease;
 }
 
 .btn-cyber:hover {
-    box-shadow: 0 0 20px var(--primary-glow);
-    transform: translateY(-2px);
+    box-shadow: 0 0 15px var(--primary-glow);
+    transform: translateY(-1.5px);
     background: linear-gradient(135deg, #0ea5e9, #0284c7);
+}
+
+/* UI Elements */
+.font-mono-cyber {
+    font-family: 'Fira Code', monospace;
 }
