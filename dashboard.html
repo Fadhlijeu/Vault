@@ -215,6 +215,21 @@
                 <button id="uploadBtn" class="btn-cyber-primary w-full py-3 rounded-xl text-xs font-bold uppercase text-white tracking-wider cursor-pointer">
                     Execute Bulk Upload 🚀
                 </button>
+
+                <!-- Upload & Operation Progress Bar Container -->
+                <div id="operationProgressContainer" class="hidden space-y-2 p-3.5 rounded-xl border border-cyan-500/20 bg-cyan-500/5 font-mono-cyber text-[10px]">
+                    <div class="flex justify-between text-slate-300 font-semibold">
+                        <span id="progressStatusText" class="truncate max-w-[70%]">⚡ PREPARING...</span>
+                        <span id="progressPercentText" class="text-cyan-400 font-bold">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-950/60 rounded-full h-2 border border-white/5 overflow-hidden">
+                        <div id="operationProgressBar" class="bg-gradient-to-r from-cyan-500 to-blue-500 h-full w-0 transition-all duration-300 shadow-[0_0_8px_#22d3ee]"></div>
+                    </div>
+                    <div class="flex justify-between text-[9px] text-slate-500">
+                        <span id="progressFilesText">File: 0/0</span>
+                        <span id="progressBytesText">0.00 MB / 0.00 MB</span>
+                    </div>
+                </div>
                 
                 <div id="statusConsole" class="hidden text-xs p-3 rounded-xl border border-white/5 bg-black/40 font-mono-cyber text-slate-400 space-y-1 max-h-48 overflow-y-auto"></div>
             </div>
@@ -551,6 +566,7 @@
                 const result = await createFolder(name, cliCurrentFolder.id);
                 if (result.status === 'success') {
                     cliPrint(`<span class="cli-success">✓ Folder "${name}" dibuat! ID: ${result.data.id}</span>`);
+                    if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
                 } else { cliPrint(`<span class="cli-error">✗ ${result.message}</span>`); }
             },
 
@@ -558,9 +574,12 @@
                 if (!args[0]) { cliPrint('<span class="cli-error">Penggunaan: rm [id]</span>'); return; }
                 cliPrint(`<span class="cli-warn">Menghapus ${args[0]}...</span>`);
                 const result = await deleteFile(args[0]);
-                cliPrint(result.status === 'success'
-                    ? `<span class="cli-success">✓ Dihapus.</span>`
-                    : `<span class="cli-error">✗ ${result.message}</span>`);
+                if (result.status === 'success') {
+                    cliPrint(`<span class="cli-success">✓ Dihapus.</span>`);
+                    if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
+                } else {
+                    cliPrint(`<span class="cli-error">✗ ${result.message}</span>`);
+                }
             },
 
             rename: async (args) => {
@@ -568,9 +587,12 @@
                 const newName = rest.join(' ');
                 if (!id || !newName) { cliPrint('<span class="cli-error">Penggunaan: rename [id] [nama baru]</span>'); return; }
                 const result = await renameFile(id, newName);
-                cliPrint(result.status === 'success'
-                    ? `<span class="cli-success">✓ Diganti menjadi "${newName}"</span>`
-                    : `<span class="cli-error">✗ ${result.message}</span>`);
+                if (result.status === 'success') {
+                    cliPrint(`<span class="cli-success">✓ Diganti menjadi "${newName}"</span>`);
+                    if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
+                } else {
+                    cliPrint(`<span class="cli-error">✗ ${result.message}</span>`);
+                }
             },
 
             mv: async (args) => {
@@ -1054,20 +1076,56 @@
             updateBulkActionBar();
         });
 
-        // Bulk Delete Executer
+        // Bulk Delete Executer with Progress Bar
         bulkDeleteBtn.addEventListener('click', async () => {
             const selectedItems = localFilesState.filter(item => item.selected);
             if (!selectedItems.length) return;
             const confirmed = await showDialog('Bulk Delete', `Hancurkan ${selectedItems.length} item terpilih secara permanen di Google Drive?`);
             if (confirmed) {
+                // Show progress container
+                const progressContainer = document.getElementById('operationProgressContainer');
+                const progressStatusText = document.getElementById('progressStatusText');
+                const progressPercentText = document.getElementById('progressPercentText');
+                const progressBar = document.getElementById('operationProgressBar');
+                const progressFilesText = document.getElementById('progressFilesText');
+                const progressBytesText = document.getElementById('progressBytesText');
+
+                progressContainer.classList.remove('hidden');
+                progressBar.style.width = '0%';
+                progressPercentText.innerText = '0%';
+                progressFilesText.innerText = `Item: 0/${selectedItems.length}`;
+                progressBytesText.innerText = `-`;
+
                 bulkDeleteBtn.innerText = 'DESTROYING...';
                 bulkDeleteBtn.disabled = true;
+                
                 const fileIds   = selectedItems.filter(i => !i.isFolder).map(i => i.id);
                 const folderIds = selectedItems.filter(i =>  i.isFolder).map(i => i.id);
+                
+                // Print progress log to CLI
+                cliPrint(`<span class="cli-warn">[DELETE LOG] Menghancurkan ${selectedItems.length} item secara bulk...</span>`);
+                
+                progressStatusText.innerText = `⚡ MENGHAPUS DARI CLOUD...`;
+                progressBar.style.width = '50%';
+                progressPercentText.innerText = '50%';
+                
                 const res = await deleteMultiple(fileIds, folderIds);
                 toast(res.message, res.status === 'success' ? 'success' : 'error');
+                
+                cliPrint(`<span class="cli-success">[DELETE LOG] Selesai: ${res.message}</span>`);
+                
+                progressStatusText.innerText = `✅ PENGHAPUSAN SELESAI`;
+                progressBar.style.width = '100%';
+                progressPercentText.innerText = '100%';
+                progressFilesText.innerText = `Item: ${selectedItems.length}/${selectedItems.length}`;
+                
                 bulkDeleteBtn.innerText = 'Hapus Terpilih 🗑️';
                 bulkDeleteBtn.disabled = false;
+                
+                setTimeout(() => {
+                    progressContainer.classList.add('hidden');
+                }, 4000);
+                
                 loadAndRender(currentFolderId);
             }
         });
@@ -1107,10 +1165,22 @@
             renderFiles(filtered);
         });
 
-        // Bulk Upload Queue Executer
+        // Bulk Upload Queue Executer with Progress Bar
         document.getElementById('uploadBtn').addEventListener('click', async () => {
             const files = fInput.files;
             if (!files.length) return toast('Pilih file terlebih dahulu!', 'warn');
+
+            // Show progress container
+            const progressContainer = document.getElementById('operationProgressContainer');
+            const progressStatusText = document.getElementById('progressStatusText');
+            const progressPercentText = document.getElementById('progressPercentText');
+            const progressBar = document.getElementById('operationProgressBar');
+            const progressFilesText = document.getElementById('progressFilesText');
+            const progressBytesText = document.getElementById('progressBytesText');
+
+            progressContainer.classList.remove('hidden');
+            progressBar.style.width = '0%';
+            progressPercentText.innerText = '0%';
 
             statusConsole.classList.remove('hidden');
             statusConsole.innerHTML = "";
@@ -1118,38 +1188,73 @@
             const logMessage = (msg) => {
                 statusConsole.innerHTML += `<div>CONSOLE > ${msg}</div>`;
                 statusConsole.scrollTop = statusConsole.scrollHeight;
+                // Print to CLI too!
+                cliPrint(`<span class="cli-info">[UPLOAD LOG] ${msg}</span>`);
             };
 
-            logMessage(`Memulai proses bulk upload untuk ${files.length} file...`);
+            const N = files.length;
+            let totalBytes = 0;
+            for (let i = 0; i < N; i++) {
+                totalBytes += files[i].size;
+            }
+            let uploadedBytes = 0;
 
-            for (let i = 0; i < files.length; i++) {
+            logMessage(`Memulai proses bulk upload untuk ${N} file (Total: ${(totalBytes / (1024 * 1024)).toFixed(2)} MB)...`);
+
+            for (let i = 0; i < N; i++) {
                 const file = files[i];
-                logMessage(`[${i+1}/${files.length}] Mempersiapkan file: ${file.name}`);
+                logMessage(`[${i+1}/${N}] Mempersiapkan file: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`);
                 
+                progressStatusText.innerText = `⚡ MENGUNGGAH: ${file.name}`;
+                progressFilesText.innerText = `File: ${i}/${N}`;
+                progressBytesText.innerText = `${(uploadedBytes / (1024 * 1024)).toFixed(2)} MB / ${(totalBytes / (1024 * 1024)).toFixed(2)} MB`;
+                
+                // Segment progress
+                const basePct = (i / N) * 100;
+                progressBar.style.width = `${basePct}%`;
+                progressPercentText.innerText = `${Math.round(basePct)}%`;
+
                 await new Promise((resolve) => {
                     uploadFile(file, currentFolderId, 
                         (progressText) => {
-                            logMessage(`[${i+1}/${files.length}] status: ${progressText}`);
+                            logMessage(`[${i+1}/${N}] status: ${progressText}`);
+                            if (progressText && progressText.includes("cloud")) {
+                                progressStatusText.innerText = `⚡ MENGIRIM KE CLOUD: ${file.name}`;
+                                progressBar.style.width = `${basePct + (0.5 / N) * 100}%`;
+                                progressPercentText.innerText = `${Math.round(basePct + (0.5 / N) * 100)}%`;
+                            }
                         }, 
                         (result) => {
                             if (result.status === "success") {
-                                logMessage(`[${i+1}/${files.length}] Berhasil: ${file.name}`);
+                                logMessage(`[${i+1}/${N}] Berhasil: ${file.name}`);
+                                uploadedBytes += file.size;
                             } else {
-                                logMessage(`[${i+1}/${files.length}] Gagal: ${result.message}`);
+                                logMessage(`[${i+1}/${N}] Gagal: ${result.message}`);
                             }
+                            // End of file segment
+                            const endPct = ((i + 1) / N) * 100;
+                            progressBar.style.width = `${endPct}%`;
+                            progressPercentText.innerText = `${Math.round(endPct)}%`;
+                            progressFilesText.innerText = `File: ${i+1}/${N}`;
+                            progressBytesText.innerText = `${(uploadedBytes / (1024 * 1024)).toFixed(2)} MB / ${(totalBytes / (1024 * 1024)).toFixed(2)} MB`;
                             resolve();
                         }
                     );
                 });
             }
 
+            progressStatusText.innerText = `✅ SELESAI`;
+            progressBar.style.width = '100%';
+            progressPercentText.innerText = '100%';
             logMessage("Bulk upload selesai! Sinkronisasi database...");
+            
             fInput.value = "";
             dZoneText.innerText = "Drag & Drop file di sini atau klik untuk memilih";
             
             setTimeout(() => { 
                 statusConsole.classList.add('hidden'); 
-            }, 5000);
+                progressContainer.classList.add('hidden');
+            }, 6000);
             
             loadAndRender(currentFolderId);
         });

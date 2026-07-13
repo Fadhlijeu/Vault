@@ -36,9 +36,14 @@
         <div class="space-y-4">
             <div class="text-left">
                 <label class="text-xs font-semibold text-slate-500 uppercase tracking-widest">Access Token</label>
-                <input type="password" id="tokenInput" placeholder="Masukkan token rahasia..." 
-                       class="input-cyber w-full mt-1 px-4 py-3 rounded-lg text-sm"
-                       autocomplete="off">
+                <div class="relative mt-1">
+                    <input type="password" id="tokenInput" placeholder="Masukkan token rahasia..." 
+                           class="input-cyber w-full pl-4 pr-10 py-3 rounded-lg text-sm"
+                           autocomplete="off">
+                    <button id="togglePwBtn" type="button" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-cyan-400 transition cursor-pointer text-xs" title="Tampilkan/Sembunyikan Token">
+                        👁️
+                    </button>
+                </div>
             </div>
             <button id="loginBtn" class="btn-cyber w-full py-3 rounded-lg font-bold tracking-wide cursor-pointer uppercase text-sm">
                 Buka Brankas
@@ -46,6 +51,11 @@
         </div>
         
         <p id="errorMsg" class="text-red-400 text-xs hidden animate-pulse">Token tidak boleh kosong!</p>
+    </div>
+
+    <!-- Beautiful Cyber Notification Toast -->
+    <div id="settingsToast" class="hidden fixed bottom-5 left-1/2 transform -translate-x-1/2 bg-slate-900 border border-cyan-500/30 text-cyan-400 text-xs px-5 py-3.5 rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.2)] font-mono-cyber z-50 animate-bounce">
+        ⚡ URL Script berhasil disimpan!
     </div>
 
     <script type="module">
@@ -61,6 +71,29 @@
         const settingsSection = document.getElementById('settingsSection');
         const apiUrlInput = document.getElementById('apiUrlInput');
         const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+        const settingsToast = document.getElementById('settingsToast');
+
+        const togglePwBtn = document.getElementById('togglePwBtn');
+        const tokenInput = document.getElementById('tokenInput');
+
+        // Toggle Pw Visibility
+        togglePwBtn.addEventListener('click', () => {
+            if (tokenInput.type === 'password') {
+                tokenInput.type = 'text';
+                togglePwBtn.innerText = '🔒';
+            } else {
+                tokenInput.type = 'password';
+                togglePwBtn.innerText = '👁️';
+            }
+        });
+
+        function showSettingsToast(msg) {
+            settingsToast.innerText = `⚡ ${msg}`;
+            settingsToast.classList.remove('hidden');
+            setTimeout(() => {
+                settingsToast.classList.add('hidden');
+            }, 3000);
+        }
 
         // Load existing API URL jika ada di browser local storage
         if (localStorage.getItem('vault_api_url')) {
@@ -75,18 +108,18 @@
             const url = apiUrlInput.value.trim();
             if (url) {
                 localStorage.setItem('vault_api_url', url);
-                alert("URL Google Apps Script berhasil disimpan secara lokal di browser!");
+                showSettingsToast("URL Google Apps Script berhasil disimpan secara lokal!");
                 settingsSection.classList.add('hidden');
             } else {
                 localStorage.removeItem('vault_api_url');
-                alert("URL Google Apps Script dihapus dari browser Anda.");
+                showSettingsToast("URL Google Apps Script dihapus.");
                 settingsSection.classList.add('hidden');
             }
         });
 
         // Trigger Login
         document.getElementById('loginBtn').addEventListener('click', async () => {
-            const token = document.getElementById('tokenInput').value.trim();
+            const token = tokenInput.value.trim();
             const errorMsg = document.getElementById('errorMsg');
             const loginBtn = document.getElementById('loginBtn');
             
@@ -111,7 +144,7 @@
         });
 
         // Dukungan tekan "Enter" di keyboard
-        document.getElementById('tokenInput').addEventListener('keypress', (e) => {
+        tokenInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') document.getElementById('loginBtn').click();
         });
     </script>
