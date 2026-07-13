@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/icon.png" alt="Vault banner" width="75%">
+  <img src="assets/images/icon.png" alt="Vault banner" width="75%">
 </p>
 
 # 🛡️ Cyber Vault — Secure Encrypted Storage System
