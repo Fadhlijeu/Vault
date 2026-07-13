@@ -214,3 +214,23 @@ export async function saveTextFile(fileName, content, fileId = null, parentFolde
         return { status: "error", message: "Gagal menyimpan file teks." };
     }
 }
+
+// 11. Impor Google Drive Folder (Drive-to-Drive)
+export async function importFromDrive(folderIdOrUrl, parentFolderId = null) {
+    const token = checkToken();
+    const apiUrl = getApiUrl();
+    try {
+        const response = await fetch(apiUrl, {
+            method: "POST",
+            body: JSON.stringify({
+                token: token,
+                action: "importDrive",
+                url: folderIdOrUrl,
+                parentFolderId: parentFolderId
+            })
+        });
+        return await response.json();
+    } catch (error) {
+        return { status: "error", message: "Gagal mengimpor Google Drive." };
+    }
+}
