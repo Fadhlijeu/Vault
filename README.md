@@ -25,10 +25,9 @@
 - **Detail Metadata Samping (ℹ️ Item Properties)**: Panel detail interaktif yang memunculkan nama berkas, tipe, ukuran asli, ID unik Google Drive, serta Direct Download Link hanya dengan sekali klik.
 - **Pintasan Aksi Cepat**: Lakukan pencarian, penggantian nama (_Rename_), perpindahan (_Move_), dan penghancuran (_Delete_ 🗑️) secara massal langsung dari antarmuka web.
 
-### 2. 📝 Inline Text & Markdown Editor
+### 2. 📝 Inline Text Editor
 
 - **Pembuatan File Manual**: Buat dokumen teks baru langsung di cloud dengan format `.txt`, `.md`, dll.
-- **Real-time Markdown Rendering**: Terintegrasi penuh dengan `marked.js` untuk merender dokumen Markdown `.md` secara real-time lengkap dengan style _cyber darkmode_ premium.
 - **Dua Mode Kerja**: Mode Baca (Read-only Preview) untuk keamanan dan kenyamanan membaca, serta Mode Edit untuk modifikasi langsung.
 
 ### 3. ⚡ Web-based Vault CLI (Terminal Emulator)
