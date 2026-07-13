@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cyber Vault | Control Panel</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="stylesheet" href="assets/css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
     <style>
@@ -154,6 +155,19 @@
                          color:white; font-size:12px; font-weight:700; cursor:pointer;
                          box-shadow:0 0 14px rgba(6,182,212,.35); transition:all .2s; }
         .dialog-btn-ok:hover { box-shadow:0 0 22px rgba(6,182,212,.6); }
+        
+        /* ── Markdown Rendering ── */
+        .markdown-body h1 { font-size: 1.5rem; font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.25rem; margin-top: 1rem; margin-bottom: 0.5rem; color: #22d3ee; }
+        .markdown-body h2 { font-size: 1.25rem; font-weight: bold; margin-top: 1rem; margin-bottom: 0.5rem; color: #38bdf8; }
+        .markdown-body h3 { font-size: 1.1rem; font-weight: bold; margin-top: 0.75rem; margin-bottom: 0.4rem; color: #60a5fa; }
+        .markdown-body p { margin-bottom: 0.75rem; line-height: 1.6; color: #cbd5e1; }
+        .markdown-body code { font-family: 'Fira Code', monospace; background: rgba(0,0,0,0.4); padding: 0.1rem 0.3rem; border-radius: 4px; color: #f472b6; }
+        .markdown-body pre { background: rgba(0,0,0,0.6); padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(56,189,248,0.15); overflow-x: auto; margin-bottom: 0.75rem; }
+        .markdown-body pre code { background: transparent; padding: 0; color: #e2e8f0; }
+        .markdown-body ul, .markdown-body ol { margin-left: 1.5rem; margin-bottom: 0.75rem; list-style-type: disc; }
+        .markdown-body ol { list-style-type: decimal; }
+        .markdown-body li { margin-bottom: 0.25rem; }
+        .markdown-body blockquote { border-left: 4px solid #06b6d4; padding-left: 0.75rem; color: #94a3b8; font-style: italic; margin-bottom: 0.75rem; }
     </style>
 </head>
 <body class="p-4 md:p-8 min-h-screen">
@@ -186,6 +200,11 @@
                     📁 Buat Folder Baru
                 </button>
                 
+                <!-- Create Text File Button -->
+                <button id="createTextFileBtn" class="btn-cyber-secondary w-full py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider cursor-pointer flex items-center justify-center gap-2">
+                    📝 Buat File Teks Baru
+                </button>
+                
                 <!-- Multi-upload Dropzone -->
                 <div id="dropZone" class="flex flex-col items-center justify-center w-full h-44 border-2 border-dashed border-cyan-500/20 hover:border-cyan-400/50 rounded-xl cursor-pointer hover:bg-cyan-500/5 transition p-4 text-center">
                     <p class="text-xs font-semibold text-slate-400" id="dropZoneText">Drag & Drop file di sini atau klik untuk memilih</p>
@@ -202,48 +221,108 @@
 
             <!-- Right Panel (File Explorer) -->
             <div class="lg:col-span-3 cyber-card p-5 rounded-2xl space-y-4">
-                
-                <!-- Navigation & Breadcrumbs -->
-                <div class="flex flex-wrap items-center justify-between gap-4 border-b border-white/5 pb-3">
-                    <div class="flex items-center gap-2 text-xs font-semibold">
-                        <span class="text-slate-500">Path:</span>
-                        <div id="breadcrumbs" class="flex items-center gap-1.5 text-cyan-400 font-mono-cyber">
-                            <!-- Dynamically generated breadcrumbs -->
-                            <span class="cursor-pointer hover:text-white" id="navRoot">Root</span>
+                <div class="flex flex-col lg:flex-row gap-6 items-start relative">
+                    <!-- File Explorer Main Area -->
+                    <div class="flex-1 w-full space-y-4">
+                        <!-- Navigation & Breadcrumbs -->
+                        <div class="flex flex-wrap items-center justify-between gap-4 border-b border-white/5 pb-3">
+                            <div class="flex items-center gap-2 text-xs font-semibold">
+                                <span class="text-slate-500">Path:</span>
+                                <div id="breadcrumbs" class="flex items-center gap-1.5 text-cyan-400 font-mono-cyber">
+                                    <!-- Dynamically generated breadcrumbs -->
+                                    <span class="cursor-pointer hover:text-white" id="navRoot">Root</span>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-3">
+                                <input type="text" id="searchBar" placeholder="Cari file/folder..." 
+                                       class="input-cyber px-4 py-2 rounded-xl text-xs w-48 sm:w-60 bg-slate-950/60 border border-cyan-500/20 focus:border-cyan-400 outline-none text-slate-200">
+                                
+                                <div class="flex items-center gap-1">
+                                    <button id="setViewList" class="p-2 border border-white/5 bg-white/5 hover:bg-cyan-500/10 rounded-lg text-xs font-bold hover:text-cyan-400 transition cursor-pointer">📝</button>
+                                    <button id="setViewGrid" class="p-2 border border-white/5 bg-white/5 hover:bg-cyan-500/10 rounded-lg text-xs font-bold hover:text-cyan-400 transition cursor-pointer">📱</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bulk Action Bar (Hidden by default) -->
+                        <div id="bulkActionBar" class="hidden flex items-center justify-between p-3 rounded-xl border border-cyan-500/20 bg-cyan-500/5">
+                            <div class="flex items-center gap-3">
+                                <input type="checkbox" id="selectAllCheckbox" class="checkbox-cyber">
+                                <label for="selectAllCheckbox" class="text-xs font-semibold text-slate-300 cursor-pointer">Pilih Semua</label>
+                                <span id="selectedCountText" class="text-xs text-cyan-400 font-mono-cyber font-semibold">0 terpilih</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button id="bulkMoveBtn" class="px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500 border border-blue-500/30 hover:border-blue-500 text-blue-400 hover:text-white rounded-lg text-xs font-bold tracking-wider transition cursor-pointer uppercase">
+                                    Pindah Terpilih 📦
+                                </button>
+                                <button id="bulkDeleteBtn" class="px-3 py-1.5 bg-red-500/20 hover:bg-red-500 border border-red-500/30 hover:border-red-500 text-red-400 hover:text-white rounded-lg text-xs font-bold tracking-wider transition cursor-pointer uppercase">
+                                    Hapus Terpilih 🗑️
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- File Viewer Container -->
+                        <div id="fileViewer" class="min-h-[400px]">
+                            <!-- Dynamically loaded grid or list -->
                         </div>
                     </div>
 
-                    <div class="flex items-center gap-3">
-                        <input type="text" id="searchBar" placeholder="Cari file/folder..." 
-                               class="input-cyber px-4 py-2 rounded-xl text-xs w-48 sm:w-60 bg-slate-950/60 border border-cyan-500/20 focus:border-cyan-400 outline-none text-slate-200">
+                    <!-- Properties Sidebar -->
+                    <div id="propertiesSidebar" class="w-full lg:w-72 border-t lg:border-t-0 lg:border-l border-white/5 pt-4 lg:pt-0 lg:pl-5 hidden flex-col justify-between space-y-4 text-xs font-mono-cyber self-stretch min-h-[450px]">
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between border-b border-white/5 pb-2">
+                                <span class="text-cyan-400 font-bold uppercase tracking-wider">ℹ️ Item Properties</span>
+                                <button id="closeSidebarBtn" class="text-slate-500 hover:text-white text-lg font-bold transition">&times;</button>
+                            </div>
+                            
+                            <div class="space-y-3">
+                                <div class="flex justify-center py-4 bg-black/20 rounded-xl border border-white/5" id="sidebarIconContainer">
+                                    <span class="text-4xl">📄</span>
+                                </div>
+                                
+                                <div>
+                                    <span class="text-slate-500 block">Nama:</span>
+                                    <span id="sidebarName" class="text-slate-200 font-semibold break-all">file_name.txt</span>
+                                </div>
+                                
+                                <div>
+                                    <span class="text-slate-500 block">Tipe:</span>
+                                    <span id="sidebarType" class="text-slate-300">Text File</span>
+                                </div>
+
+                                <div>
+                                    <span class="text-slate-500 block">Ukuran:</span>
+                                    <span id="sidebarSize" class="text-slate-300">12.5 KB</span>
+                                </div>
+
+                                <div>
+                                    <span class="text-slate-500 block">ID File:</span>
+                                    <div class="flex items-center gap-1">
+                                        <span id="sidebarId" class="text-[10px] text-cyan-500/80 truncate flex-1 bg-black/40 px-2 py-1 rounded border border-white/5">id_goes_here</span>
+                                        <button id="copyIdBtn" class="bg-cyan-500/10 hover:bg-cyan-500 text-cyan-400 hover:text-white p-1 rounded font-sans transition">📋</button>
+                                    </div>
+                                </div>
+
+                                <div id="sidebarLinkContainer">
+                                    <span class="text-slate-500 block">Direct URL:</span>
+                                    <div class="flex items-center gap-1">
+                                        <span id="sidebarUrl" class="text-[10px] text-cyan-500/80 truncate flex-1 bg-black/40 px-2 py-1 rounded border border-white/5 font-mono">url_goes_here</span>
+                                        <button id="copyUrlBtn" class="bg-cyan-500/10 hover:bg-cyan-500 text-cyan-400 hover:text-white p-1 rounded font-sans transition">📋</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         
-                        <div class="flex items-center gap-1">
-                            <button id="setViewList" class="p-2 border border-white/5 bg-white/5 hover:bg-cyan-500/10 rounded-lg text-xs font-bold hover:text-cyan-400 transition cursor-pointer">📝</button>
-                            <button id="setViewGrid" class="p-2 border border-white/5 bg-white/5 hover:bg-cyan-500/10 rounded-lg text-xs font-bold hover:text-cyan-400 transition cursor-pointer">📱</button>
+                        <div class="space-y-2 border-t border-white/5 pt-3">
+                            <button id="sidebarPreviewBtn" class="btn-cyber-primary w-full py-2.5 rounded-xl text-white font-bold uppercase tracking-wider transition">Preview / Open</button>
+                            <div class="flex gap-2">
+                                <button id="sidebarRenameBtn" class="w-1/2 bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-white py-1.5 rounded-lg font-bold transition uppercase">Rename</button>
+                                <button id="sidebarMoveBtn" class="w-1/2 bg-blue-500/10 hover:bg-blue-500 text-blue-400 hover:text-white py-1.5 rounded-lg font-bold transition uppercase">Move</button>
+                            </div>
+                            <button id="sidebarDeleteBtn" class="w-full bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white py-2.5 rounded-xl font-bold transition uppercase">Delete 🗑️</button>
                         </div>
                     </div>
-                </div>
-
-                <!-- Bulk Action Bar (Hidden by default) -->
-                <div id="bulkActionBar" class="hidden flex items-center justify-between p-3 rounded-xl border border-cyan-500/20 bg-cyan-500/5">
-                    <div class="flex items-center gap-3">
-                        <input type="checkbox" id="selectAllCheckbox" class="checkbox-cyber">
-                        <label for="selectAllCheckbox" class="text-xs font-semibold text-slate-300 cursor-pointer">Pilih Semua</label>
-                        <span id="selectedCountText" class="text-xs text-cyan-400 font-mono-cyber font-semibold">0 terpilih</span>
-                    </div>
-                    <div class="flex gap-2">
-                        <button id="bulkMoveBtn" class="px-3 py-1.5 bg-blue-500/20 hover:bg-blue-500 border border-blue-500/30 hover:border-blue-500 text-blue-400 hover:text-white rounded-lg text-xs font-bold tracking-wider transition cursor-pointer uppercase">
-                            Pindah Terpilih 📦
-                        </button>
-                        <button id="bulkDeleteBtn" class="px-3 py-1.5 bg-red-500/20 hover:bg-red-500 border border-red-500/30 hover:border-red-500 text-red-400 hover:text-white rounded-lg text-xs font-bold tracking-wider transition cursor-pointer uppercase">
-                            Hapus Terpilih 🗑️
-                        </button>
-                    </div>
-                </div>
-
-                <!-- File Viewer Container -->
-                <div id="fileViewer" class="min-h-[400px]">
-                    <!-- Dynamically loaded grid or list -->
                 </div>
             </div>
 
@@ -294,18 +373,28 @@
     <!-- Floating Terminal FAB -->
     <button id="termFab" title="Buka Terminal">⌨️</button>
 
-    <!-- Preview Modal -->
+    <!-- Preview / Editor Modal -->
     <div id="previewModal" class="fixed inset-0 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4 z-50">
-        <div class="cyber-card w-full max-w-3xl p-6 rounded-2xl space-y-4 relative">
-            <button id="closeModalBtn" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl font-bold cursor-pointer transition">&times;</button>
-            <h3 id="modalTitle" class="text-sm font-semibold truncate pr-8 text-cyan-400 font-mono-cyber">Preview File</h3>
-            <div id="modalBody" class="w-full flex justify-center items-center bg-black/40 rounded-xl overflow-hidden min-h-[300px] p-2"></div>
+        <div class="cyber-card w-full max-w-4xl p-6 rounded-2xl space-y-4 relative flex flex-col max-h-[90vh]">
+            <button id="closeModalBtn" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl font-bold cursor-pointer transition z-10">&times;</button>
+            
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-3 pr-8">
+                <div class="flex-1">
+                    <input type="text" id="editorFileName" class="bg-slate-950/60 border border-cyan-500/20 focus:border-cyan-400 outline-none text-slate-200 text-xs font-semibold font-mono-cyber rounded-lg px-3 py-1.5 w-full sm:w-80" placeholder="nama_file.txt">
+                </div>
+                <div id="editorControls" class="flex gap-2 hidden">
+                    <button id="editorToggleMode" class="btn-cyber-secondary px-3 py-1.5 rounded-lg text-[10px] font-bold transition uppercase">Mode Edit</button>
+                    <button id="editorSaveBtn" class="btn-cyber-primary text-white px-4 py-1.5 rounded-lg text-[10px] font-bold transition uppercase">Save 💾</button>
+                </div>
+            </div>
+            
+            <div id="modalBody" class="flex-1 w-full overflow-y-auto bg-black/40 rounded-xl min-h-[300px] p-4"></div>
         </div>
     </div>
 
     <script type="module">
         import { checkAuth, logout } from './src/auth.js';
-        import { fetchFiles, uploadFile, deleteFile, renameFile, fetchFileBlob, createFolder, deleteMultiple, importFromUrl, moveItems } from './src/vault.js';
+        import { fetchFiles, uploadFile, deleteFile, renameFile, fetchFileBlob, createFolder, deleteMultiple, importFromUrl, moveItems, saveTextFile } from './src/vault.js';
         import { formatBytes, getFileMeta } from './src/utils.js';
 
         // ==================== TOAST & DIALOG ENGINE ====================
@@ -594,6 +683,15 @@
         let parentFolderId = null;
         let folderPathHistory = []; // Untuk breadcrumbs: [{id, name}]
 
+        // State Selection & Editor
+        let selectedItem = null;
+        let editorActiveFileId = null;
+        let editorActiveContent = "";
+        let editorActiveName = "";
+        let editorCurrentMode = "read"; // 'read' or 'edit'
+
+        const TEXT_EXTS = ['txt', 'md', 'json', 'js', 'css', 'html', 'xml', 'sh', 'py', 'bat', 'log', 'ini', 'cfg', 'gs'];
+
         // Element Selectors
         const fileViewer = document.getElementById('fileViewer');
         const searchBar = document.getElementById('searchBar');
@@ -602,6 +700,7 @@
         const dZone = document.getElementById('dropZone');
         const dZoneText = document.getElementById('dropZoneText');
         const createFolderBtn = document.getElementById('createFolderBtn');
+        const createTextFileBtn = document.getElementById('createTextFileBtn');
         
         const bulkActionBar = document.getElementById('bulkActionBar');
         const selectAllCheckbox = document.getElementById('selectAllCheckbox');
@@ -609,6 +708,31 @@
         const bulkMoveBtn = document.getElementById('bulkMoveBtn');
         const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
         const breadcrumbs = document.getElementById('breadcrumbs');
+
+        // Sidebar Selectors
+        const propertiesSidebar = document.getElementById('propertiesSidebar');
+        const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+        const sidebarName = document.getElementById('sidebarName');
+        const sidebarType = document.getElementById('sidebarType');
+        const sidebarSize = document.getElementById('sidebarSize');
+        const sidebarId = document.getElementById('sidebarId');
+        const sidebarUrl = document.getElementById('sidebarUrl');
+        const sidebarLinkContainer = document.getElementById('sidebarLinkContainer');
+        const sidebarIconContainer = document.getElementById('sidebarIconContainer');
+        
+        const sidebarPreviewBtn = document.getElementById('sidebarPreviewBtn');
+        const sidebarRenameBtn = document.getElementById('sidebarRenameBtn');
+        const sidebarMoveBtn = document.getElementById('sidebarMoveBtn');
+        const sidebarDeleteBtn = document.getElementById('sidebarDeleteBtn');
+        
+        const copyIdBtn = document.getElementById('copyIdBtn');
+        const copyUrlBtn = document.getElementById('copyUrlBtn');
+
+        // Editor Selectors
+        const editorFileName = document.getElementById('editorFileName');
+        const editorControls = document.getElementById('editorControls');
+        const editorToggleMode = document.getElementById('editorToggleMode');
+        const editorSaveBtn = document.getElementById('editorSaveBtn');
 
         // Drag & Drop Binder
         if (dZone && fInput) {
@@ -643,6 +767,7 @@
 
         // Render Controller & API Loader
         async function loadAndRender(folderId = null) {
+            closeSidebar();
             // Sembunyikan bulk action bar ketika berpindah direktori
             bulkActionBar.classList.add('hidden');
             selectAllCheckbox.checked = false;
@@ -715,10 +840,11 @@
                 items.forEach((item, index) => {
                     const meta = getFileMeta(item.name);
                     const isSelected = item.selected ? 'checked' : '';
+                    const isActive = (selectedItem && selectedItem.id === item.id) ? 'border-cyan-400/80 shadow-[0_0_12px_rgba(6,182,212,0.15)] bg-cyan-950/20' : '';
                     
                     if (item.isFolder) {
                         html += `
-                            <div class="flex justify-between items-center bg-cyan-950/5 border border-cyan-500/10 p-3 rounded-xl gap-4 hover:border-cyan-500/40 transition">
+                            <div data-id="${item.id}" class="file-item-wrapper flex justify-between items-center bg-cyan-950/5 border border-cyan-500/10 p-3 rounded-xl gap-4 hover:border-cyan-500/40 transition cursor-pointer ${isActive}">
                                 <div class="flex items-center gap-3 truncate flex-1">
                                     <input type="checkbox" data-index="${index}" class="checkbox-cyber item-select-checkbox" ${isSelected}>
                                     <div class="flex items-center gap-3 truncate cursor-pointer open-folder" data-id="${item.id}">
@@ -737,7 +863,7 @@
                             </div>`;
                     } else {
                         html += `
-                            <div class="flex justify-between items-center bg-black/20 border border-white/5 p-3 rounded-xl gap-4 hover:border-cyan-500/20 transition">
+                            <div data-id="${item.id}" class="file-item-wrapper flex justify-between items-center bg-black/20 border border-white/5 p-3 rounded-xl gap-4 hover:border-cyan-500/20 transition cursor-pointer ${isActive}">
                                 <div class="flex items-center gap-3 truncate flex-1">
                                     <input type="checkbox" data-index="${index}" class="checkbox-cyber item-select-checkbox" ${isSelected}>
                                     <div class="flex items-center gap-3 truncate cursor-pointer open-preview" data-id="${item.id}">
@@ -764,10 +890,11 @@
                 items.forEach((item, index) => {
                     const meta = getFileMeta(item.name);
                     const isSelected = item.selected ? 'checked' : '';
+                    const isActive = (selectedItem && selectedItem.id === item.id) ? 'border-cyan-400/80 shadow-[0_0_12px_rgba(6,182,212,0.15)] bg-cyan-950/20' : '';
                     
                     if (item.isFolder) {
                         html += `
-                            <div class="bg-cyan-950/5 border border-cyan-500/10 p-4 rounded-xl flex flex-col items-center text-center justify-between gap-3 hover:border-cyan-500/30 transition relative group">
+                            <div data-id="${item.id}" class="file-item-wrapper bg-cyan-950/5 border border-cyan-500/10 p-4 rounded-xl flex flex-col items-center text-center justify-between gap-3 hover:border-cyan-500/30 transition relative group cursor-pointer ${isActive}">
                                 <input type="checkbox" data-index="${index}" class="checkbox-cyber absolute top-3 left-3 item-select-checkbox" ${isSelected}>
                                 <div class="w-full flex flex-col items-center cursor-pointer open-folder" data-id="${item.id}">
                                     <div class="text-3xl p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 mb-2">📁</div>
@@ -782,7 +909,7 @@
                             </div>`;
                     } else {
                         html += `
-                            <div class="bg-black/20 border border-white/5 p-4 rounded-xl flex flex-col items-center text-center justify-between gap-3 hover:border-cyan-500/20 transition relative group">
+                            <div data-id="${item.id}" class="file-item-wrapper bg-black/20 border border-white/5 p-4 rounded-xl flex flex-col items-center text-center justify-between gap-3 hover:border-cyan-500/20 transition relative group cursor-pointer ${isActive}">
                                 <input type="checkbox" data-index="${index}" class="checkbox-cyber absolute top-3 left-3 item-select-checkbox" ${isSelected}>
                                 <div class="w-full flex flex-col items-center cursor-pointer open-preview" data-id="${item.id}">
                                     <div class="text-3xl p-4 rounded-xl ${meta.bg} ${meta.border} ${meta.color} mb-2">${meta.icon}</div>
@@ -804,11 +931,26 @@
             setupActionListeners();
         }
 
-        // Action Bindings (Navigasi, Rename, Hapus, Checkbox)
+        // Action Bindings (Navigasi, Rename, Hapus, Checkbox, Selection)
         function setupActionListeners() {
+            // 0. Aksi Selection / Detail Sidebar
+            document.querySelectorAll('.file-item-wrapper').forEach(wrapper => {
+                wrapper.addEventListener('click', (e) => {
+                    if (e.target.closest('.checkbox-cyber') || e.target.closest('button') || e.target.closest('input')) {
+                        return;
+                    }
+                    const id = wrapper.getAttribute('data-id');
+                    const targetItem = localFilesState.find(f => f.id === id);
+                    if (targetItem) {
+                        selectItem(targetItem);
+                    }
+                });
+            });
+
             // 1. Aksi Masuk Folder
             document.querySelectorAll('.open-folder').forEach(element => {
-                element.addEventListener('click', () => {
+                element.addEventListener('click', (e) => {
+                    e.stopPropagation();
                     const folderId = element.getAttribute('data-id');
                     loadAndRender(folderId);
                 });
@@ -816,7 +958,8 @@
 
             // 2. Aksi Buka Preview File
             document.querySelectorAll('.open-preview').forEach(element => {
-                element.addEventListener('click', () => {
+                element.addEventListener('click', (e) => {
+                    e.stopPropagation();
                     const id = element.getAttribute('data-id');
                     const targetFile = localFilesState.find(f => f.id === id);
                     if (targetFile) openModalViewer(targetFile);
@@ -1011,49 +1154,305 @@
             loadAndRender(currentFolderId);
         });
 
-        // Preview Modal Viewer (Media Handshake)
-        async function openModalViewer(file) {
-            const modal = document.getElementById('previewModal');
-            const title = document.getElementById('modalTitle');
+        // ==================== SIDEBAR & UTILITIES ====================
+        function selectItem(item) {
+            selectedItem = item;
+            
+            // Highlight selected item in file list
+            document.querySelectorAll('.file-item-wrapper').forEach(wrapper => {
+                if (wrapper.getAttribute('data-id') === item.id) {
+                    wrapper.classList.add('border-cyan-400/80', 'shadow-[0_0_12px_rgba(6,182,212,0.15)]', 'bg-cyan-950/20');
+                    wrapper.classList.remove('border-white/5', 'border-cyan-500/10');
+                } else {
+                    wrapper.classList.remove('border-cyan-400/80', 'shadow-[0_0_12px_rgba(6,182,212,0.15)]', 'bg-cyan-950/20');
+                    const target = localFilesState.find(f => f.id === wrapper.getAttribute('data-id'));
+                    if (target) {
+                        if (target.isFolder) {
+                            wrapper.classList.add('border-cyan-500/10');
+                        } else {
+                            wrapper.classList.add('border-white/5');
+                        }
+                    }
+                }
+            });
+
+            sidebarName.innerText = item.name;
+            sidebarId.innerText = item.id;
+            
+            if (item.isFolder) {
+                sidebarType.innerText = "Folder Direktori";
+                sidebarSize.innerText = "-";
+                sidebarLinkContainer.classList.add('hidden');
+                sidebarIconContainer.innerHTML = `<span class="text-4xl">📁</span>`;
+            } else {
+                const meta = getFileMeta(item.name);
+                sidebarType.innerText = item.name.split('.').pop().toUpperCase() + " File";
+                sidebarSize.innerText = formatBytes(item.size);
+                sidebarLinkContainer.classList.remove('hidden');
+                
+                const directUrl = getApiUrl() + "?action=download&id=" + item.id;
+                sidebarUrl.innerText = directUrl;
+                sidebarIconContainer.innerHTML = `<div class="text-4xl p-4 rounded-xl ${meta.bg} ${meta.border} ${meta.color}">${meta.icon}</div>`;
+            }
+
+            propertiesSidebar.classList.remove('hidden');
+            propertiesSidebar.classList.add('flex');
+        }
+
+        function closeSidebar() {
+            selectedItem = null;
+            if (propertiesSidebar) {
+                propertiesSidebar.classList.add('hidden');
+                propertiesSidebar.classList.remove('flex');
+            }
+            document.querySelectorAll('.file-item-wrapper').forEach(wrapper => {
+                wrapper.classList.remove('border-cyan-400/80', 'shadow-[0_0_12px_rgba(6,182,212,0.15)]', 'bg-cyan-950/20');
+                const id = wrapper.getAttribute('data-id');
+                const target = localFilesState.find(f => f.id === id);
+                if (target) {
+                    if (target.isFolder) {
+                        wrapper.classList.add('border-cyan-500/10');
+                    } else {
+                        wrapper.classList.add('border-white/5');
+                    }
+                }
+            });
+        }
+
+        // ==================== EDITOR & PREVIEW MODAL RENDERING ====================
+        function renderEditorModal(mode) {
+            editorCurrentMode = mode;
             const body = document.getElementById('modalBody');
             
-            title.innerText = `PREVIEW INTERFACE > ${file.name}`;
+            if (mode === "read") {
+                editorToggleMode.innerText = "Mode Edit";
+                const isMd = editorActiveName.toLowerCase().endsWith('.md');
+                if (isMd && typeof marked !== 'undefined') {
+                    body.innerHTML = `<div class="markdown-body text-slate-200 select-text p-2 w-full">${marked.parse(editorActiveContent)}</div>`;
+                } else {
+                    body.innerHTML = `<pre class="font-mono-cyber text-slate-300 text-xs overflow-x-auto select-text whitespace-pre-wrap p-2 bg-slate-950/30 rounded-lg max-h-[65vh] w-full">${escapeHtml(editorActiveContent)}</pre>`;
+                }
+            } else {
+                editorToggleMode.innerText = "Mode Baca";
+                body.innerHTML = `<textarea id="editorTextarea" class="w-full h-[60vh] bg-slate-950/80 border border-cyan-500/25 focus:border-cyan-400 outline-none text-slate-300 font-mono-cyber text-xs p-4 rounded-xl resize-none font-mono" spellcheck="false" placeholder="Ketik isi file di sini...">${escapeHtml(editorActiveContent)}</textarea>`;
+                
+                const ta = document.getElementById('editorTextarea');
+                ta.addEventListener('input', () => {
+                    editorActiveContent = ta.value;
+                });
+            }
+        }
+        
+        function escapeHtml(text) {
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Get API URL directly from localStorage
+        function getApiUrl() {
+            return localStorage.getItem('vault_api_url') || '';
+        }
+
+        // Preview Modal Viewer (Media Handshake & Text Editor)
+        async function openModalViewer(file) {
+            const modal = document.getElementById('previewModal');
+            const body = document.getElementById('modalBody');
+            
+            editorActiveFileId = file.id;
+            editorActiveName = file.name;
+            editorFileName.value = file.name;
+            
             body.innerHTML = `<div class="text-center py-20 text-xs tracking-widest text-cyan-400 animate-pulse font-mono-cyber">⚡ LOADING SECURE STREAM...</div>`;
             modal.classList.remove('hidden');
             modal.classList.add('flex');
 
             const ext = file.name.split('.').pop().toLowerCase();
             
-            if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) {
-                const blob = await fetchFileBlob(file.id);
-                if (blob) {
-                    const objectUrl = URL.createObjectURL(blob);
-                    body.innerHTML = `<img src="${objectUrl}" class="max-h-[70vh] rounded-lg border border-cyan-500/10 object-contain" />`;
-                } else {
-                    body.innerHTML = `<div class="text-center py-20 text-xs text-red-400 font-mono-cyber">❌ Gagal memuat pratinjau gambar.</div>`;
-                }
-            } else if (['mp4', 'mkv', 'mov'].includes(ext)) {
-                const blob = await fetchFileBlob(file.id);
-                if (blob) {
-                    const objectUrl = URL.createObjectURL(blob);
-                    body.innerHTML = `<video src="${objectUrl}" controls class="max-h-[70vh] w-full rounded-lg" autoplay></video>`;
-                } else {
-                    body.innerHTML = `<div class="text-center py-20 text-xs text-red-400 font-mono-cyber">❌ Gagal memuat pratinjau video.</div>`;
+            // Check if it's a text/code file
+            if (TEXT_EXTS.includes(ext)) {
+                editorControls.classList.remove('hidden');
+                try {
+                    const blob = await fetchFileBlob(file.id);
+                    if (blob) {
+                        editorActiveContent = await blob.text();
+                        renderEditorModal("read");
+                    } else {
+                        body.innerHTML = `<div class="text-center py-20 text-xs text-red-400 font-mono-cyber">❌ Gagal membaca konten berkas teks.</div>`;
+                    }
+                } catch (e) {
+                    body.innerHTML = `<div class="text-center py-20 text-xs text-red-400 font-mono-cyber">❌ Error: ${e.toString()}</div>`;
                 }
             } else {
-                body.innerHTML = `
-                    <div class="text-center p-6 space-y-4">
-                        <p class="text-xs text-slate-400 font-mono-cyber">Pratinjau langsung tidak didukung untuk tipe file ini.</p>
-                        <a href="${file.url}" target="_blank" class="inline-block btn-cyber-primary px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white">
-                            Buka / Unduh File Direct Link 🔗
-                        </a>
-                    </div>`;
+                // Non-text file (image, video, or unsupported)
+                editorControls.classList.add('hidden');
+                
+                if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) {
+                    const blob = await fetchFileBlob(file.id);
+                    if (blob) {
+                        const objectUrl = URL.createObjectURL(blob);
+                        body.innerHTML = `<img src="${objectUrl}" class="max-h-[70vh] rounded-lg border border-cyan-500/10 object-contain" />`;
+                    } else {
+                        body.innerHTML = `<div class="text-center py-20 text-xs text-red-400 font-mono-cyber">❌ Gagal memuat pratinjau gambar.</div>`;
+                    }
+                } else if (['mp4', 'mkv', 'mov'].includes(ext)) {
+                    const blob = await fetchFileBlob(file.id);
+                    if (blob) {
+                        const objectUrl = URL.createObjectURL(blob);
+                        body.innerHTML = `<video src="${objectUrl}" controls class="max-h-[70vh] w-full rounded-lg" autoplay></video>`;
+                    } else {
+                        body.innerHTML = `<div class="text-center py-20 text-xs text-red-400 font-mono-cyber">❌ Gagal memuat pratinjau video.</div>`;
+                    }
+                } else {
+                    body.innerHTML = `
+                        <div class="text-center p-6 space-y-4">
+                            <p class="text-xs text-slate-400 font-mono-cyber">Pratinjau langsung tidak didukung untuk tipe file ini.</p>
+                            <a href="${file.url}" target="_blank" class="inline-block btn-cyber-primary px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white">
+                                Buka / Unduh File Direct Link 🔗
+                            </a>
+                        </div>`;
+                }
             }
         }
+
+        // ==================== BIND SIDEBAR & EDITOR EVENTS ====================
+        // Sidebar Close
+        closeSidebarBtn.addEventListener('click', () => closeSidebar());
+
+        // Copy Clipboard Buttons
+        copyIdBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = sidebarId.innerText;
+            navigator.clipboard.writeText(id);
+            toast('ID File disalin ke clipboard!', 'success');
+        });
+        
+        copyUrlBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const url = sidebarUrl.innerText;
+            navigator.clipboard.writeText(url);
+            toast('Direct Download Link disalin ke clipboard!', 'success');
+        });
+
+        // Sidebar Action Buttons
+        sidebarPreviewBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (!selectedItem) return;
+            if (selectedItem.isFolder) {
+                loadAndRender(selectedItem.id);
+            } else {
+                openModalViewer(selectedItem);
+            }
+        });
+
+        sidebarRenameBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (!selectedItem) return;
+            const id = selectedItem.id;
+            const oldName = selectedItem.name;
+            const newName = await showDialog('Rename Item', `Masukkan nama baru untuk "${oldName}"`, { hasInput: true, inputDefault: oldName, inputPlaceholder: 'Nama baru...' });
+            if (newName && newName !== oldName) {
+                sidebarRenameBtn.innerText = 'WAIT..';
+                const res = await renameFile(id, newName);
+                toast(res.message, res.status === 'success' ? 'success' : 'error');
+                sidebarRenameBtn.innerText = 'Rename';
+                loadAndRender(currentFolderId);
+            }
+        });
+
+        sidebarMoveBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (!selectedItem) return;
+            const id = selectedItem.id;
+            const name = selectedItem.name;
+            const isFolder = selectedItem.isFolder;
+            const targetId = await showDialog('Pindahkan Item', `Pindahkan "${name}" ke folder mana? Masukkan ID folder tujuan (atau ketik "root" untuk kembali ke folder utama):`, { hasInput: true, inputDefault: '', inputPlaceholder: 'ID Folder tujuan...' });
+            if (targetId !== null) {
+                sidebarMoveBtn.innerText = 'MOVING..';
+                const fileIds = isFolder ? [] : [id];
+                const folderIds = isFolder ? [id] : [];
+                const res = await moveItems(fileIds, folderIds, targetId.toLowerCase() === 'root' ? null : targetId);
+                toast(res.message, res.status === 'success' ? 'success' : 'error');
+                sidebarMoveBtn.innerText = 'Move';
+                loadAndRender(currentFolderId);
+            }
+        });
+
+        sidebarDeleteBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (!selectedItem) return;
+            const id = selectedItem.id;
+            const name = selectedItem.name;
+            const confirmed = await showDialog('Konfirmasi Hapus', `Kirim perintah penghancuran item "${name}" ke cloud Google Drive?`);
+            if (confirmed) {
+                sidebarDeleteBtn.innerText = 'WAIT..';
+                const res = await deleteFile(id);
+                toast(res.message, res.status === 'success' ? 'success' : 'error');
+                sidebarDeleteBtn.innerText = 'Delete 🗑️';
+                loadAndRender(currentFolderId);
+            }
+        });
+
+        // Editor Toggle Read/Edit Mode
+        editorToggleMode.addEventListener('click', () => {
+            if (editorCurrentMode === "read") {
+                renderEditorModal("edit");
+            } else {
+                const ta = document.getElementById('editorTextarea');
+                if (ta) editorActiveContent = ta.value;
+                renderEditorModal("read");
+            }
+        });
+
+        // Editor Save Action
+        editorSaveBtn.addEventListener('click', async () => {
+            const ta = document.getElementById('editorTextarea');
+            if (ta) editorActiveContent = ta.value;
+            
+            const name = editorFileName.value.trim();
+            if (!name) return toast("Nama file tidak boleh kosong!", "warn");
+            
+            editorSaveBtn.innerText = "SAVING...";
+            editorSaveBtn.disabled = true;
+            
+            const res = await saveTextFile(name, editorActiveContent, editorActiveFileId, currentFolderId);
+            toast(res.message, res.status === "success" ? "success" : "error");
+            
+            editorSaveBtn.innerText = "SAVE 💾";
+            editorSaveBtn.disabled = false;
+            
+            if (res.status === "success") {
+                document.getElementById('closeModalBtn').click();
+                loadAndRender(currentFolderId);
+            }
+        });
+
+        // Create Text File Handler
+        createTextFileBtn.addEventListener('click', () => {
+            const modal = document.getElementById('previewModal');
+            
+            editorActiveFileId = null;
+            editorActiveContent = "";
+            editorActiveName = "baru.txt";
+            editorFileName.value = "baru.txt";
+            
+            editorControls.classList.remove('hidden');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            renderEditorModal("edit");
+        });
 
         document.getElementById('closeModalBtn').addEventListener('click', () => {
             const modal = document.getElementById('previewModal');
             document.getElementById('modalBody').innerHTML = "";
+            editorControls.classList.add('hidden');
+            editorActiveFileId = null;
+            editorActiveContent = "";
+            editorActiveName = "";
             modal.classList.add('hidden');
             modal.classList.remove('flex');
         });

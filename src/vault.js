@@ -192,3 +192,25 @@ export async function moveItems(fileIds = [], folderIds = [], targetFolderId = n
         return { status: "error", message: "Gagal memindahkan item." };
     }
 }
+
+// 10. Simpan / Edit File Teks (Save Text File)
+export async function saveTextFile(fileName, content, fileId = null, parentFolderId = null) {
+    const token = checkToken();
+    const apiUrl = getApiUrl();
+    try {
+        const response = await fetch(apiUrl, {
+            method: "POST",
+            body: JSON.stringify({
+                token: token,
+                action: "saveTextFile",
+                fileId: fileId,
+                content: content,
+                name: fileName,
+                parentFolderId: parentFolderId
+            })
+        });
+        return await response.json();
+    } catch (error) {
+        return { status: "error", message: "Gagal menyimpan file teks." };
+    }
+}
