@@ -86,13 +86,14 @@
         .cli-file    { color:#e2e8f0; }
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
         .cursor-blink { display:inline-block; animation:blink 1s step-end infinite; }
-        /* Floating terminal panel */
-        #terminalPanel {
+        /* Floating terminal panel - ALWAYS VISIBLE on scroll */
+        #terminalWindow {
             position:fixed; bottom:80px; right:24px; width:min(640px,95vw);
             transform:translateY(20px); opacity:0; pointer-events:none;
             transition:all .3s cubic-bezier(.4,0,.2,1); z-index:900;
+            max-height: 60vh;
         }
-        #terminalPanel.open { transform:translateY(0); opacity:1; pointer-events:all; }
+        #terminalWindow.open { transform:translateY(0); opacity:1; pointer-events:all; }
         #termFab {
             position:fixed; bottom:24px; right:24px; z-index:901;
             width:52px; height:52px; border-radius:50%;
@@ -225,14 +226,15 @@
             #mobileBackdrop.active {
                 display: block !important;
             }
-            @media (max-w: 640px) {
+            @media (max-width: 640px) {
                 #terminalWindow {
                     bottom: 12px !important;
                     right: 12px !important;
                     left: 12px !important;
                     width: calc(100% - 24px) !important;
                     max-width: none !important;
-                    height: 280px !important;
+                    height: auto !important;
+                    max-height: 60vh !important;
                 }
             }
         }
@@ -242,7 +244,7 @@
 
     <div class="max-w-7xl mx-auto space-y-6 relative">
         
-        <!-- Setup & CLI buttons in top right (Fixed Floating) -->
+        <!-- Setup & CLI buttons in top right (Fixed Floating) - ALWAYS VISIBLE -->
         <div class="fixed top-4 right-4 z-40 flex items-center gap-2 bg-slate-950/80 p-1.5 rounded-xl border border-white/5 backdrop-blur-md shadow-lg">
             <button id="toggleCliBtn" class="bg-slate-900/60 border border-cyan-500/20 hover:border-cyan-400 text-cyan-400 hover:text-white px-3.5 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition cursor-pointer flex items-center gap-1.5" title="Buka CLI Terminal">
                 ⌨️ CLI Terminal
@@ -336,8 +338,6 @@
                             </button>
                         </div>
                         <input type="file" id="fileInput" class="hidden" multiple />
-                        <!-- Hidden upload trigger -->
-                        <button id="uploadBtn" class="hidden"></button>
                     </div>
                 </div>
 
@@ -431,16 +431,31 @@
                                         <button id="copyUrlBtn" class="bg-cyan-500/10 hover:bg-cyan-500 text-cyan-400 hover:text-white p-1 rounded font-sans transition">📋</button>
                                     </div>
                                 </div>
+
+                                <div id="sidebarFolderDetail" class="hidden space-y-2">
+                                    <div>
+                                        <span class="text-slate-500 block">Jumlah File:</span>
+                                        <span id="sidebarFileCount" class="text-slate-300">0</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-slate-500 block">Total Ukuran:</span>
+                                        <span id="sidebarTotalSize" class="text-slate-300">0 Bytes</span>
+                                    </div>
+                                    <div>
+                                        <span class="text-slate-500 block">Tanggal Dibuat:</span>
+                                        <span id="sidebarDateCreated" class="text-slate-300">-</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         
                         <div class="space-y-2 border-t border-white/5 pt-3">
-                            <button id="sidebarPreviewBtn" class="btn-cyber w-full py-2.5 rounded-xl text-white font-bold uppercase tracking-wider transition">Preview / Open</button>
+                            <button id="sidebarPreviewBtn" class="btn-cyber-primary w-full py-2.5 rounded-xl text-white font-bold uppercase tracking-wider transition cursor-pointer">Preview / Open</button>
                             <div class="flex gap-2">
-                                <button id="sidebarRenameBtn" class="w-1/2 bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-white py-1.5 rounded-lg font-bold transition uppercase">Rename</button>
-                                <button id="sidebarMoveBtn" class="w-1/2 bg-blue-500/10 hover:bg-blue-500 text-blue-400 hover:text-white py-1.5 rounded-lg font-bold transition uppercase">Move</button>
+                                <button id="sidebarRenameBtn" class="w-1/2 bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-white py-1.5 rounded-lg font-bold transition cursor-pointer uppercase">Rename</button>
+                                <button id="sidebarMoveBtn" class="w-1/2 bg-blue-500/10 hover:bg-blue-500 text-blue-400 hover:text-white py-1.5 rounded-lg font-bold transition cursor-pointer uppercase">Move</button>
                             </div>
-                            <button id="sidebarDeleteBtn" class="w-full bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white py-2.5 rounded-xl font-bold transition uppercase">Delete 🗑️</button>
+                            <button id="sidebarDeleteBtn" class="w-full bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white py-2.5 rounded-xl font-bold transition cursor-pointer uppercase">Delete 🗑️</button>
                         </div>
                     </div>
                     <div id="propertiesPlaceholder" class="flex flex-col items-center justify-center h-full text-center text-slate-500 text-[10px] italic">
@@ -550,11 +565,11 @@
                     <div class="flex items-center gap-1 border-r border-white/10 pr-2 mr-1 text-slate-400 text-xs font-semibold">
                         <button class="hover:text-cyan-400 px-1 font-bold" title="Bold" onclick="document.getElementById('editorTextarea').value += ' **Tebal** '">B</button>
                         <button class="hover:text-cyan-400 px-1 italic" title="Italic" onclick="document.getElementById('editorTextarea').value += ' *Miring* '">I</button>
-                        <button class="hover:text-cyan-400 px-1 font-mono" title="Code Block" onclick="document.getElementById('editorTextarea').value += '\n\`\`\`javascript\n\n\`\`\`\n'">&lt;/&gt;</button>
+                        <button class="hover:text-cyan-400 px-1 font-mono" title="Code Block" onclick="document.getElementById('editorTextarea').value += '\n\`\`\`javascript\n\n\`\`\`\n'"></></button>
                         <button class="hover:text-cyan-400 px-1" title="Link" onclick="document.getElementById('editorTextarea').value += ' [Teks](https://...) '">🔗</button>
                     </div>
                     <button id="editorToggleMode" class="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-[10px] font-bold transition uppercase text-slate-300">Mode Edit</button>
-                    <button id="editorSaveBtn" class="btn-cyber text-white px-4 py-1.5 rounded-lg text-[10px] font-bold transition uppercase">Save 💾</button>
+                    <button id="editorSaveBtn" class="btn-cyber-primary text-white px-4 py-1.5 rounded-lg text-[10px] font-bold transition cursor-pointer uppercase">Save 💾</button>
                 </div>
             </div>
             
@@ -868,8 +883,6 @@
         // ==================== END CLI ENGINE ====================
 
 
-
-
         // 1. Jalankan Proteksi Halaman
         checkAuth();
 
@@ -894,8 +907,6 @@
         const searchBar = document.getElementById('searchBar');
         const statusConsole = document.getElementById('statusConsole');
         const fInput = document.getElementById('fileInput');
-        const dZone = document.getElementById('dropZone');
-        const dZoneText = document.getElementById('dropZoneText');
         const createFolderBtn = document.getElementById('createFolderBtn');
         const createTextFileBtn = document.getElementById('createTextFileBtn');
         
@@ -904,6 +915,7 @@
         const selectedCountText = document.getElementById('selectedCountText');
         const bulkMoveBtn = document.getElementById('bulkMoveBtn');
         const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+        const bulkDownloadBtn = document.getElementById('bulkDownloadBtn');
         const breadcrumbs = document.getElementById('breadcrumbs');
 
         // Sidebar Selectors
@@ -916,6 +928,10 @@
         const sidebarUrl = document.getElementById('sidebarUrl');
         const sidebarLinkContainer = document.getElementById('sidebarLinkContainer');
         const sidebarIconContainer = document.getElementById('sidebarIconContainer');
+        const sidebarFolderDetail = document.getElementById('sidebarFolderDetail');
+        const sidebarFileCount = document.getElementById('sidebarFileCount');
+        const sidebarTotalSize = document.getElementById('sidebarTotalSize');
+        const sidebarDateCreated = document.getElementById('sidebarDateCreated');
         
         const sidebarPreviewBtn = document.getElementById('sidebarPreviewBtn');
         const sidebarRenameBtn = document.getElementById('sidebarRenameBtn');
@@ -931,33 +947,24 @@
         const editorToggleMode = document.getElementById('editorToggleMode');
         const editorSaveBtn = document.getElementById('editorSaveBtn');
 
-        // Drag & Drop Binder
-        if (dZone && fInput) {
-            dZone.addEventListener('click', (e) => {
-                if (e.target !== fInput) fInput.click();
+        // ==================== FIX BUG 1: Upload trigger button opens file explorer ====================
+        const uploadTriggerBtn = document.getElementById('uploadTriggerBtn');
+        if (uploadTriggerBtn && fInput) {
+            uploadTriggerBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                fInput.click();
             });
+        }
 
-            fInput.addEventListener('change', () => { 
+        // ==================== FIX BUG 2: Auto-upload when files are selected ====================
+        if (fInput) {
+            fInput.addEventListener('change', () => {
                 if (fInput.files.length > 0) {
-                    dZoneText.innerText = `${fInput.files.length} file dipilih`; 
-                }
-            });
-
-            dZone.addEventListener('dragover', (e) => { 
-                e.preventDefault(); 
-                dZone.classList.add('border-cyan-400', 'bg-cyan-500/5'); 
-            });
-
-            dZone.addEventListener('dragleave', () => {
-                dZone.classList.remove('border-cyan-400', 'bg-cyan-500/5');
-            });
-
-            dZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                dZone.classList.remove('border-cyan-400', 'bg-cyan-500/5');
-                if (e.dataTransfer.files.length > 0) {
-                    fInput.files = e.dataTransfer.files;
-                    dZoneText.innerText = `${fInput.files.length} file terpilih via drop`;
+                    // Auto-trigger upload via the hidden upload logic
+                    const hiddenUploadBtn = document.getElementById('uploadBtn') || fInput;
+                    // Simulate clicking the hidden upload trigger
+                    const event = new Event('click');
+                    hiddenUploadBtn.dispatchEvent(event);
                 }
             });
         }
@@ -1147,7 +1154,6 @@
         };
         // ==================== END FOLDER EXPLORER TREE ENGINE ====================
 
-        // Render Controller & API Loader
         // Render Controller & API Loader
         async function loadAndRender(folderId = null) {
             closeSidebar();
@@ -1403,7 +1409,7 @@
                     const id = btn.getAttribute('data-id');
                     const type = btn.getAttribute('data-type');
                     
-                    const token = checkToken();
+                    const token = localStorage.getItem('vault_token');
                     let url = "";
                     if (type === 'folder') {
                         url = getApiUrl() + "?action=download_folder&folderId=" + id + "&token=" + encodeURIComponent(token);
@@ -1553,7 +1559,7 @@
         });
 
         // Bulk Upload Queue Executer with Progress Bar
-        document.getElementById('uploadBtn').addEventListener('click', async () => {
+        document.getElementById('uploadBtn')?.addEventListener('click', async () => {
             const files = fInput.files;
             if (!files.length) return toast('Pilih file terlebih dahulu!', 'warn');
 
@@ -1636,7 +1642,6 @@
             logMessage("Bulk upload selesai! Sinkronisasi database...");
             
             fInput.value = "";
-            dZoneText.innerText = "Drag & Drop file di sini atau klik untuk memilih";
             
             setTimeout(() => { 
                 statusConsole.classList.add('hidden'); 
@@ -1673,14 +1678,21 @@
             
             if (item.isFolder) {
                 sidebarType.innerText = "Folder Direktori";
-                sidebarSize.innerText = "-";
+                sidebarSize.innerText = item.size > 0 ? formatBytes(item.size) : '-';
                 sidebarLinkContainer.classList.add('hidden');
                 sidebarIconContainer.innerHTML = `<span class="text-4xl">📁</span>`;
+                
+                // Show folder details
+                sidebarFolderDetail.classList.remove('hidden');
+                sidebarFileCount.innerText = item.fileCount !== undefined ? `${item.fileCount} file` : '0';
+                sidebarTotalSize.innerText = item.size > 0 ? formatBytes(item.size) : '0 Bytes';
+                sidebarDateCreated.innerText = item.dateCreated || '-';
             } else {
                 const meta = getFileMeta(item.name);
                 sidebarType.innerText = item.name.split('.').pop().toUpperCase() + " File";
                 sidebarSize.innerText = formatBytes(item.size);
                 sidebarLinkContainer.classList.remove('hidden');
+                sidebarFolderDetail.classList.add('hidden');
                 
                 const directUrl = getApiUrl() + "?action=download&id=" + item.id;
                 sidebarUrl.innerText = directUrl;
@@ -1760,10 +1772,10 @@
         
         function escapeHtml(text) {
             return text
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
+                .replace(/&/g, "&")
+                .replace(/</g, "<")
+                .replace(/>/g, ">")
+                .replace(/"/g, "&#34;")
                 .replace(/'/g, "&#039;");
         }
 
@@ -2054,7 +2066,6 @@
             });
         }
 
-        const bulkDownloadBtn = document.getElementById('bulkDownloadBtn');
         if (bulkDownloadBtn) {
             bulkDownloadBtn.addEventListener('click', async () => {
                 const selectedItems = localFilesState.filter(item => item.selected);
@@ -2062,7 +2073,7 @@
                 
                 toast(`Mengunduh ${selectedItems.length} item...`, 'info');
                 
-                const token = checkToken();
+                const token = localStorage.getItem('vault_token');
                 for (let i = 0; i < selectedItems.length; i++) {
                     const item = selectedItems[i];
                     let downloadUrl = "";
