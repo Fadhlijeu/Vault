@@ -957,16 +957,98 @@
         }
 
         // ==================== FIX BUG 2: Auto-upload when files are selected ====================
+        async function processSelectedFiles() {
+            const files = fInput.files;
+            if (!files.length) return;
+            
+            await uploadMultipleFiles(files);
+            fInput.value = "";
+            loadAndRender(currentFolderId);
+        }
+
+        async function uploadMultipleFiles(files) {
+            const progressContainer = document.getElementById('operationProgressContainer');
+            const progressStatusText = document.getElementById('progressStatusText');
+            const progressPercentText = document.getElementById('progressPercentText');
+            const progressBar = document.getElementById('operationProgressBar');
+            const progressFilesText = document.getElementById('progressFilesText');
+            const progressBytesText = document.getElementById('progressBytesText');
+
+            progressContainer.classList.remove('hidden');
+            progressBar.style.width = '0%';
+            progressPercentText.innerText = '0%';
+
+            statusConsole.classList.remove('hidden');
+            statusConsole.innerHTML = "";
+
+            const logMessage = (msg) => {
+                statusConsole.innerHTML += `<div>CONSOLE > ${msg}</div>`;
+                statusConsole.scrollTop = statusConsole.scrollHeight;
+                cliPrint(`<span class="cli-info">[UPLOAD LOG] ${msg}</span>`);
+            };
+
+            const N = files.length;
+            let totalBytes = 0;
+            for (let i = 0; i < N; i++) {
+                totalBytes += files[i].size;
+            }
+            let uploadedBytes = 0;
+
+            logMessage(`Memulai proses bulk upload untuk ${N} file (Total: ${(totalBytes / (1024 * 1024)).toFixed(2)} MB)...`);
+
+            for (let i = 0; i < N; i++) {
+                const file = files[i];
+                logMessage(`[${i+1}/${N}] Mempersiapkan file: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`);
+                
+                progressStatusText.innerText = `⚡ MENGUNGGAH: ${file.name}`;
+                progressFilesText.innerText = `File: ${i}/${N}`;
+                progressBytesText.innerText = `${(uploadedBytes / (1024 * 1024)).toFixed(2)} MB / ${(totalBytes / (1024 * 1024)).toFixed(2)} MB`;
+                
+                const basePct = (i / N) * 100;
+                progressBar.style.width = `${basePct}%`;
+                progressPercentText.innerText = `${Math.round(basePct)}%`;
+
+                await new Promise((resolve) => {
+                    uploadFile(file, currentFolderId, 
+                        (progressText) => {
+                            logMessage(`[${i+1}/${N}] status: ${progressText}`);
+                            if (progressText && progressText.includes("cloud")) {
+                                progressStatusText.innerText = `⚡ MENGIRIM KE CLOUD: ${file.name}`;
+                                progressBar.style.width = `${basePct + (0.5 / N) * 100}%`;
+                                progressPercentText.innerText = `${Math.round(basePct + (0.5 / N) * 100)}%`;
+                            }
+                        }, 
+                        (result) => {
+                            if (result.status === "success") {
+                                logMessage(`[${i+1}/${N}] Berhasil: ${file.name}`);
+                                uploadedBytes += file.size;
+                            } else {
+                                logMessage(`[${i+1}/${N}] Gagal: ${result.message}`);
+                            }
+                            const endPct = ((i + 1) / N) * 100;
+                            progressBar.style.width = `${endPct}%`;
+                            progressPercentText.innerText = `${Math.round(endPct)}%`;
+                            progressFilesText.innerText = `File: ${i+1}/${N}`;
+                            progressBytesText.innerText = `${(uploadedBytes / (1024 * 1024)).toFixed(2)} MB / ${(totalBytes / (1024 * 1024)).toFixed(2)} MB`;
+                            resolve();
+                        }
+                    );
+                });
+            }
+
+            progressStatusText.innerText = `✅ SELESAI`;
+            progressBar.style.width = '100%';
+            progressPercentText.innerText = '100%';
+            logMessage("Bulk upload selesai! Sinkronisasi database...");
+            
+            setTimeout(() => { 
+                statusConsole.classList.add('hidden'); 
+                progressContainer.classList.add('hidden');
+            }, 6000);
+        }
+
         if (fInput) {
-            fInput.addEventListener('change', () => {
-                if (fInput.files.length > 0) {
-                    // Auto-trigger upload via the hidden upload logic
-                    const hiddenUploadBtn = document.getElementById('uploadBtn') || fInput;
-                    // Simulate clicking the hidden upload trigger
-                    const event = new Event('click');
-                    hiddenUploadBtn.dispatchEvent(event);
-                }
-            });
+            fInput.addEventListener('change', processSelectedFiles);
         }
 
         // ==================== FOLDER EXPLORER TREE ENGINE ====================
@@ -1558,98 +1640,6 @@
             renderFiles(filtered);
         });
 
-        // Bulk Upload Queue Executer with Progress Bar
-        document.getElementById('uploadBtn')?.addEventListener('click', async () => {
-            const files = fInput.files;
-            if (!files.length) return toast('Pilih file terlebih dahulu!', 'warn');
-
-            // Show progress container
-            const progressContainer = document.getElementById('operationProgressContainer');
-            const progressStatusText = document.getElementById('progressStatusText');
-            const progressPercentText = document.getElementById('progressPercentText');
-            const progressBar = document.getElementById('operationProgressBar');
-            const progressFilesText = document.getElementById('progressFilesText');
-            const progressBytesText = document.getElementById('progressBytesText');
-
-            progressContainer.classList.remove('hidden');
-            progressBar.style.width = '0%';
-            progressPercentText.innerText = '0%';
-
-            statusConsole.classList.remove('hidden');
-            statusConsole.innerHTML = "";
-
-            const logMessage = (msg) => {
-                statusConsole.innerHTML += `<div>CONSOLE > ${msg}</div>`;
-                statusConsole.scrollTop = statusConsole.scrollHeight;
-                // Print to CLI too!
-                cliPrint(`<span class="cli-info">[UPLOAD LOG] ${msg}</span>`);
-            };
-
-            const N = files.length;
-            let totalBytes = 0;
-            for (let i = 0; i < N; i++) {
-                totalBytes += files[i].size;
-            }
-            let uploadedBytes = 0;
-
-            logMessage(`Memulai proses bulk upload untuk ${N} file (Total: ${(totalBytes / (1024 * 1024)).toFixed(2)} MB)...`);
-
-            for (let i = 0; i < N; i++) {
-                const file = files[i];
-                logMessage(`[${i+1}/${N}] Mempersiapkan file: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`);
-                
-                progressStatusText.innerText = `⚡ MENGUNGGAH: ${file.name}`;
-                progressFilesText.innerText = `File: ${i}/${N}`;
-                progressBytesText.innerText = `${(uploadedBytes / (1024 * 1024)).toFixed(2)} MB / ${(totalBytes / (1024 * 1024)).toFixed(2)} MB`;
-                
-                // Segment progress
-                const basePct = (i / N) * 100;
-                progressBar.style.width = `${basePct}%`;
-                progressPercentText.innerText = `${Math.round(basePct)}%`;
-
-                await new Promise((resolve) => {
-                    uploadFile(file, currentFolderId, 
-                        (progressText) => {
-                            logMessage(`[${i+1}/${N}] status: ${progressText}`);
-                            if (progressText && progressText.includes("cloud")) {
-                                progressStatusText.innerText = `⚡ MENGIRIM KE CLOUD: ${file.name}`;
-                                progressBar.style.width = `${basePct + (0.5 / N) * 100}%`;
-                                progressPercentText.innerText = `${Math.round(basePct + (0.5 / N) * 100)}%`;
-                            }
-                        }, 
-                        (result) => {
-                            if (result.status === "success") {
-                                logMessage(`[${i+1}/${N}] Berhasil: ${file.name}`);
-                                uploadedBytes += file.size;
-                            } else {
-                                logMessage(`[${i+1}/${N}] Gagal: ${result.message}`);
-                            }
-                            // End of file segment
-                            const endPct = ((i + 1) / N) * 100;
-                            progressBar.style.width = `${endPct}%`;
-                            progressPercentText.innerText = `${Math.round(endPct)}%`;
-                            progressFilesText.innerText = `File: ${i+1}/${N}`;
-                            progressBytesText.innerText = `${(uploadedBytes / (1024 * 1024)).toFixed(2)} MB / ${(totalBytes / (1024 * 1024)).toFixed(2)} MB`;
-                            resolve();
-                        }
-                    );
-                });
-            }
-
-            progressStatusText.innerText = `✅ SELESAI`;
-            progressBar.style.width = '100%';
-            progressPercentText.innerText = '100%';
-            logMessage("Bulk upload selesai! Sinkronisasi database...");
-            
-            fInput.value = "";
-            
-            setTimeout(() => { 
-                statusConsole.classList.add('hidden'); 
-                progressContainer.classList.add('hidden');
-            }, 6000);
-            
-            loadAndRender(currentFolderId);
-        });
 
         // ==================== SIDEBAR & UTILITIES ====================
         function selectItem(item) {
