@@ -179,7 +179,7 @@
                 width: 290px;
                 z-index: 90;
                 background: rgba(8, 14, 28, 0.98);
-                backdrop-filter: blur(12px);
+                backdrop-filter: blur(16px);
                 border-right: 1px solid rgba(6, 182, 212, 0.25);
                 box-shadow: 10px 0 40px rgba(0, 0, 0, 0.8);
                 transform: translateX(-100%);
@@ -194,20 +194,30 @@
                 bottom: 0;
                 left: 0;
                 right: 0;
-                height: 70vh;
+                max-height: 80vh;
+                height: auto;
                 z-index: 90;
                 background: rgba(8, 14, 28, 0.98);
-                backdrop-filter: blur(12px);
-                border-top: 1px solid rgba(6, 182, 212, 0.25);
-                box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.8);
+                backdrop-filter: blur(16px);
+                border-top: 2px solid rgba(6, 182, 212, 0.4);
+                box-shadow: 0 -15px 40px rgba(0, 0, 0, 0.9);
                 transform: translateY(100%);
                 transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                 border-radius: 24px 24px 0 0;
-                display: flex !important;
+                display: block !important;
                 overflow-y: auto;
+                padding: 24px;
+                padding-bottom: 40px;
             }
             #rightSidebar.active {
                 transform: translateY(0);
+            }
+            #propertiesSidebar {
+                display: flex !important;
+                flex-direction: column !important;
+                height: auto !important;
+                justify-content: flex-start !important;
+                gap: 16px !important;
             }
             #mobileBackdrop {
                 transition: opacity 0.3s ease;
@@ -281,7 +291,10 @@
             </div>
 
             <!-- 3-Column Layout Workspace -->
-            <div class="grid grid-cols-1 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-white/5 min-h-[550px] bg-slate-900/30">
+            <div class="grid grid-cols-1 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-white/5 min-h-[550px] bg-slate-900/30 relative">
+                
+                <!-- Mobile Backdrop Overlay -->
+                <div id="mobileBackdrop" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden lg:hidden animate-fadeIn"></div>
                 
                 <!-- Left Sidebar (File Explorer Tree) -->
                 <div id="leftSidebar" class="p-5 space-y-4 flex flex-col justify-between">
@@ -490,9 +503,6 @@
             <button id="cliClearBtn" class="text-[10px] text-slate-500 hover:text-cyan-400 transition font-mono-cyber">CLEAR</button>
         </div>
     </div>
-
-    <!-- Mobile Backdrop Overlay -->
-    <div id="mobileBackdrop" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden lg:hidden"></div>
 
     <!-- Toast Container -->
     <div id="toastContainer"></div>
@@ -1215,6 +1225,9 @@
                                         </div>
                                     </div>
                                 </div>
+                                <button class="folder-detail-btn text-slate-400 hover:text-cyan-400 p-1.5 rounded-lg border border-transparent hover:border-cyan-500/20 hover:bg-cyan-500/10 transition z-10" data-id="${item.id}" title="Detail Folder">
+                                    ℹ️
+                                </button>
                             </div>`;
                     } else {
                         html += `
@@ -1246,6 +1259,9 @@
                         html += `
                             <div data-id="${item.id}" class="file-item-wrapper bg-cyan-950/5 border border-cyan-500/10 p-4 rounded-xl flex flex-col items-center text-center justify-between gap-3 hover:border-cyan-500/30 transition relative group cursor-pointer ${isActive}">
                                 <input type="checkbox" data-index="${index}" class="checkbox-cyber absolute top-3 left-3 item-select-checkbox" ${isSelected}>
+                                <button class="folder-detail-btn absolute top-3 right-3 text-slate-400 hover:text-cyan-400 p-1 rounded-lg border border-transparent hover:border-cyan-500/20 hover:bg-cyan-500/10 transition z-10" data-id="${item.id}" title="Detail Folder">
+                                    ℹ️
+                                </button>
                                 <div class="w-full flex flex-col items-center">
                                     <div class="text-3xl p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 mb-2">📁</div>
                                     <span class="text-xs font-semibold text-cyan-300 block w-full truncate px-1 hover:text-cyan-400">${item.name}</span>
@@ -1273,24 +1289,10 @@
 
         // Action Bindings (Selection, Double click, Checkbox)
         function setupActionListeners() {
-            // 0. Single click to Select & Open details sidebar
+            // 0. Single click to Enter folder OR Select & Open file details sidebar
             document.querySelectorAll('.file-item-wrapper').forEach(wrapper => {
                 wrapper.addEventListener('click', (e) => {
-                    if (e.target.closest('.checkbox-cyber') || e.target.closest('input')) {
-                        return;
-                    }
-                    const id = wrapper.getAttribute('data-id');
-                    const targetItem = localFilesState.find(f => f.id === id);
-                    if (targetItem) {
-                        selectItem(targetItem);
-                    }
-                });
-            });
-
-            // 1. Double click to Enter folder or open Preview modal
-            document.querySelectorAll('.file-item-wrapper').forEach(wrapper => {
-                wrapper.addEventListener('dblclick', (e) => {
-                    if (e.target.closest('.checkbox-cyber') || e.target.closest('input')) {
+                    if (e.target.closest('.checkbox-cyber') || e.target.closest('input') || e.target.closest('.folder-detail-btn')) {
                         return;
                     }
                     const id = wrapper.getAttribute('data-id');
@@ -1299,13 +1301,39 @@
                         if (targetItem.isFolder) {
                             loadAndRender(targetItem.id);
                         } else {
-                            openModalViewer(targetItem);
+                            selectItem(targetItem);
                         }
                     }
                 });
             });
 
-            // 2. Checkbox selection for bulk operations
+            // 1. Double click to open Preview modal for files
+            document.querySelectorAll('.file-item-wrapper').forEach(wrapper => {
+                wrapper.addEventListener('dblclick', (e) => {
+                    if (e.target.closest('.checkbox-cyber') || e.target.closest('input') || e.target.closest('.folder-detail-btn')) {
+                        return;
+                    }
+                    const id = wrapper.getAttribute('data-id');
+                    const targetItem = localFilesState.find(f => f.id === id);
+                    if (targetItem && !targetItem.isFolder) {
+                        openModalViewer(targetItem);
+                    }
+                });
+            });
+
+            // 2. Folder Detail Button click -> Select and show details (without entering)
+            document.querySelectorAll('.folder-detail-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const id = btn.getAttribute('data-id');
+                    const targetItem = localFilesState.find(f => f.id === id);
+                    if (targetItem) {
+                        selectItem(targetItem);
+                    }
+                });
+            });
+
+            // 3. Checkbox selection for bulk operations
             document.querySelectorAll('.item-select-checkbox').forEach(checkbox => {
                 checkbox.addEventListener('change', (e) => {
                     const index = parseInt(checkbox.getAttribute('data-index'));
