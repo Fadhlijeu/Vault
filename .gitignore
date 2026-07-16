@@ -9,6 +9,3 @@ config.json
 .env.production.local
 
 code.gs
-
-devicons/
-icons/
