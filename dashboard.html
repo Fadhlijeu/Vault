@@ -6,6 +6,7 @@
     <title>Vault | Control Panel</title>
     <link rel="stylesheet" href="assets/css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         body {
             font-family: 'Outfit', sans-serif;
@@ -427,14 +428,19 @@
 
         <!-- Main Desktop Container -->
         <div class="card" style="padding:0;overflow:hidden;">
-            
-            <!-- Desktop Header Bar -->
             <div class="desktop-header" style="padding:0.75rem 1.25rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);">
                 <div style="display:flex;align-items:center;gap:0.5rem;">
                     <span class="material-symbols-outlined" style="font-size:18px;color:var(--text-secondary);">folder</span>
                     <span style="font-size:10px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--text-secondary);font-family:'Fira Code',monospace;">Vault File Manager</span>
                 </div>
-                <div style="display:flex;align-items:center;gap:0.75rem;">
+                <div style="display:flex;align-items:center;gap:0.5rem;">
+                    <button id="toggleLeftSidebarBtn" class="btn-neu" style="padding:0.3rem;font-size:10px;display:flex;align-items:center;" title="Toggle File Explorer">
+                        <svg id="leftSidebarIcon" xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 -960 960 960" width="18px" fill="var(--text-secondary)"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm120-80v-560H200v560h120Zm80 0h360v-560H400v560Zm-80 0H200h120Z"/></svg>
+                    </button>
+                    <button id="toggleRightSidebarBtn" class="btn-neu" style="padding:0.3rem;font-size:10px;display:flex;align-items:center;" title="Toggle Properties">
+                        <svg id="rightSidebarIcon" xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 -960 960 960" width="18px" fill="var(--text-secondary)"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm360-80v-560H200v560h360Z"/></svg>
+                    </button>
+                    <div style="width:1px;height:20px;background:var(--border);"></div>
                     <button id="logoutBtn" class="btn-neu" style="padding:0.35rem 0.75rem;font-size:10px;font-weight:700;" title="Logout Session">
                         <span class="material-symbols-outlined" style="font-size:14px;">logout</span>
                         DISCONNECT
@@ -443,7 +449,7 @@
             </div>
 
             <!-- 3-Column Layout Workspace -->
-            <div style="display:grid;grid-template-columns:1fr;min-height:500px;position:relative;background:var(--bg-body);">
+            <div style="display:grid;grid-template-columns:1fr;min-height:500px;position:relative;background:var(--bg-body);"><!-- workspace outer -->
                 
                 <!-- Mobile Backdrop Overlay -->
                 <div id="mobileBackdrop" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:40;display:none;" class="lg-hidden"></div>
@@ -452,11 +458,11 @@
                     
                     <!-- Left Sidebar -->
                     <div id="leftSidebar" style="padding:1rem;display:flex;flex-direction:column;gap:1rem;border-right:1px solid var(--border);background:var(--bg-card);">
-                        <div style="display:flex;flex-direction:column;gap:0.5rem;flex:1;overflow-y:auto;max-height:400px;">
+                        <div style="display:flex;flex-direction:column;gap:0.5rem;flex:1;overflow-y:auto;">
                             <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:0.5rem;">
                                 <span style="font-size:10px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.1em;">File Explorer</span>
                             </div>
-                            <div id="fileExplorerTree" class="font-mono" style="display:flex;flex-direction:column;gap:0.2rem;font-size:11px;min-width:0;overflow:hidden;"></div>
+                            <div id="fileExplorerTree" class="font-mono" style="display:flex;flex-direction:column;gap:0.2rem;font-size:11px;min-width:0;"></div>
                         </div>
                         
                         <div style="border-top:1px solid var(--border);padding-top:0.75rem;display:flex;flex-direction:column;gap:0.5rem;">
@@ -2057,10 +2063,15 @@
             
             if (mode === "read") {
                 editorToggleMode.innerText = "Mode Edit";
-                body.innerHTML = `<pre style="max-height:75vh;overflow-y:auto;white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.5;padding:1rem;background:var(--bg-inset);border-radius:var(--radius-sm);">${escapeHtml(editorActiveContent)}</pre>`;
+                const ext = editorActiveName.split('.').pop().toLowerCase();
+                if (ext === 'md' && typeof marked !== 'undefined') {
+                    body.innerHTML = `<div class="markdown-body" style="max-height:75vh;overflow-y:auto;padding:1rem;">${marked.parse(editorActiveContent)}</div>`;
+                } else {
+                    body.innerHTML = `<pre style="max-height:75vh;overflow-y:auto;white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.5;padding:1rem;background:var(--bg-inset);border-radius:var(--radius-sm);color:var(--text-primary);">${escapeHtml(editorActiveContent)}</pre>`;
+                }
             } else {
                 editorToggleMode.innerText = "Mode Baca";
-                body.innerHTML = `<textarea id="editorTextarea" style="width:100%;height:70vh;background:var(--bg-inset);border:1px solid var(--border);outline:none;padding:1rem;border-radius:var(--radius-sm);resize:none;font-size:12px;font-family:monospace;" spellcheck="false" placeholder="Ketik isi file di sini...">${escapeHtml(editorActiveContent)}</textarea>`;
+                body.innerHTML = `<textarea id="editorTextarea" style="width:100%;height:70vh;background:var(--bg-inset);border:1px solid var(--border);outline:none;padding:1rem;border-radius:var(--radius-sm);resize:none;font-size:12px;font-family:monospace;color:var(--text-primary);" spellcheck="false" placeholder="Ketik isi file di sini...">${escapeHtml(editorActiveContent)}</textarea>`;
                 
                 const ta = document.getElementById('editorTextarea');
                 ta.addEventListener('input', () => {
@@ -2393,22 +2404,33 @@
                 toast(`Mengunduh ${selectedItems.length} item...`, 'info');
                 
                 const token = localStorage.getItem('vault_token');
+                const apiUrl = getApiUrl();
+                const iframes = [];
+                
                 for (let i = 0; i < selectedItems.length; i++) {
                     const item = selectedItems[i];
-                    let downloadUrl = "";
+                    let downloadUrl;
                     
                     if (item.isFolder) {
-                        downloadUrl = getApiUrl() + "?action=download_folder&folderId=" + item.id + "&token=" + encodeURIComponent(token);
+                        downloadUrl = apiUrl + "?action=download_folder&folderId=" + item.id + "&token=" + encodeURIComponent(token);
                     } else {
-                        downloadUrl = getApiUrl() + "?action=download&fileId=" + item.id + "&token=" + encodeURIComponent(token);
+                        downloadUrl = apiUrl + "?action=download&fileId=" + item.id + "&token=" + encodeURIComponent(token);
                     }
                     
-                    window.open(downloadUrl, '_blank');
+                    const iframe = document.createElement('iframe');
+                    iframe.style.display = 'none';
+                    iframe.src = downloadUrl;
+                    document.body.appendChild(iframe);
+                    iframes.push(iframe);
                     
                     if (i < selectedItems.length - 1) {
-                        await new Promise(r => setTimeout(r, 800));
+                        await new Promise(r => setTimeout(r, 1000));
                     }
                 }
+                
+                setTimeout(() => {
+                    iframes.forEach(f => f.remove());
+                }, 60000);
             });
         }
 
@@ -2416,6 +2438,38 @@
         document.getElementById('setViewList').addEventListener('click', () => { currentViewMode = 'list'; renderFiles(localFilesState); });
         document.getElementById('setViewGrid').addEventListener('click', () => { currentViewMode = 'grid'; renderFiles(localFilesState); });
         
+        // Sidebar Toggle
+        let leftSidebarVisible = true;
+        let rightSidebarVisible = true;
+        document.getElementById('toggleLeftSidebarBtn').addEventListener('click', () => {
+            leftSidebarVisible = !leftSidebarVisible;
+            const sidebar = document.getElementById('leftSidebar');
+            const icon = document.getElementById('leftSidebarIcon');
+            sidebar.style.display = leftSidebarVisible ? '' : 'none';
+            const grid = document.querySelector('.workspace-grid');
+            if (leftSidebarVisible && rightSidebarVisible) grid.style.gridTemplateColumns = '1fr 2fr 1.2fr';
+            else if (leftSidebarVisible) grid.style.gridTemplateColumns = '1fr 2fr';
+            else if (rightSidebarVisible) grid.style.gridTemplateColumns = '1fr 1.2fr';
+            else grid.style.gridTemplateColumns = '1fr';
+            icon.innerHTML = leftSidebarVisible
+                ? '<path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm120-80v-560H200v560h120Zm80 0h360v-560H400v560Zm-80 0H200h120Z"/>'
+                : '<path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm200-80h360v-560H400v560Z"/>';
+        });
+        document.getElementById('toggleRightSidebarBtn').addEventListener('click', () => {
+            rightSidebarVisible = !rightSidebarVisible;
+            const sidebar = document.getElementById('rightSidebar');
+            const icon = document.getElementById('rightSidebarIcon');
+            sidebar.style.display = rightSidebarVisible ? '' : 'none';
+            const grid = document.querySelector('.workspace-grid');
+            if (leftSidebarVisible && rightSidebarVisible) grid.style.gridTemplateColumns = '1fr 2fr 1.2fr';
+            else if (leftSidebarVisible) grid.style.gridTemplateColumns = '1fr 2fr';
+            else if (rightSidebarVisible) grid.style.gridTemplateColumns = '1fr 1.2fr';
+            else grid.style.gridTemplateColumns = '1fr';
+            icon.innerHTML = rightSidebarVisible
+                ? '<path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm360-80v-560H200v560h360Z"/>'
+                : '<path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm440-80h120v-560H640v560Zm-80 0v-560H200v560h360Zm80 0h120-120Z"/>';
+        });
+
         // Disconnect Button
         document.getElementById('logoutBtn').addEventListener('click', () => logout());
 
