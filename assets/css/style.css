@@ -333,6 +333,8 @@ body {
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    min-width: 0;
+    overflow: hidden;
 }
 .file-item:hover {
     box-shadow: var(--shadow-sm);
@@ -453,6 +455,8 @@ body {
     gap: 0.5rem;
     cursor: pointer;
     position: relative;
+    min-width: 0;
+    overflow: hidden;
 }
 .file-grid-item:hover {
     box-shadow: var(--shadow-sm);
