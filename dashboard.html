@@ -117,6 +117,13 @@
             /* ── Collapse 3-column grid to single column ── */
             .workspace-grid {
                 grid-template-columns: 1fr !important;
+                min-width: 0;
+                max-width: 100%;
+            }
+            .workspace-grid > * {
+                min-width: 0;
+                max-width: 100%;
+                overflow: hidden;
             }
             /* ── Progress engine: stack vertically ── */
             #operationProgressContainer {
@@ -135,6 +142,7 @@
             #fileViewer {
                 max-height: 60vh !important;
                 min-height: 200px !important;
+                overflow-x: hidden !important;
             }
             /* ── Sort bar scrollable ── */
             #sortBar {
@@ -157,6 +165,13 @@
             /* ── Middle content area full width ── */
             #middleContent {
                 padding: 0.75rem !important;
+                min-width: 0;
+                overflow: hidden;
+            }
+            #fileViewer > div {
+                min-width: 0;
+                max-width: 100%;
+                overflow: hidden;
             }
             /* ── Card outer padding smaller ── */
             body > div:first-child {
@@ -175,6 +190,12 @@
                 /* ── Extra small screen fixes ── */
                 .workspace-grid {
                     grid-template-columns: 1fr !important;
+                }
+                /* ── Force all content areas to not overflow ── */
+                #fileViewer > div {
+                    min-width: 0;
+                    max-width: 100%;
+                    overflow: hidden;
                 }
                 #breadcrumbs {
                     font-size: 10px !important;
