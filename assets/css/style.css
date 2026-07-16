@@ -394,7 +394,7 @@ body {
 .btn-delete-file {
     width: 44px;
     height: 44px;
-    border-radius: 50%;
+    border-radius: var(--radius-sm);
     background: var(--bg-card);
     border: none;
     font-weight: 600;
@@ -414,7 +414,7 @@ body {
 .btn-delete-file .svgIcon path { fill: var(--text-primary); }
 .btn-delete-file:hover {
     width: 120px;
-    border-radius: 50px;
+    border-radius: var(--radius-sm);
     transition-duration: .3s;
     background: #ff5252;
     align-items: center;

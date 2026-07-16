@@ -117,6 +117,10 @@
                 }
             }
         }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 0.8; }
+        }
     </style>
 </head>
 <body class="p-4 md:p-8" style="min-height:100vh;">
@@ -166,7 +170,7 @@
                 <!-- Mobile Backdrop Overlay -->
                 <div id="mobileBackdrop" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:40;display:none;" class="lg-hidden"></div>
                 
-                <div style="display:grid;grid-template-columns:1fr 2fr 1fr;gap:0;">
+                <div style="display:grid;grid-template-columns:1fr 2fr 1.2fr;gap:0;">
                     
                     <!-- Left Sidebar -->
                     <div id="leftSidebar" style="padding:1rem;display:flex;flex-direction:column;gap:1rem;border-right:1px solid var(--border);background:var(--bg-card);">
@@ -241,24 +245,30 @@
                                 </label>
                                 <label for="selectAllCheckbox" style="font-size:10px;color:var(--text-tertiary);cursor:pointer;">Pilih Semua</label>
                             </div>
+                            <div id="sortBar" style="display:flex;align-items:center;gap:0.3rem;padding:0.25rem 0;border-bottom:1px solid var(--border);margin-bottom:0.25rem;">
+                                <span style="font-size:8px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.05em;">Sort:</span>
+                                <button class="sort-btn btn-neu" data-sort="name" style="padding:0.2rem 0.4rem;font-size:8px;font-weight:700;">Nama ↑</button>
+                                <button class="sort-btn btn-neu" data-sort="size" style="padding:0.2rem 0.4rem;font-size:8px;font-weight:700;">Ukuran</button>
+                                <button class="sort-btn btn-neu" data-sort="date" style="padding:0.2rem 0.4rem;font-size:8px;font-weight:700;">Tanggal</button>
+                            </div>
                             <div id="fileViewer" style="flex:1;overflow-y:auto;max-height:400px;min-height:250px;font-family:'Fira Code',monospace;font-size:11px;"></div>
                         </div>
                     </div>
 
                     <!-- Right Sidebar (Properties) -->
-                    <div id="rightSidebar" style="padding:1rem;border-left:1px solid var(--border);background:var(--bg-card);">
-                        <div id="propertiesSidebar" style="display:none;flex-direction:column;justify-content:space-between;height:100%;gap:0.75rem;font-size:11px;font-family:'Fira Code',monospace;">
+                    <div id="rightSidebar" style="padding:1rem 1rem 1.5rem 1rem;border-left:1px solid var(--border);background:var(--bg-card);overflow-y:auto;">
+                        <div id="propertiesSidebar" style="display:none;flex-direction:column;gap:0.75rem;font-size:11px;font-family:'Fira Code',monospace;">
                             <div style="display:flex;flex-direction:column;gap:0.75rem;">
                                 <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:0.4rem;">
                                     <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-secondary);">Properties</span>
                                     <button id="closeSidebarBtn" style="background:none;border:none;cursor:pointer;color:var(--text-tertiary);font-size:16px;">&times;</button>
                                 </div>
                                 
-                                <div style="display:flex;justify-content:center;padding:0.75rem;background:var(--bg-body);border-radius:var(--radius-sm);box-shadow:var(--shadow-inset-sm);" id="sidebarIconContainer">
-                                    <span style="font-size:2rem;">📄</span>
+                                <div style="display:flex;justify-content:center;padding:0.5rem;background:var(--bg-body);border-radius:var(--radius-sm);box-shadow:var(--shadow-inset-sm);" id="sidebarIconContainer">
+                                    <span style="font-size:1rem;">📄</span>
                                 </div>
                                 
-                                <div><span style="color:var(--text-tertiary);display:block;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;">Nama:</span><span id="sidebarName" style="color:var(--text-primary);font-weight:600;word-break:break-all;">file.txt</span></div>
+                                <div><span style="color:var(--text-tertiary);display:block;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;">Nama:</span><span id="sidebarName" style="color:var(--text-primary);font-weight:600;overflow:hidden;display:flex;align-items:baseline;">file.txt</span></div>
                                 <div><span style="color:var(--text-tertiary);display:block;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;">Tipe:</span><span id="sidebarType" style="color:var(--text-secondary);">Text</span></div>
                                 <div><span style="color:var(--text-tertiary);display:block;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;">Size:</span><span id="sidebarSize" style="color:var(--text-secondary);">12.5 KB</span></div>
                                 
@@ -282,6 +292,7 @@
 
                                 <div id="sidebarFolderDetail" style="display:none;flex-direction:column;gap:0.5rem;">
                                     <div><span style="color:var(--text-tertiary);display:block;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;">Files:</span><span id="sidebarFileCount" style="color:var(--text-secondary);">0</span></div>
+                                    <div><span style="color:var(--text-tertiary);display:block;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;">Folders:</span><span id="sidebarFolderCount" style="color:var(--text-secondary);">0</span></div>
                                     <div><span style="color:var(--text-tertiary);display:block;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;">Total Size:</span><span id="sidebarTotalSize" style="color:var(--text-secondary);">0</span></div>
                                     <div><span style="color:var(--text-tertiary);display:block;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;">Created:</span><span id="sidebarDateCreated" style="color:var(--text-secondary);">-</span></div>
                                 </div>
@@ -304,10 +315,10 @@
                                     <button id="sidebarMoveBtn" class="btn-neu" style="flex:1;padding:0.35rem;font-size:9px;font-weight:700;text-transform:uppercase;">
                                         <span class="material-symbols-outlined" style="font-size:14px;">drive_file_move</span>
                                     </button>
+                                    <button id="sidebarDeleteBtn" class="btn-neu" style="flex:1;padding:0.35rem;font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text-primary);">
+                                        <span class="material-symbols-outlined" style="font-size:14px;">delete</span>
+                                    </button>
                                 </div>
-                                <button id="sidebarDeleteBtn" class="btn-delete-file" style="width:100%;">
-                                    <svg viewBox="0 0 448 512" class="svgIcon"><path d="M135.2 17.7L128 32H32C14.3 32 0 46.3 0 64S14.3 96 32 96H416c17.7 0 32-14.3 32-32s-14.3-32-32-32H320l-7.2-14.3C307.4 6.8 296.3 0 284.2 0H163.8c-12.1 0-23.2 6.8-28.6 17.7zM416 128H32L53.2 467c1.6 25.3 22.6 45 47.9 45H346.9c25.3 0 46.3-19.7 47.9-45L416 128z"></path></svg>
-                                </button>
                             </div>
                         </div>
                         <div id="propertiesPlaceholder" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;color:var(--text-tertiary);font-size:10px;font-style:italic;">
@@ -351,7 +362,7 @@
     </div>
 
     <!-- Floating Terminal Panel -->
-    <div id="terminalWindow" class="card" style="position:fixed;bottom:80px;right:24px;width:min(600px,95vw);padding:0;overflow:hidden;display:flex;flex-direction:column;z-index:900;transform:translateY(20px);opacity:0;pointer-events:none;transition:all .3s;max-height:60vh;">
+    <div id="terminalWindow" class="card" style="position:fixed;bottom:80px;right:24px;width:min(600px,95vw);padding:0;overflow:hidden;display:flex;flex-direction:column;z-index:900;transition:all .3s;max-height:60vh;">
         <div style="padding:0.5rem 1rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);">
             <span style="font-size:9px;font-weight:700;color:var(--text-secondary);font-family:'Fira Code',monospace;">⚡ Web-based Vault CLI</span>
             <div style="display:flex;align-items:center;gap:0.5rem;">
@@ -370,12 +381,7 @@
             <button id="cliClearBtn" class="btn-neu" style="padding:0.25rem 0.5rem;font-size:9px;font-weight:700;">CLEAR</button>
         </div>
     </div>
-    <script>
-        document.getElementById('terminalWindow').classList.remove('open');
-        document.getElementById('terminalWindow').style.transform = 'translateY(20px)';
-        document.getElementById('terminalWindow').style.opacity = '0';
-        document.getElementById('terminalWindow').style.pointerEvents = 'none';
-    </script>
+
 
     <!-- Toast Container -->
     <div id="toastContainer"></div>
@@ -397,7 +403,7 @@
     <div id="previewModal" style="position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:1rem;z-index:1000;">
         <div class="card" style="width:100%;max-width:1200px;padding:1.5rem;display:flex;flex-direction:column;gap:1rem;max-height:90vh;">
             <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:0.75rem;">
-                <input type="text" id="editorFileName" class="input-neu" style="font-size:11px;font-weight:600;padding:0.4rem 0.75rem;max-width:300px;font-family:'Fira Code',monospace;" placeholder="nama_file.txt">
+                <input type="text" id="editorFileName" class="input-neu" style="font-size:11px;font-weight:600;padding:0.4rem 0.75rem;flex:1;font-family:'Fira Code',monospace;" placeholder="nama_file.txt">
                 <div style="display:flex;align-items:center;gap:0.5rem;">
                     <button id="closeModalBtn" style="background:none;border:none;cursor:pointer;color:var(--text-tertiary);font-size:24px;line-height:1;">&times;</button>
                 </div>
@@ -416,7 +422,7 @@
     <script type="module">
         import { checkAuth, logout, getApiUrl } from './src/auth.js';
         import { fetchFiles, uploadFile, deleteFile, renameFile, fetchFileBlob, createFolder, deleteMultiple, importFromUrl, moveItems, saveTextFile, importFromDrive } from './src/vault.js';
-        import { formatBytes, getFileMeta } from './src/utils.js';
+        import { formatBytes, getFileMeta } from './src/utils.js?v=2';
 
         // ==================== TOAST & DIALOG ENGINE ====================
         const toastContainer = document.getElementById('toastContainer');
@@ -752,6 +758,8 @@
         let currentFolderId = null;
         let parentFolderId = null;
         let folderPathHistory = []; // Untuk breadcrumbs: [{id, name}]
+        let sortField = 'name';
+        let sortAsc = true;
 
         // State Selection & Editor
         let selectedItem = null;
@@ -790,6 +798,7 @@
         const sidebarIconContainer = document.getElementById('sidebarIconContainer');
         const sidebarFolderDetail = document.getElementById('sidebarFolderDetail');
         const sidebarFileCount = document.getElementById('sidebarFileCount');
+        const sidebarFolderCount = document.getElementById('sidebarFolderCount');
         const sidebarTotalSize = document.getElementById('sidebarTotalSize');
         const sidebarDateCreated = document.getElementById('sidebarDateCreated');
         
@@ -994,14 +1003,18 @@
                 if (!node.isFolder && node.id !== 'root') {
                     // It's a file
                     const meta = getFileMeta(node.name);
+                    const deviconStyle = "width:14px;height:14px;display:inline-block;vertical-align:middle;";
+                    const iconHtml = meta.devicon 
+                        ? `<img src="${meta.devicon}" style="${deviconStyle}" onerror="this.style.display='none';this.nextElementSibling.style.display='inline'" /><span style="display:none;font-size:11px;">${meta.icon}</span>`
+                        : `<span style="font-size:11px;">${meta.icon}</span>`;
                     return `
                         <div class="group flex items-center justify-between py-1 px-2 rounded-lg text-xs transition-colors hover:bg-cyan-500/5 ${isSelected ? 'bg-cyan-500/10 text-cyan-400 font-semibold' : 'text-slate-300'}" 
                              style="padding-left: ${paddingLeft + 15}px;"
                              onclick="selectItemFromTree('${node.id}')"
                              ondblclick="openFileFromTree('${node.id}')">
                             <div class="flex items-center gap-1.5 truncate cursor-pointer flex-1">
-                                <span class="text-xs">${meta.icon}</span>
-                                <span class="truncate" title="${node.name}">${node.name}</span>
+                                ${iconHtml}
+                                <span title="${escapeHtml(node.name)}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;display:flex;align-items:baseline;">${renderFileName(node.name)}</span>
                             </div>
                         </div>
                     `;
@@ -1009,7 +1022,6 @@
 
                 // It's a folder (or root)
                 const toggleIcon = node.isOpen ? '▼' : '▶';
-                const folderIcon = isSelected ? '📂' : '📁';
                 const hasChildren = node.children && node.children.length > 0;
 
                 let html = `
@@ -1019,8 +1031,8 @@
                             <span class="text-[9px] text-slate-500 w-3 text-center inline-block" onclick="event.stopPropagation(); toggleTreeNode('${node.id}')">
                                 ${node.isLoaded && !hasChildren ? '' : toggleIcon}
                             </span>
-                            <span>${folderIcon}</span>
-                            <span class="truncate" title="${node.name}">${node.name}</span>
+                            <span class="material-symbols-outlined" style="font-size:1.1rem;color:var(--text-secondary);">folder</span>
+                            <span title="${escapeHtml(node.name)}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;display:flex;align-items:baseline;">${renderFileName(node.name)}</span>
                         </div>
                     </div>
                 `;
@@ -1100,7 +1112,7 @@
         async function loadAndRender(folderId = null) {
             closeSidebar();
             // Sembunyikan bulk action bar ketika berpindah direktori
-            if (bulkActionBar) bulkActionBar.classList.add('hidden');
+            if (bulkActionBar) resetBulkActionBar();
             if (selectAllCheckbox) selectAllCheckbox.checked = false;
             
             // Show skeleton loading
@@ -1220,7 +1232,6 @@
                 items.forEach((item, index) => {
                     const isSelected = item.selected ? 'checked' : '';
                     const isActive = (selectedItem && selectedItem.id === item.id) ? ' active' : '';
-                    const icon = item.isFolder ? 'folder' : 'description';
                     
                     if (item.isFolder) {
                         const countStr = item.fileCount !== undefined ? `${item.fileCount} file` : '';
@@ -1233,12 +1244,12 @@
                                 <label class="checkbox-svg" style="flex-shrink:0;" onclick="event.stopPropagation();">
                                     <input type="checkbox" data-index="${index}" class="item-select-checkbox" ${isSelected}>
                                     <svg viewBox="0 0 64 64" style="height:1.2em;width:1.2em;">
-                                        <path d="M 0 16 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 16" pathLength="575.0541381835938" class="path"></path>
+                                        <path d="M 0 16 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 16" pathLength="575.0541385938" class="path"></path>
                                     </svg>
                                 </label>
-                                <span class="material-symbols-outlined" style="font-size:1.3rem;color:var(--text-secondary);">${icon}</span>
+                                <span class="material-symbols-outlined" style="font-size:1.3rem;color:var(--text-secondary);">folder</span>
                                 <div style="flex:1;min-width:0;">
-                                    <div style="font-size:11px;font-weight:600;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.name}</div>
+                                    <div style="font-size:11px;font-weight:600;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:baseline;">${renderFileName(item.name)}</div>
                                     <div style="font-size:9px;color:var(--text-tertiary);">${metaStr || 'Folder'}</div>
                                 </div>
                                 <button class="row-download-btn btn-neu" style="padding:0.3rem;font-size:14px;" data-id="${item.id}" data-type="folder" title="Download ZIP">
@@ -1249,19 +1260,25 @@
                                 </button>
                             </div>`;
                     } else {
+                        const meta = getFileMeta(item.name);
+                        const fileIconStyle = "width:16px;height:16px;display:inline-block;vertical-align:middle;";
+                        const fileIconHtml = meta.devicon
+                            ? `<img src="${meta.devicon}" style="${fileIconStyle}" onerror="this.style.display='none';this.nextElementSibling.style.display='inline'" /><span style="display:none;font-size:14px;">${meta.icon}</span>`
+                            : `<span style="font-size:14px;">${meta.icon}</span>`;
                         const dateStr = item.dateCreated || '';
                         html += `
                             <div data-id="${item.id}" class="file-item${isActive}">
                                 <label class="checkbox-svg" style="flex-shrink:0;" onclick="event.stopPropagation();">
                                     <input type="checkbox" data-index="${index}" class="item-select-checkbox" ${isSelected}>
                                     <svg viewBox="0 0 64 64" style="height:1.2em;width:1.2em;">
-                                        <path d="M 0 16 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 16" pathLength="575.0541381835938" class="path"></path>
+                                        <path d="M 0 16 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 16" pathLength="575.0541385938" class="path"></path>
                                     </svg>
                                 </label>
-                                <span class="material-symbols-outlined" style="font-size:1.3rem;color:var(--text-secondary);">${icon}</span>
+                                ${fileIconHtml}
                                 <div style="flex:1;min-width:0;">
-                                    <div style="font-size:11px;font-weight:500;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.name}</div>
+                                    <div style="font-size:11px;font-weight:500;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:baseline;">${renderFileName(item.name)}</div>
                                     <div style="font-size:9px;color:var(--text-tertiary);">${formatBytes(item.size)}${dateStr ? ` • ${dateStr}` : ''}</div>
+
                                 </div>
                                 <button class="row-download-btn btn-neu" style="padding:0.3rem;font-size:14px;" data-id="${item.id}" data-type="file" title="Download File">
                                     <span class="material-symbols-outlined" style="font-size:14px;">download</span>
@@ -1277,7 +1294,6 @@
                 items.forEach((item, index) => {
                     const isSelected = item.selected ? 'checked' : '';
                     const isActive = (selectedItem && selectedItem.id === item.id) ? ' active' : '';
-                    const icon = item.isFolder ? 'folder' : 'description';
                     
                     if (item.isFolder) {
                         const countStr = item.fileCount !== undefined ? `${item.fileCount} file` : '';
@@ -1289,7 +1305,7 @@
                                 <label class="checkbox-svg" style="position:absolute;top:0.5rem;left:0.5rem;" onclick="event.stopPropagation();">
                                     <input type="checkbox" data-index="${index}" class="item-select-checkbox" ${isSelected}>
                                     <svg viewBox="0 0 64 64" style="height:1em;width:1em;">
-                                        <path d="M 0 16 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 16" pathLength="575.0541381835938" class="path"></path>
+                                        <path d="M 0 16 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 16" pathLength="575.0541385938" class="path"></path>
                                     </svg>
                                 </label>
                                 <div style="position:absolute;top:0.5rem;right:0.5rem;display:flex;gap:0.2rem;">
@@ -1300,25 +1316,30 @@
                                         <span class="material-symbols-outlined" style="font-size:12px;">info</span>
                                     </button>
                                 </div>
-                                <span class="material-symbols-outlined" style="font-size:2rem;color:var(--text-secondary);margin-top:0.5rem;">${icon}</span>
-                                <div style="font-size:11px;font-weight:600;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;text-align:center;padding:0 0.25rem;">${item.name}</div>
+                                <span class="material-symbols-outlined" style="font-size:2rem;color:var(--text-secondary);margin-top:0.5rem;">folder</span>
+                                <div style="font-size:11px;font-weight:600;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;text-align:center;padding:0 0.25rem;display:flex;align-items:baseline;justify-content:center;">${renderFileName(item.name)}</div>
                                 <div style="font-size:9px;color:var(--text-tertiary);">${metaStr || 'Folder'}</div>
                             </div>`;
                     } else {
+                        const meta = getFileMeta(item.name);
+                        const gridIconStyle = "width:32px;height:32px;display:block;margin:0.5rem auto 0;";
+                        const gridIconHtml = meta.devicon
+                            ? `<img src="${meta.devicon}" style="${gridIconStyle}" onerror="this.style.display='none';this.nextElementSibling.style.display='block'" /><span style="display:none;font-size:2rem;text-align:center;margin-top:0.5rem;">${meta.icon}</span>`
+                            : `<span style="font-size:2rem;text-align:center;display:block;margin-top:0.5rem;">${meta.icon}</span>`;
                         const dateStr = item.dateCreated || '';
                         html += `
                             <div data-id="${item.id}" class="file-grid-item${isActive}">
                                 <label class="checkbox-svg" style="position:absolute;top:0.5rem;left:0.5rem;" onclick="event.stopPropagation();">
                                     <input type="checkbox" data-index="${index}" class="item-select-checkbox" ${isSelected}>
                                     <svg viewBox="0 0 64 64" style="height:1em;width:1em;">
-                                        <path d="M 0 16 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 16" pathLength="575.0541381835938" class="path"></path>
+                                        <path d="M 0 16 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 16" pathLength="575.0541385938" class="path"></path>
                                     </svg>
                                 </label>
                                 <button class="row-download-btn btn-neu" style="position:absolute;top:0.5rem;right:0.5rem;padding:0.2rem;" data-id="${item.id}" data-type="file" title="Download">
                                     <span class="material-symbols-outlined" style="font-size:12px;">download</span>
                                 </button>
-                                <span class="material-symbols-outlined" style="font-size:2rem;color:var(--text-secondary);margin-top:0.5rem;">${icon}</span>
-                                <div style="font-size:11px;font-weight:500;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;text-align:center;padding:0 0.25rem;">${item.name}</div>
+                                ${gridIconHtml}
+                                <div style="font-size:11px;font-weight:500;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;text-align:center;padding:0 0.25rem;display:flex;align-items:baseline;justify-content:center;">${renderFileName(item.name)}</div>
                                 <div style="font-size:9px;color:var(--text-tertiary);">${formatBytes(item.size)}</div>
                                 ${dateStr ? `<div style="font-size:8px;color:var(--text-muted);">${dateStr}</div>` : ''}
                             </div>`;
@@ -1329,6 +1350,68 @@
             }
 
             setupActionListeners();
+        }
+
+        // Sort files
+        function sortFiles(field, asc) {
+            sortField = field;
+            sortAsc = asc;
+            localFilesState.sort((a, b) => {
+                let valA, valB;
+                if (field === 'name') {
+                    valA = a.name.toLowerCase();
+                    valB = b.name.toLowerCase();
+                } else if (field === 'size') {
+                    valA = a.size || 0;
+                    valB = b.size || 0;
+                } else if (field === 'date') {
+                    valA = a.dateCreated || '';
+                    valB = b.dateCreated || '';
+                }
+                if (valA < valB) return asc ? -1 : 1;
+                if (valA > valB) return asc ? 1 : -1;
+                return 0;
+            });
+            // Keep folders before files
+            localFilesState.sort((a, b) => {
+                if (a.isFolder && !b.isFolder) return -1;
+                if (!a.isFolder && b.isFolder) return 1;
+                let valA, valB;
+                if (field === 'name') {
+                    valA = a.name.toLowerCase();
+                    valB = b.name.toLowerCase();
+                } else if (field === 'size') {
+                    valA = a.size || 0;
+                    valB = b.size || 0;
+                } else if (field === 'date') {
+                    valA = a.dateCreated || '';
+                    valB = b.dateCreated || '';
+                }
+                if (valA < valB) return asc ? -1 : 1;
+                if (valA > valB) return asc ? 1 : -1;
+                return 0;
+            });
+            renderFiles(localFilesState);
+            updateSortButtons();
+        }
+
+        function updateSortButtons() {
+            document.querySelectorAll('.sort-btn').forEach(btn => {
+                const field = btn.getAttribute('data-sort');
+                if (field === sortField) {
+                    btn.style.background = 'var(--accent)';
+                    btn.style.color = '#fff';
+                    if (sortAsc) {
+                        btn.innerText = field === 'name' ? 'Nama ↑' : field === 'size' ? 'Ukuran ↑' : 'Tanggal ↑';
+                    } else {
+                        btn.innerText = field === 'name' ? 'Nama ↓' : field === 'size' ? 'Ukuran ↓' : 'Tanggal ↓';
+                    }
+                } else {
+                    btn.style.background = '';
+                    btn.style.color = '';
+                    btn.innerText = field === 'name' ? 'Nama ↑' : field === 'size' ? 'Ukuran' : 'Tanggal';
+                }
+            });
         }
 
         // Action Bindings (Selection, Double click, Checkbox)
@@ -1409,15 +1492,19 @@
         function updateBulkActionBar() {
             const selectedItems = localFilesState.filter(item => item.selected);
             if (selectedItems.length > 0) {
-                bulkActionBar.classList.remove('hidden');
+                bulkActionBar.style.display = 'flex';
                 selectedCountText.innerText = `${selectedItems.length} terpilih`;
                 
                 // Set state Select All checkbox
                 selectAllCheckbox.checked = (selectedItems.length === localFilesState.length);
             } else {
-                bulkActionBar.classList.add('hidden');
+                bulkActionBar.style.display = 'none';
                 selectAllCheckbox.checked = false;
             }
+        }
+        function resetBulkActionBar() {
+            bulkActionBar.style.display = 'none';
+            selectAllCheckbox.checked = false;
         }
 
         // Select All Handler
@@ -1430,6 +1517,20 @@
                 cb.checked = isChecked;
             });
             updateBulkActionBar();
+        });
+        
+        // Sort button event listeners
+        document.querySelectorAll('.sort-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const field = btn.getAttribute('data-sort');
+                if (field === sortField) {
+                    sortAsc = !sortAsc;
+                } else {
+                    sortField = field;
+                    sortAsc = true;
+                }
+                sortFiles(sortField, sortAsc);
+            });
         });
 
         // Bulk Delete Executer with Progress Bar
@@ -1544,18 +1645,19 @@
                 }
             });
 
-            sidebarName.innerText = item.name;
+            sidebarName.innerHTML = renderFileName(item.name);
             sidebarId.innerText = item.id;
             
             if (item.isFolder) {
                 sidebarType.innerText = "Folder Direktori";
                 sidebarSize.innerText = item.size > 0 ? formatBytes(item.size) : '-';
                 sidebarLinkContainer.classList.add('hidden');
-                sidebarIconContainer.innerHTML = `<span class="material-symbols-outlined" style="font-size:2.5rem;">folder</span>`;
+                sidebarIconContainer.innerHTML = `<span class="material-symbols-outlined" style="font-size:1.5rem;color:var(--text-secondary);">folder</span>`;
                 
                 // Show folder details
-                sidebarFolderDetail.classList.remove('hidden');
+                sidebarFolderDetail.style.display = 'flex';
                 sidebarFileCount.innerText = item.fileCount !== undefined ? `${item.fileCount} file` : '0';
+                sidebarFolderCount.innerText = item.folderCount !== undefined ? `${item.folderCount} folder` : '0';
                 sidebarTotalSize.innerText = item.size > 0 ? formatBytes(item.size) : '0 Bytes';
                 sidebarDateCreated.innerText = item.dateCreated || '-';
             } else {
@@ -1563,17 +1665,21 @@
                 sidebarType.innerText = item.name.split('.').pop().toUpperCase() + " File";
                 sidebarSize.innerText = formatBytes(item.size);
                 sidebarLinkContainer.classList.remove('hidden');
-                sidebarFolderDetail.classList.add('hidden');
+                sidebarFolderDetail.style.display = 'none';
                 
                 const directUrl = getApiUrl() + "?action=download&id=" + item.id;
                 sidebarUrl.innerText = directUrl;
-                sidebarIconContainer.innerHTML = `<div class="text-4xl p-4 rounded-xl ${meta.bg} ${meta.border} ${meta.color}">${meta.icon}</div>`;
+                const deviconStyle = "width:28px;height:28px;display:inline-block;vertical-align:middle;";
+                if (meta.devicon) {
+                    sidebarIconContainer.innerHTML = `<img src="${meta.devicon}" style="${deviconStyle}" onerror="this.style.display='none';this.nextElementSibling.style.display='inline'" /><span style="display:none;font-size:1rem;">${meta.icon}</span>`;
+                } else {
+                    sidebarIconContainer.innerHTML = `<span style="font-size:1rem;">${meta.icon}</span>`;
+                }
             }
 
-            propertiesSidebar.classList.remove('hidden');
-            propertiesSidebar.classList.add('flex');
+            propertiesSidebar.style.display = 'flex';
             const placeholder = document.getElementById('propertiesPlaceholder');
-            if (placeholder) placeholder.classList.add('hidden');
+            if (placeholder) placeholder.style.display = 'none';
 
             // Mobile compatibility: Auto-open Right Sidebar drawer
             if (window.innerWidth < 1024) {
@@ -1587,11 +1693,10 @@
         function closeSidebar() {
             selectedItem = null;
             if (propertiesSidebar) {
-                propertiesSidebar.classList.add('hidden');
-                propertiesSidebar.classList.remove('flex');
+                propertiesSidebar.style.display = 'none';
             }
             const placeholder = document.getElementById('propertiesPlaceholder');
-            if (placeholder) placeholder.classList.remove('hidden');
+            if (placeholder) placeholder.style.display = '';
             document.querySelectorAll('.file-item-wrapper').forEach(wrapper => {
                 wrapper.classList.remove('border-cyan-400/80', 'shadow-[0_0_12px_rgba(6,182,212,0.15)]', 'bg-cyan-950/20');
                 const id = wrapper.getAttribute('data-id');
@@ -1637,12 +1742,24 @@
         }
         
         function escapeHtml(text) {
-            return text
+            if (text == null) return '';
+            return String(text)
                 .replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")
                 .replace(/>/g, "&gt;")
                 .replace(/"/g, "&quot;")
                 .replace(/'/g, "&#039;");
+        }
+        
+        // Render filename with extension always visible
+        function renderFileName(name) {
+            const dotIndex = name.lastIndexOf('.');
+            if (dotIndex > 0 && dotIndex < name.length - 1) {
+                const base = escapeHtml(name.substring(0, dotIndex));
+                const ext = escapeHtml(name.substring(dotIndex));
+                return `<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle;max-width:100%;">${base}</span><span style="white-space:nowrap;flex-shrink:0;display:inline-block;vertical-align:middle;">${ext}</span>`;
+            }
+            return `<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle;max-width:100%;">${escapeHtml(name)}</span>`;
         }
 
         // Preview Modal Viewer (Media Handshake & Text Editor)
@@ -1654,15 +1771,18 @@
             editorActiveName = file.name;
             editorFileName.value = file.name;
             
-            body.innerHTML = `<div class="text-center py-20 text-xs tracking-widest text-cyan-400 animate-pulse font-mono-cyber">⚡ LOADING SECURE STREAM...</div>`;
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
+            body.innerHTML = `<div style="display:flex;flex-direction:column;gap:0.75rem;padding:1rem;">
+                <div style="height:16px;width:60%;background:var(--border);border-radius:4px;animation:pulse 1.5s infinite;"></div>
+                <div style="height:16px;width:40%;background:var(--border);border-radius:4px;animation:pulse 1.5s infinite;"></div>
+                <div style="height:200px;width:100%;background:var(--border);border-radius:6px;animation:pulse 1.5s infinite;"></div>
+            </div>`;
+            modal.style.display = 'flex';
 
             const ext = file.name.split('.').pop().toLowerCase();
             
             // Check if it's a text/code file
             if (TEXT_EXTS.includes(ext)) {
-                editorControls.classList.remove('hidden');
+                editorControls.style.display = 'flex';
                 try {
                     const blob = await fetchFileBlob(file.id);
                     if (blob) {
@@ -1676,13 +1796,13 @@
                 }
             } else {
                 // Non-text file (image, video, pdf, document, or unsupported)
-                editorControls.classList.add('hidden');
+                editorControls.style.display = 'none';
                 
                 if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'ico', 'bmp'].includes(ext)) {
                     const blob = await fetchFileBlob(file.id);
                     if (blob) {
                         const objectUrl = URL.createObjectURL(blob);
-                        body.innerHTML = `<img src="${objectUrl}" class="max-h-[70vh] rounded-lg border border-cyan-500/10 object-contain mx-auto" />`;
+                        body.innerHTML = `<img src="${objectUrl}" style="max-height:70vh;width:auto;object-fit:contain;display:block;margin:0 auto;border-radius:var(--radius-sm);" />`;
                     } else {
                         body.innerHTML = `<div class="text-center py-20 text-xs text-red-400 font-mono-cyber">❌ Gagal memuat pratinjau gambar.</div>`;
                     }
@@ -1703,7 +1823,7 @@
                     const blob = await fetchFileBlob(file.id);
                     if (blob) {
                         const objectUrl = URL.createObjectURL(blob);
-                        body.innerHTML = `<video src="${objectUrl}" controls class="max-h-[70vh] w-full rounded-lg" autoplay></video>`;
+                            body.innerHTML = `<video src="${objectUrl}" controls style="max-height:70vh;width:100%;border-radius:var(--radius-sm);" autoplay></video>`;
                     } else {
                         body.innerHTML = `<div class="text-center py-20 text-xs text-red-400 font-mono-cyber">❌ Gagal memuat pratinjau video.</div>`;
                     }
@@ -1796,10 +1916,10 @@
             const name = selectedItem.name;
             const confirmed = await showDialog('Konfirmasi Hapus', `Kirim perintah penghancuran item "${name}" ke cloud Google Drive?`);
             if (confirmed) {
-                sidebarDeleteBtn.innerText = 'WAIT..';
+                sidebarDeleteBtn.disabled = true;
                 const res = await deleteFile(id);
                 toast(res.message, res.status === 'success' ? 'success' : 'error');
-                sidebarDeleteBtn.innerText = 'Delete 🗑️';
+                sidebarDeleteBtn.disabled = false;
                 loadAndRender(currentFolderId);
             }
         });
@@ -1847,9 +1967,8 @@
             editorActiveName = "baru.txt";
             editorFileName.value = "baru.txt";
             
-            editorControls.classList.remove('hidden');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
+            editorControls.style.display = 'flex';
+            modal.style.display = 'flex';
             
             renderEditorModal("edit");
         });
@@ -1857,12 +1976,11 @@
         document.getElementById('closeModalBtn').addEventListener('click', () => {
             const modal = document.getElementById('previewModal');
             document.getElementById('modalBody').innerHTML = "";
-            editorControls.classList.add('hidden');
+            editorControls.style.display = 'none';
             editorActiveFileId = null;
             editorActiveContent = "";
             editorActiveName = "";
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
+            modal.style.display = 'none';
         });
 
         // Mobile Sidebar Toggle Clicks
