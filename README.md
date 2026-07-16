@@ -133,5 +133,3 @@ Proyek ini didesain sebagai brankas pribadi. Seluruh proses pengunduhan, peminda
 <div align="center">
   <sub>Brought to you with ⚡ by <strong>Antigravity AI</strong></sub>
 </div>
-
-https://script.google.com/macros/s/AKfycbxRWEbP6r8y_MNTcnnjQYorVrDk43NifN9GEJ18jsfAsHTEbTfHLgp6yXkcSK9hViS3/exec
