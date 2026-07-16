@@ -1248,6 +1248,29 @@
             return null;
         }
 
+        function deepMapChildren(children) {
+            return children.map(child => {
+                if (child.isFolder) {
+                    return {
+                        id: child.id,
+                        name: child.name,
+                        isFolder: true,
+                        children: child.children ? deepMapChildren(child.children) : [],
+                        isOpen: false,
+                        isLoaded: true
+                    };
+                } else {
+                    return {
+                        id: child.id,
+                        name: child.name,
+                        isFolder: false,
+                        size: child.size,
+                        url: child.url
+                    };
+                }
+            });
+        }
+
         function updateTreeNode(folderId, items) {
             const targetId = folderId || folderTree.id;
             let node = findTreeNode(folderTree, targetId);
@@ -1255,17 +1278,23 @@
 
             node.isLoaded = true;
             
-            // Map folders and files
             const newChildren = items.map(item => {
                 if (item.isFolder) {
                     const existing = node.children.find(c => c.id === item.id);
-                    return existing || {
+                    if (existing) {
+                        if (item.children) {
+                            existing.children = deepMapChildren(item.children);
+                            existing.isLoaded = true;
+                        }
+                        return existing;
+                    }
+                    return {
                         id: item.id,
                         name: item.name,
                         isFolder: true,
-                        children: [],
+                        children: item.children ? deepMapChildren(item.children) : [],
                         isOpen: false,
-                        isLoaded: false
+                        isLoaded: !!item.children
                     };
                 } else {
                     return {
@@ -1408,7 +1437,7 @@
         // ==================== END FOLDER EXPLORER TREE ENGINE ====================
 
         // Render Controller & API Loader
-        async function loadAndRender(folderId = null) {
+        async function loadAndRender(folderId = null, recursive = false) {
             closeSidebar();
             // Sembunyikan bulk action bar ketika berpindah direktori
             if (bulkActionBar) resetBulkActionBar();
@@ -1434,7 +1463,7 @@
                         <div class="skeleton" style="height:10px;width:75%;"></div>
                     </div>
                 </div>`;
-            const result = await fetchFiles(folderId);
+            const result = await fetchFiles(folderId, recursive);
             
             if (result.status === "success") {
                 // Bind the root node id dynamically if it is currently 'root'
@@ -2390,8 +2419,8 @@
         // Disconnect Button
         document.getElementById('logoutBtn').addEventListener('click', () => logout());
 
-        // Initial Load
-        loadAndRender();
+        // Initial Load (recursive to build full tree)
+        loadAndRender(null, true);
     </script>
 </body>
 </html>

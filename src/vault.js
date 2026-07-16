@@ -1,13 +1,16 @@
 import { getApiUrl, checkToken } from './auth.js';
 
 // 1. Ambil Daftar File dan Folder (List)
-export async function fetchFiles(folderId = null) {
+export async function fetchFiles(folderId = null, recursive = false) {
     const token = checkToken();
     const apiUrl = getApiUrl();
     try {
         let url = `${apiUrl}?token=${encodeURIComponent(token)}`;
         if (folderId) {
             url += `&folderId=${encodeURIComponent(folderId)}`;
+        }
+        if (recursive) {
+            url += `&recursive=true`;
         }
         const response = await fetch(url);
         const result = await response.json();
