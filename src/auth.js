@@ -20,17 +20,12 @@ export async function login(token) {
     }
     
     try {
-        // Keep the passcode out of URLs/history and exchange it for a short-lived session token.
-        const response = await fetch(gatewayUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ action: 'handshake', token })
-        });
+        // The original Apps Script backend verifies the supplied token via GET.
+        const response = await fetch(`${gatewayUrl}?action=handshake&key=${encodeURIComponent(token)}`);
         const data = await response.json();
         
         if (data.status === "success") {
-            // Never retain the passcode in browser storage.
-            localStorage.setItem('vault_token', data.sessionToken);
+            localStorage.setItem('vault_token', token);
             localStorage.setItem('vault_config', JSON.stringify(data.config));
             return { status: "success" };
         } else {

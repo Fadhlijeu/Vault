@@ -1575,6 +1575,13 @@
             window.open(getDownloadUrl(id, isFolder), '_blank', 'noopener');
         }
 
+        function openBatchDownloadLink(fileIds) {
+            const token = localStorage.getItem('vault_token');
+            const apiUrl = getApiUrl();
+            const url = apiUrl + '?action=batch_download&fileIds=' + encodeURIComponent(fileIds.join(',')) + '&token=' + encodeURIComponent(token);
+            window.open(url, '_blank', 'noopener');
+        }
+
         function renderFiles(items) {
             if (items.length === 0) {
                 fileViewer.innerHTML = `
@@ -2411,9 +2418,12 @@
                 
                 toast(`Mengunduh ${selectedItems.length} item...`, 'info');
                 
-                // Each selected item opens its normal download URL; no hidden iframe or
-                // unavailable batch endpoint is involved.
-                selectedItems.forEach(item => openDownloadLink(item.id, item.isFolder));
+                const files = selectedItems.filter(item => !item.isFolder);
+                const folders = selectedItems.filter(item => item.isFolder);
+
+                // Selected files share one ZIP link; folder ZIP links remain individual.
+                if (files.length) openBatchDownloadLink(files.map(item => item.id));
+                folders.forEach(item => openDownloadLink(item.id, true));
             });
         }
 

@@ -28,48 +28,41 @@ function getOrCreateFolder() {
   return folder;
 }
 
-const SESSION_TTL_SECONDS = 1800;
-const LOGIN_LIMIT = 5;
-const LOGIN_WINDOW_SECONDS = 300;
-
-// Validate a short-lived session token, never the master passcode.
+// Original backend token validation.
 function validateToken(token) {
   if (!token) return false;
-  return CacheService.getScriptCache().get("vault-session:" + token) === "valid";
-}
-
-function jsonResponse(payload) {
-  return ContentService.createTextOutput(JSON.stringify(payload)).setMimeType(ContentService.MimeType.JSON);
-}
-
-function getConfigs() {
   const scriptProperties = PropertiesService.getScriptProperties();
-  const config = scriptProperties.getProperty("SYSTEM_CONFIG");
-  return config ? JSON.parse(config) : {};
+  const correctKey = scriptProperties.getProperty("HANDSHAKE_KEY");
+  return token === correctKey;
 }
 
-function authenticate(passcode) {
-  const props = PropertiesService.getScriptProperties();
-  const correctKey = props.getProperty("HANDSHAKE_KEY");
-  if (!correctKey) throw new Error("HANDSHAKE_KEY belum dikonfigurasi di Script Properties.");
-  const cache = CacheService.getScriptCache();
-  const attemptsKey = "vault-login-attempts";
-  const attempts = Number(cache.get(attemptsKey) || 0);
-  if (attempts >= LOGIN_LIMIT) return { status: "error", message: "Terlalu banyak percobaan. Coba lagi beberapa menit lagi." };
-  if (passcode !== correctKey) {
-    cache.put(attemptsKey, String(attempts + 1), LOGIN_WINDOW_SECONDS);
-    return { status: "error", message: "Kredensial tidak valid." };
-  }
-  cache.remove(attemptsKey);
-  const sessionToken = Utilities.getUuid() + Utilities.getUuid().replace(/-/g, "");
-  cache.put("vault-session:" + sessionToken, "valid", SESSION_TTL_SECONDS);
-  return { status: "success", sessionToken: sessionToken, config: getConfigs() };
+function getConfigs(requestKey) {
+  const scriptProperties = PropertiesService.getScriptProperties();
+  const correctKey = scriptProperties.getProperty("HANDSHAKE_KEY");
+  const config = scriptProperties.getProperty("SYSTEM_CONFIG");
+  if (requestKey !== correctKey) return { status: "error", message: "Handshake Key tidak valid!" };
+  return { status: "success", config: config ? JSON.parse(config) : {} };
+}
+
+// Shared polished page for link-based downloads (including batch ZIPs).
+function createDownloadPage(blob, filename, mimeType, label) {
+  const base64 = Utilities.base64Encode(blob.getBytes());
+  const safeFilename = JSON.stringify(filename);
+  const safeMimeType = JSON.stringify(mimeType);
+  const safeLabel = String(label).replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Downloading...</title><style>
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(circle at top,#1e3a5f,#0b1220 58%);color:#e5eefb;font-family:system-ui,sans-serif}.card{width:min(420px,90vw);padding:32px;border:1px solid #38bdf844;border-radius:20px;background:#0f172ad9;box-shadow:0 20px 60px #0008;text-align:center}.mark{width:54px;height:54px;margin:auto auto 16px;border-radius:18px;display:grid;place-items:center;background:#38bdf822;color:#38bdf8;font-size:28px}h1{font-size:18px;margin:0 0 8px}.file{margin:18px 0 12px;padding:10px;border-radius:10px;background:#ffffff0d;color:#cbd5e1;font:12px ui-monospace,monospace;overflow-wrap:anywhere}.bar{height:5px;border-radius:99px;background:#ffffff16;overflow:hidden}.bar i{display:block;width:45%;height:100%;border-radius:inherit;background:#38bdf8;animation:load 1s ease-in-out infinite alternate}@keyframes load{to{transform:translateX(120%)}}p{margin:0;color:#94a3b8;font-size:13px}</style></head><body><main class="card"><div class="mark">↓</div><h1>${safeLabel}</h1><p>Menyiapkan unduhan Anda</p><div class="file">${filename.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div><div class="bar"><i></i></div></main><script>(function(){const b=Uint8Array.from(atob(${JSON.stringify(base64)}),c=>c.charCodeAt(0));const u=URL.createObjectURL(new Blob([b],{type:${safeMimeType}}));const a=document.createElement('a');a.href=u;a.download=${safeFilename};document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),10000);setTimeout(()=>window.close(),1800)})();</script></body></html>`;
+  return HtmlService.createHtmlOutput(html).setTitle("Downloading " + filename);
 }
 
 // 2. HTTP GET Request Handler
 function doGet(e) {
   const action = e.parameter.action;
   const token = e.parameter.token;
+
+  if (action === "handshake") {
+    return ContentService.createTextOutput(JSON.stringify(getConfigs(e.parameter.key))).setMimeType(ContentService.MimeType.JSON);
+  }
 
   // B. Validasi Token untuk Aksi Lainnya
   if (!validateToken(token)) {
@@ -79,6 +72,20 @@ function doGet(e) {
         message: "Akses Ditolak: Token Tidak Valid!",
       }),
     ).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // Multiple selected files are packed into one ZIP, then served through the
+  // same download-page mechanism as an individual file.
+  if (action === "batch_download") {
+    const fileIds = (e.parameter.fileIds || "").split(",").filter(Boolean);
+    if (!fileIds.length) return ContentService.createTextOutput("Error: Tidak ada file yang dipilih.").setMimeType(ContentService.MimeType.TEXT);
+    try {
+      const blobs = fileIds.map(function(id) { return DriveApp.getFileById(id).getBlob(); });
+      const zipBlob = Utilities.zip(blobs, "vault-download.zip");
+      return createDownloadPage(zipBlob, "vault-download.zip", "application/zip", "Mengunduh beberapa berkas");
+    } catch (error) {
+      return ContentService.createTextOutput("Error: Gagal membuat ZIP. " + error.toString()).setMimeType(ContentService.MimeType.TEXT);
+    }
   }
 
   // D. Fixed Proxy Download Folder as ZIP Handler
@@ -560,10 +567,6 @@ function doPost(e) {
       } catch (jsonErr) {
         // Bukan JSON, data biner murni
       }
-    }
-
-    if (action === "handshake") {
-      return jsonResponse(authenticate(postData.token || token));
     }
 
     // Validasi token keamanan
