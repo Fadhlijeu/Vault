@@ -28,27 +28,11 @@ function getOrCreateFolder() {
   return folder;
 }
 
-// Jalankan sekali dari editor Apps Script, lalu isi HANDSHAKE_KEY secara manual
-// melalui Project Settings > Script properties. Tidak ada passcode bawaan.
-function setupVault() {
-  const root = getOrCreateFolder();
-  const props = PropertiesService.getScriptProperties();
-  if (!props.getProperty("SYSTEM_CONFIG")) {
-    props.setProperty("SYSTEM_CONFIG", JSON.stringify({
-      vaultName: "Cyber Vault Secure Storage",
-      maxFileSizeMB: 15,
-      allowedExtensions: ["png", "jpg", "jpeg", "gif", "webp", "pdf", "txt", "zip", "mp4"],
-    }));
-  }
-  return "Vault siap. Atur HANDSHAKE_KEY di Script Properties sebelum deploy. Root: " + root.getId();
-}
-
-// Authentication secrets are configured in Script Properties, never in source code.
 const SESSION_TTL_SECONDS = 1800;
 const LOGIN_LIMIT = 5;
 const LOGIN_WINDOW_SECONDS = 300;
 
-// Helper: memvalidasi session token pendek, bukan passcode utama.
+// Validate a short-lived session token, never the master passcode.
 function validateToken(token) {
   if (!token) return false;
   return CacheService.getScriptCache().get("vault-session:" + token) === "valid";
@@ -60,8 +44,8 @@ function jsonResponse(payload) {
 
 function getConfigs() {
   const scriptProperties = PropertiesService.getScriptProperties();
-  const systemConfigStr = scriptProperties.getProperty("SYSTEM_CONFIG");
-  return systemConfigStr ? JSON.parse(systemConfigStr) : {};
+  const config = scriptProperties.getProperty("SYSTEM_CONFIG");
+  return config ? JSON.parse(config) : {};
 }
 
 function authenticate(passcode) {
@@ -80,27 +64,6 @@ function authenticate(passcode) {
   const sessionToken = Utilities.getUuid() + Utilities.getUuid().replace(/-/g, "");
   cache.put("vault-session:" + sessionToken, "valid", SESSION_TTL_SECONDS);
   return { status: "success", sessionToken: sessionToken, config: getConfigs() };
-}
-
-function assertVaultFolder(folderId, rootFolder) {
-  const root = rootFolder || getOrCreateFolder();
-  let folder = DriveApp.getFolderById(folderId);
-  for (let depth = 0; depth < 40; depth++) {
-    if (folder.getId() === root.getId()) return folder;
-    const parents = folder.getParents();
-    if (!parents.hasNext()) break;
-    folder = parents.next();
-  }
-  throw new Error("Folder berada di luar Vault.");
-}
-
-function assertVaultFile(fileId, rootFolder) {
-  const file = DriveApp.getFileById(fileId);
-  const parents = file.getParents();
-  while (parents.hasNext()) assertVaultFolder(parents.next().getId(), rootFolder);
-  // Files with no parent are not valid vault files.
-  if (!file.getParents().hasNext()) throw new Error("File berada di luar Vault.");
-  return file;
 }
 
 // 2. HTTP GET Request Handler
@@ -128,7 +91,7 @@ function doGet(e) {
     }
 
     try {
-      const folder = assertVaultFolder(folderId);
+      const folder = DriveApp.getFolderById(folderId);
       const zipName = folder.getName() + ".zip";
       const blobs = [];
 
@@ -162,37 +125,83 @@ function doGet(e) {
   <meta charset="UTF-8">
   <title>Downloading ${zipName}...</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: linear-gradient(135deg, #0c1929, #1a2a4a); color: #e2e8f0; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; }
-    .card { text-align: center; padding: 2.5rem 2rem; background: rgba(15,23,42,.85); border: 1px solid rgba(56,189,248,.15); border-radius: 20px; box-shadow: 0 25px 50px -12px #00000080; max-width: 420px; width: 90%; }
-    .icon-wrap { width: 48px; height: 48px; margin: 0 auto 1rem; border: 2px solid #38bdf8; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-    .icon-wrap svg { width: 24px; height: 24px; fill: #38bdf8; }
-    h3 { font-size: 1rem; font-weight: 600; margin-bottom: .25rem; }
-    .sub { font-size: .75rem; color: #64748b; margin-bottom: 1.25rem; }
-    .fname { font-size: .8rem; color: #94a3b8; word-break: break-all; margin-bottom: 1.5rem; }
-    .bar { height: 4px; background: rgba(56,189,248,.1); border-radius: 4px; overflow: hidden; }
-    .bar-fill { height: 100%; width: 0; background: linear-gradient(90deg,#38bdf8,#818cf8); border-radius: 4px; animation: fill 1.5s ease-in-out forwards; }
-    @keyframes fill { to { width: 100%; } }
-    .status { font-size: .75rem; color: #64748b; margin-top: 1rem; letter-spacing: .02em; }
+    body {
+      background-color: #0f172a;
+      color: #38bdf8;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .card {
+      text-align: center;
+      padding: 30px;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      background: rgba(30, 41, 59, 0.7);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(12px);
+      max-width: 400px;
+      width: 90%;
+    }
+    h2 {
+      margin: 0 0 10px 0;
+      letter-spacing: 0.1em;
+      font-size: 1.5rem;
+    }
+    p {
+      color: #94a3b8;
+      font-size: 0.9rem;
+      margin: 5px 0;
+    }
+    .spinner {
+      border: 3px solid rgba(56, 189, 248, 0.1);
+      border-top: 3px solid #38bdf8;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto 0 auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
   <div class="card">
-    <div class="icon-wrap"><svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zm7-18L5.33 9h5.67v4h4V9h5.67L12 2z"/></svg></div>
-    <h3>Mengunduh Folder</h3>
-    <div class="sub">Folder ZIP Archive</div>
-    <div class="fname">${zipName}</div>
-    <div class="bar"><div class="bar-fill"></div></div>
-    <div class="status">Memproses dan mengompresi folder...</div>
+    <h2>CYBER VAULT</h2>
+    <p>Proxy Stream Folder ZIP Download</p>
+    <p style="color: #f1f5f9; font-weight: 600; margin-top: 15px; word-break: break-all;">${zipName}</p>
+    <div class="spinner"></div>
   </div>
+  
   <script>
     (function() {
-      const bytes = Uint8Array.from(atob("${base64Data}"), c => c.charCodeAt(0));
-      const blob = new Blob([bytes], {type: "${contentType}"});
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob); a.download = "${zipName}";
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(window.close, 2000);
+      const b64 = "${base64Data}";
+      const filename = "${zipName}";
+      const mime = "${contentType}";
+      
+      const byteCharacters = atob(b64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], {type: mime});
+      
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      setTimeout(() => { window.close(); }, 2000);
     })();
   </script>
 </body>
@@ -218,7 +227,7 @@ function doGet(e) {
     }
 
     try {
-      const file = assertVaultFile(fileId);
+      const file = DriveApp.getFileById(fileId);
       const blob = file.getBlob();
       const filename = file.getName();
       const contentType = blob.getContentType();
@@ -273,37 +282,84 @@ function doGet(e) {
   <meta charset="UTF-8">
   <title>Downloading ${filename}...</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: linear-gradient(135deg, #0c1929, #1a2a4a); color: #e2e8f0; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; }
-    .card { text-align: center; padding: 2.5rem 2rem; background: rgba(15,23,42,.85); border: 1px solid rgba(56,189,248,.15); border-radius: 20px; box-shadow: 0 25px 50px -12px #00000080; max-width: 420px; width: 90%; }
-    .icon-wrap { width: 48px; height: 48px; margin: 0 auto 1rem; border: 2px solid #38bdf8; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-    .icon-wrap svg { width: 24px; height: 24px; fill: #38bdf8; }
-    h3 { font-size: 1rem; font-weight: 600; margin-bottom: .25rem; }
-    .sub { font-size: .75rem; color: #64748b; margin-bottom: 1.25rem; }
-    .fname { font-size: .8rem; color: #94a3b8; word-break: break-all; margin-bottom: 1.5rem; }
-    .bar { height: 4px; background: rgba(56,189,248,.1); border-radius: 4px; overflow: hidden; }
-    .bar-fill { height: 100%; width: 0; background: linear-gradient(90deg,#38bdf8,#818cf8); border-radius: 4px; animation: fill 1.5s ease-in-out forwards; }
-    @keyframes fill { to { width: 100%; } }
-    .status { font-size: .75rem; color: #64748b; margin-top: 1rem; letter-spacing: .02em; }
+    body {
+      background-color: #0f172a;
+      color: #38bdf8;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .card {
+      text-align: center;
+      padding: 30px;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      background: rgba(30, 41, 59, 0.7);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(12px);
+      max-width: 400px;
+      width: 90%;
+    }
+    h2 {
+      margin: 0 0 10px 0;
+      letter-spacing: 0.1em;
+      font-size: 1.5rem;
+    }
+    p {
+      color: #94a3b8;
+      font-size: 0.9rem;
+      margin: 5px 0;
+    }
+    .spinner {
+      border: 3px solid rgba(56, 189, 248, 0.1);
+      border-top: 3px solid #38bdf8;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto 0 auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
   <div class="card">
-    <div class="icon-wrap"><svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zm7-18L5.33 9h5.67v4h4V9h5.67L12 2z"/></svg></div>
-    <h3>Mengunduh Berkas</h3>
-    <div class="sub">Single File Download</div>
-    <div class="fname">${filename}</div>
-    <div class="bar"><div class="bar-fill"></div></div>
-    <div class="status">Memproses berkas...</div>
+    <h2>CYBER VAULT</h2>
+    <p>Proxy Stream Download</p>
+    <p style="color: #f1f5f9; font-weight: 600; margin-top: 15px; word-break: break-all;">${filename}</p>
+    <div class="spinner"></div>
   </div>
+  
   <script>
     (function() {
-      const bytes = Uint8Array.from(atob("${base64Data}"), c => c.charCodeAt(0));
-      const blob = new Blob([bytes], {type: "${contentType}"});
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob); a.download = "${filename}";
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(window.close, 2000);
+      const b64 = "${base64Data}";
+      const filename = "${filename}";
+      const mime = "${contentType}";
+      
+      const byteCharacters = atob(b64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], {type: mime});
+      
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Tutup tab setelah download dimulai
+      setTimeout(() => { window.close(); }, 2000);
     })();
   </script>
 </body>
@@ -320,72 +376,7 @@ function doGet(e) {
     }
   }
 
-  // C. Batch Download (multiple files as ZIP)
-  if (action === "batch_download") {
-    const fileIds = e.parameter.fileIds ? e.parameter.fileIds.split(",") : [];
-    if (!fileIds.length) {
-      return ContentService.createTextOutput(
-        JSON.stringify({ status: "error", message: "Parameter fileIds dibutuhkan." }),
-      ).setMimeType(ContentService.MimeType.JSON);
-    }
-    try {
-      const blobs = [];
-      for (let i = 0; i < fileIds.length; i++) {
-        const file = assertVaultFile(fileIds[i].trim());
-        blobs.push(file.getBlob());
-      }
-      const zipBlob = Utilities.zip(blobs, "download.zip");
-      const base64Data = Utilities.base64Encode(zipBlob.getBytes());
-      const html = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Downloading ${fileIds.length} files...</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: linear-gradient(135deg, #0c1929, #1a2a4a); color: #e2e8f0; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; }
-    .card { text-align: center; padding: 2.5rem 2rem; background: rgba(15,23,42,.85); border: 1px solid rgba(56,189,248,.15); border-radius: 20px; box-shadow: 0 25px 50px -12px #00000080; max-width: 420px; width: 90%; }
-    .icon-wrap { width: 48px; height: 48px; margin: 0 auto 1rem; border: 2px solid #38bdf8; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-    .icon-wrap svg { width: 24px; height: 24px; fill: #38bdf8; }
-    h3 { font-size: 1rem; font-weight: 600; margin-bottom: .25rem; }
-    .sub { font-size: .75rem; color: #64748b; margin-bottom: 1.25rem; }
-    .fname { font-size: .8rem; color: #94a3b8; word-break: break-all; margin-bottom: 1.5rem; }
-    .bar { height: 4px; background: rgba(56,189,248,.1); border-radius: 4px; overflow: hidden; }
-    .bar-fill { height: 100%; width: 0; background: linear-gradient(90deg,#38bdf8,#818cf8); border-radius: 4px; animation: fill 1.5s ease-in-out forwards; }
-    @keyframes fill { to { width: 100%; } }
-    .status { font-size: .75rem; color: #64748b; margin-top: 1rem; letter-spacing: .02em; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <div class="icon-wrap"><svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zm7-18L5.33 9h5.67v4h4V9h5.67L12 2z"/></svg></div>
-    <h3>Mengunduh ${fileIds.length} Berkas</h3>
-    <div class="sub">Batch ZIP Download</div>
-    <div class="fname">download.zip</div>
-    <div class="bar"><div class="bar-fill"></div></div>
-    <div class="status">Menggabungkan ${fileIds.length} berkas ke dalam ZIP...</div>
-  </div>
-  <script>
-    (function() {
-      const bytes = Uint8Array.from(atob("${base64Data}"), c => c.charCodeAt(0));
-      const blob = new Blob([bytes], {type: "application/zip"});
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob); a.download = "download.zip";
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(window.close, 2000);
-    })();
-  </script>
-</body>
-</html>`;
-      return HtmlService.createHtmlOutput(html).setTitle("Downloading " + fileIds.length + " files");
-    } catch (error) {
-      return ContentService.createTextOutput(
-        JSON.stringify({ status: "error", message: "Gagal membuat ZIP: " + error.toString() }),
-      ).setMimeType(ContentService.MimeType.JSON);
-    }
-  }
-
-  // D. Recursive Folder Tree
+  // C. Recursive Folder Tree
   if (e.parameter.recursive === "true") {
     const folderId = e.parameter.folderId;
     return listFiles(token, folderId, true);
@@ -405,17 +396,26 @@ function getFolderContents(folder, token) {
     const file = files.next();
     const d = file.getDateCreated();
     const ds =
-      ("0" + d.getDate()).slice(-2) + "/" +
-      ("0" + (d.getMonth() + 1)).slice(-2) + "/" +
-      d.getFullYear() + " " +
-      ("0" + d.getHours()).slice(-2) + ":" +
+      ("0" + d.getDate()).slice(-2) +
+      "/" +
+      ("0" + (d.getMonth() + 1)).slice(-2) +
+      "/" +
+      d.getFullYear() +
+      " " +
+      ("0" + d.getHours()).slice(-2) +
+      ":" +
       ("0" + d.getMinutes()).slice(-2);
     items.push({
       id: file.getId(),
       name: file.getName(),
       size: file.getSize(),
       isFolder: false,
-      url: apiURL + "?action=download&fileId=" + file.getId() + "&token=" + encodeURIComponent(token),
+      url:
+        apiURL +
+        "?action=download&fileId=" +
+        file.getId() +
+        "&token=" +
+        encodeURIComponent(token),
       dateCreated: ds,
     });
   }
@@ -439,7 +439,7 @@ function listFiles(token, folderId, recursive = false) {
   try {
     const rootFolder = getOrCreateFolder();
     const parentFolder = folderId
-      ? assertVaultFolder(folderId, rootFolder)
+      ? DriveApp.getFolderById(folderId)
       : rootFolder;
     const fileList = [];
 
@@ -562,8 +562,6 @@ function doPost(e) {
       }
     }
 
-    // Login is the only unauthenticated endpoint. It accepts text/plain JSON so
-    // GitHub Pages does not need a CORS preflight, and never exposes the secret in a URL.
     if (action === "handshake") {
       return jsonResponse(authenticate(postData.token || token));
     }
@@ -634,7 +632,7 @@ function doPost(e) {
       try {
         const sourceFolder = DriveApp.getFolderById(sourceFolderId);
         const parentFolder = parentId
-          ? assertVaultFolder(parentId, rootFolder)
+          ? DriveApp.getFolderById(parentId)
           : rootFolder;
 
         // Buat folder baru di tujuan dengan nama yang sama dengan folder sumber
@@ -720,7 +718,7 @@ function doPost(e) {
           })();
         blob.setName(finalName);
         const parentFolder = parentId
-          ? assertVaultFolder(parentId, rootFolder)
+          ? DriveApp.getFolderById(parentId)
           : rootFolder;
         const newFile = parentFolder.createFile(blob);
         const apiURL = ScriptApp.getService().getUrl();
@@ -754,11 +752,10 @@ function doPost(e) {
     if (action === "delete") {
       const fileId = postData.fileId;
       try {
-        const file = assertVaultFile(fileId, rootFolder);
+        const file = DriveApp.getFileById(fileId);
         file.setTrashed(true);
       } catch (err) {
-        const folder = assertVaultFolder(fileId, rootFolder);
-        if (folder.getId() === rootFolder.getId()) throw new Error("Root Vault tidak dapat dihapus.");
+        const folder = DriveApp.getFolderById(fileId);
         folder.setTrashed(true);
       }
       return ContentService.createTextOutput(
@@ -775,9 +772,9 @@ function doPost(e) {
       const newName = postData.newName;
       let item;
       try {
-        item = assertVaultFile(fileId, rootFolder);
+        item = DriveApp.getFileById(fileId);
       } catch (err) {
-        item = assertVaultFolder(fileId, rootFolder);
+        item = DriveApp.getFolderById(fileId);
       }
       item.setName(newName);
       return ContentService.createTextOutput(
@@ -793,7 +790,7 @@ function doPost(e) {
       const folderName = postData.folderName;
       const parentId = postData.parentFolderId;
       const parentFolder = parentId
-        ? assertVaultFolder(parentId, rootFolder)
+        ? DriveApp.getFolderById(parentId)
         : rootFolder;
       const newFolder = parentFolder.createFolder(folderName);
 
@@ -816,14 +813,13 @@ function doPost(e) {
 
       fileIds.forEach((id) => {
         try {
-          assertVaultFile(id, rootFolder).setTrashed(true);
+          DriveApp.getFileById(id).setTrashed(true);
         } catch (err) {}
       });
 
       folderIds.forEach((id) => {
         try {
-          const folder = assertVaultFolder(id, rootFolder);
-          if (folder.getId() !== rootFolder.getId()) folder.setTrashed(true);
+          DriveApp.getFolderById(id).setTrashed(true);
         } catch (err) {}
       });
 
@@ -843,18 +839,17 @@ function doPost(e) {
       const targetFolder =
         targetFolderId === "root" || !targetFolderId
           ? rootFolder
-          : assertVaultFolder(targetFolderId, rootFolder);
+          : DriveApp.getFolderById(targetFolderId);
 
       fileIds.forEach((id) => {
         try {
-          assertVaultFile(id, rootFolder).moveTo(targetFolder);
+          DriveApp.getFileById(id).moveTo(targetFolder);
         } catch (err) {}
       });
 
       folderIds.forEach((id) => {
         try {
-          const folder = assertVaultFolder(id, rootFolder);
-          if (folder.getId() !== rootFolder.getId()) folder.moveTo(targetFolder);
+          DriveApp.getFolderById(id).moveTo(targetFolder);
         } catch (err) {}
       });
 
@@ -875,7 +870,7 @@ function doPost(e) {
 
       if (fileId) {
         // Update file teks yang sudah ada
-        const file = assertVaultFile(fileId, rootFolder);
+        const file = DriveApp.getFileById(fileId);
         file.setContent(content);
         if (fileName) file.setName(fileName);
         return ContentService.createTextOutput(
@@ -891,7 +886,7 @@ function doPost(e) {
       } else {
         // Buat file teks baru
         const parentFolder = parentId
-          ? assertVaultFolder(parentId, rootFolder)
+          ? DriveApp.getFolderById(parentId)
           : rootFolder;
         const finalName = fileName || "untitled.txt";
         const file = parentFolder.createFile(finalName, content, "text/plain");
@@ -916,7 +911,7 @@ function doPost(e) {
       const parentId = postData.parentFolderId;
 
       const parentFolder = parentId
-        ? assertVaultFolder(parentId, rootFolder)
+        ? DriveApp.getFolderById(parentId)
         : rootFolder;
       const decodedBytes = Utilities.base64Decode(base64Data);
       const blob = Utilities.newBlob(decodedBytes, fileType, fileName);

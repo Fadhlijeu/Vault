@@ -1563,6 +1563,18 @@
         }
 
         // Render List / Grid View with neumorphic boxes & Material Symbols
+        // One URL builder keeps every download surface on the same backend route.
+        function getDownloadUrl(id, isFolder) {
+            const token = localStorage.getItem('vault_token');
+            const apiUrl = getApiUrl();
+            const resource = isFolder ? 'download_folder&folderId=' : 'download&fileId=';
+            return apiUrl + '?action=' + resource + encodeURIComponent(id) + '&token=' + encodeURIComponent(token);
+        }
+
+        function openDownloadLink(id, isFolder) {
+            window.open(getDownloadUrl(id, isFolder), '_blank', 'noopener');
+        }
+
         function renderFiles(items) {
             if (items.length === 0) {
                 fileViewer.innerHTML = `
@@ -1793,21 +1805,13 @@
                 });
             });
 
-            // Row download buttons trigger direct download
+            // Row download buttons trigger the same direct-download link as the detail panel.
             document.querySelectorAll('.row-download-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const id = btn.getAttribute('data-id');
                     const type = btn.getAttribute('data-type');
-                    
-                    const token = localStorage.getItem('vault_token');
-                    let url = "";
-                    if (type === 'folder') {
-                        url = getApiUrl() + "?action=download_folder&folderId=" + id + "&token=" + encodeURIComponent(token);
-                    } else {
-                        url = getApiUrl() + "?action=download&fileId=" + id + "&token=" + encodeURIComponent(token);
-                    }
-                    window.open(url, '_blank');
+                    openDownloadLink(id, type === 'folder');
                 });
             });
 
@@ -2275,14 +2279,7 @@
                 if (!selectedItem) return;
                 const id = selectedItem.id;
                 const type = selectedItem.isFolder ? 'folder' : 'file';
-                const token = localStorage.getItem('vault_token');
-                let url = "";
-                if (type === 'folder') {
-                    url = getApiUrl() + "?action=download_folder&folderId=" + id + "&token=" + encodeURIComponent(token);
-                } else {
-                    url = getApiUrl() + "?action=download&fileId=" + id + "&token=" + encodeURIComponent(token);
-                }
-                window.open(url, '_blank');
+                openDownloadLink(id, type === 'folder');
             });
         }
 
@@ -2414,28 +2411,9 @@
                 
                 toast(`Mengunduh ${selectedItems.length} item...`, 'info');
                 
-                const token = localStorage.getItem('vault_token');
-                const apiUrl = getApiUrl();
-                const fileIds = selectedItems.filter(item => !item.isFolder).map(item => item.id);
-                const folders = selectedItems.filter(item => item.isFolder);
-
-                // Files are bundled once; selected folders retain their own recursive ZIP download.
-                if (fileIds.length) {
-                    const iframe = document.createElement('iframe');
-                    iframe.hidden = true;
-                    iframe.src = apiUrl + '?action=batch_download&fileIds=' + encodeURIComponent(fileIds.join(',')) + '&token=' + encodeURIComponent(token);
-                    document.body.appendChild(iframe);
-                    setTimeout(() => iframe.remove(), 60000);
-                }
-                folders.forEach((item, index) => {
-                    setTimeout(() => {
-                        const iframe = document.createElement('iframe');
-                        iframe.hidden = true;
-                        iframe.src = apiUrl + '?action=download_folder&folderId=' + encodeURIComponent(item.id) + '&token=' + encodeURIComponent(token);
-                        document.body.appendChild(iframe);
-                        setTimeout(() => iframe.remove(), 60000);
-                    }, index * 800);
-                });
+                // Each selected item opens its normal download URL; no hidden iframe or
+                // unavailable batch endpoint is involved.
+                selectedItems.forEach(item => openDownloadLink(item.id, item.isFolder));
             });
         }
 
