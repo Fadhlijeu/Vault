@@ -7,5 +7,3 @@ config.json
 .env.development.local
 .env.test.local
 .env.production.local
-
-code.gs
