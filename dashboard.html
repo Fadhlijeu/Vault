@@ -15,11 +15,15 @@
             transition: background-color var(--transition), color var(--transition);
         }
         .hidden { display: none !important; }
-        body:not(.selection-mode) .item-selector, #selectionControls { display:none !important; }
+        body:not(.selection-mode) .item-selector, body:not(.selection-mode) #selectionControls { display:none !important; }
+        body.selection-mode #selectionControls { display:flex !important; }
         #leftSidebar { position:relative; }
         #leftResizeHandle { position:absolute; top:0; right:-5px; bottom:0; width:10px; z-index:15; cursor:col-resize; touch-action:none; }
         #leftResizeHandle::after { content:""; position:absolute; top:35%; bottom:35%; left:4px; width:2px; border-radius:2px; background:transparent; transition:background .2s; }
-        #leftResizeHandle:hover::after, body.resizing-sidebar #leftResizeHandle::after { background:var(--text-muted); }
+        #rightSidebar { position:relative; }
+        #rightResizeHandle { position:absolute; top:0; left:-5px; bottom:0; width:10px; z-index:15; cursor:col-resize; touch-action:none; }
+        #rightResizeHandle::after { content:""; position:absolute; top:35%; bottom:35%; left:4px; width:2px; border-radius:2px; background:transparent; transition:background .2s; }
+        #leftResizeHandle:hover::after, #rightResizeHandle:hover::after, body.resizing-sidebar #leftResizeHandle::after, body.resizing-sidebar #rightResizeHandle::after { background:var(--text-muted); }
         .skeleton { position:relative; overflow:hidden; background:var(--bg-elevated); border-radius:6px; }
         .skeleton::after { content:""; position:absolute; inset:0; transform:translateX(-100%); background:linear-gradient(90deg,transparent,var(--border),transparent); animation:skeleton-shimmer 1.2s infinite; }
         @keyframes skeleton-shimmer { to { transform:translateX(100%); } }
@@ -74,7 +78,7 @@
         @media (min-width: 1024px) {
             .lg-hidden { display: none !important; }
             /* Keep the application frame fixed; panels, not the page, scroll. */
-            .workspace-grid { height: calc(100vh - 116px); min-height: 0; overflow: hidden; grid-template-columns:minmax(220px,var(--left-sidebar-width,320px)) minmax(0,2fr) minmax(240px,1.2fr) !important; }
+            .workspace-grid { height: calc(100vh - 116px); min-height: 0; overflow: hidden; grid-template-columns:minmax(220px,var(--left-sidebar-width,320px)) minmax(0,2fr) minmax(240px,var(--right-sidebar-width,340px)) !important; }
             #leftSidebar, #middleContent, #rightSidebar { min-height: 0 !important; max-height: 100%; overflow: hidden !important; }
             #leftSidebar { height: 100% !important; display:flex !important; flex-direction:column !important; }
             #leftSidebar.desktop-collapsed, #rightSidebar.desktop-collapsed { display:none !important; }
@@ -103,6 +107,9 @@
             }
             #leftSidebar.active {
                 transform: translateX(0);
+            }
+            #leftResizeHandle, #rightResizeHandle {
+                display: none !important;
             }
             #rightSidebar {
                 position: fixed;
@@ -140,6 +147,8 @@
             }
             /* ── Collapse 3-column grid to single column ── */
             .workspace-grid {
+                display: block !important;
+                width: 100% !important;
                 grid-template-columns: 1fr !important;
                 min-width: 0;
                 max-width: 100%;
@@ -190,6 +199,7 @@
             #middleContent {
                 padding: 0.75rem !important;
                 min-width: 0;
+                width: 100% !important;
                 overflow: visible;
             }
             /* Desktop sidebar toggles duplicate the mobile menu and must not appear here. */
@@ -212,11 +222,13 @@
                     left: 12px !important;
                     width: calc(100% - 24px) !important;
                     max-width: none !important;
-                    height: auto !important;
-                    max-height: 60vh !important;
+                    height: min(78vh, 560px) !important;
+                    max-height: 78vh !important;
                 }
                 /* ── Extra small screen fixes ── */
                 .workspace-grid {
+                    display: block !important;
+                    width: 100% !important;
                     grid-template-columns: 1fr !important;
                 }
                 /* ── Force all content areas to not overflow ── */
@@ -570,6 +582,7 @@
 
                     <!-- Right Sidebar (Properties) -->
                     <div id="rightSidebar" style="padding:1rem 1rem 1.5rem 1rem;border-left:1px solid var(--border);background:var(--bg-card);overflow-y:auto;">
+                        <div id="rightResizeHandle" aria-label="Ubah lebar detail panel" title="Tarik untuk mengubah lebar sidebar kanan"></div>
                         <div id="detailSkeleton" class="hidden" style="display:flex;flex-direction:column;gap:0.75rem;padding-top:0.5rem;">
                             <div class="skeleton" style="height:42px;width:42px;border-radius:10px;"></div>
                             <div class="skeleton" style="height:14px;width:75%;"></div>
@@ -679,7 +692,7 @@
             <div id="operationProgressContainer" style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
                 <div style="padding:0.75rem;display:flex;flex-direction:column;justify-content:center;gap:0.5rem;">
                     <div><span style="font-size:9px;color:var(--text-tertiary);font-family:'Fira Code',monospace;display:block;">OPERATION STATUS</span>
-                        <span id="progressStatusText" style="font-size:11px;font-weight:700;color:var(--text-primary);font-family:'Fira Code',monospace;">⚡ STANDBY</span>
+                        <span id="progressStatusText" style="font-size:11px;font-weight:700;color:var(--text-primary);font-family:'Fira Code',monospace;">STANDBY</span>
                     </div>
                     <div class="progress-bar"><div id="operationProgressBar" class="progress-bar-fill" style="width:0%;"></div></div>
                     <div style="display:flex;justify-content:space-between;font-size:9px;font-family:'Fira Code',monospace;color:var(--text-tertiary);">
@@ -698,15 +711,10 @@
     </div>
 
     <!-- Floating Terminal Panel -->
-    <div id="terminalWindow" class="card" style="position:fixed;bottom:48px;right:24px;width:min(780px,calc(100vw - 48px));padding:0;overflow:hidden;display:flex;flex-direction:column;z-index:900;transition:all .3s;max-height:70vh;">
+    <div id="terminalWindow" class="card" style="position:fixed;bottom:48px;right:24px;width:min(680px,calc(100vw - 48px));height:min(76vh,680px);padding:0;overflow:hidden;display:flex;flex-direction:column;z-index:900;transition:all .3s;max-height:76vh;">
         <div style="padding:0.5rem 1rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);">
-            <span style="font-size:9px;font-weight:700;color:var(--text-secondary);font-family:'Fira Code',monospace;">⚡ Web-based Vault CLI</span>
+            <span style="font-size:9px;font-weight:700;color:var(--text-secondary);font-family:'Fira Code',monospace;">VAULT COMMAND LINE</span>
             <div style="display:flex;align-items:center;gap:0.5rem;">
-                <div style="display:flex;gap:0.25rem;">
-                    <span style="width:8px;height:8px;border-radius:50%;background:#ff5252;opacity:0.5;cursor:pointer;" onclick="document.getElementById('terminalWindow').classList.remove('open')"></span>
-                    <span style="width:8px;height:8px;border-radius:50%;background:#ffca28;opacity:0.5;"></span>
-                    <span style="width:8px;height:8px;border-radius:50%;background:#4ade80;opacity:0.5;"></span>
-                </div>
                 <button id="termClose" style="background:none;border:none;cursor:pointer;color:var(--text-tertiary);font-size:18px;">&times;</button>
             </div>
         </div>
@@ -1489,8 +1497,13 @@
         async function loadAndRender(folderId = null, recursive = false) {
             closeSidebar();
             showExplorerSkeleton();
-            if (propertiesSidebar) propertiesSidebar.classList.add('loading');
-            if (detailSkeleton && propertiesSidebar && propertiesSidebar.style.display === 'flex') detailSkeleton.classList.remove('hidden');
+            if (propertiesSidebar) {
+                propertiesSidebar.classList.add('loading');
+                propertiesSidebar.style.display = 'none';
+            }
+            if (detailSkeleton) detailSkeleton.classList.remove('hidden');
+            const detailPlaceholder = document.getElementById('propertiesPlaceholder');
+            if (detailPlaceholder) detailPlaceholder.style.display = 'none';
             // Sembunyikan bulk action bar ketika berpindah direktori
             if (bulkActionBar) resetBulkActionBar();
             if (selectAllCheckbox) selectAllCheckbox.checked = false;
@@ -1541,6 +1554,7 @@
             }
             if (propertiesSidebar) propertiesSidebar.classList.remove('loading');
             if (detailSkeleton) detailSkeleton.classList.add('hidden');
+            if (detailPlaceholder) detailPlaceholder.style.display = '';
         }
 
         // Update Breadcrumb Trail
@@ -2526,9 +2540,13 @@
         let rightSidebarVisible = true;
         function updateWorkspaceColumns() {
             const grid = document.querySelector('.workspace-grid');
-            const columns = leftSidebarVisible && rightSidebarVisible ? 'minmax(220px,var(--left-sidebar-width,320px)) minmax(0,2fr) minmax(240px,1.2fr)'
+            if (window.innerWidth < 1024) {
+                grid.style.setProperty('grid-template-columns', '1fr', 'important');
+                return;
+            }
+            const columns = leftSidebarVisible && rightSidebarVisible ? 'minmax(220px,var(--left-sidebar-width,320px)) minmax(0,2fr) minmax(240px,var(--right-sidebar-width,340px))'
                 : leftSidebarVisible ? 'minmax(220px,var(--left-sidebar-width,320px)) minmax(0,2fr)'
-                : rightSidebarVisible ? 'minmax(0,1fr) minmax(0,1.2fr)'
+                : rightSidebarVisible ? 'minmax(0,1fr) minmax(240px,var(--right-sidebar-width,340px))'
                 : 'minmax(0,1fr)';
             grid.style.setProperty('grid-template-columns', columns, 'important');
         }
@@ -2571,6 +2589,29 @@
                     const gridLeft = document.querySelector('.workspace-grid').getBoundingClientRect().left;
                     const width = Math.max(220, Math.min(520, moveEvent.clientX - gridLeft));
                     document.querySelector('.workspace-grid').style.setProperty('--left-sidebar-width', `${width}px`);
+                    updateWorkspaceColumns();
+                };
+                const onEnd = () => {
+                    document.body.classList.remove('resizing-sidebar');
+                    window.removeEventListener('pointermove', onMove);
+                    window.removeEventListener('pointerup', onEnd);
+                };
+                window.addEventListener('pointermove', onMove);
+                window.addEventListener('pointerup', onEnd, { once: true });
+            });
+        }
+
+        const rightResizeHandle = document.getElementById('rightResizeHandle');
+        if (rightResizeHandle) {
+            rightResizeHandle.addEventListener('pointerdown', (event) => {
+                if (window.innerWidth < 1024) return;
+                event.preventDefault();
+                rightResizeHandle.setPointerCapture(event.pointerId);
+                document.body.classList.add('resizing-sidebar');
+                const onMove = (moveEvent) => {
+                    const gridRight = document.querySelector('.workspace-grid').getBoundingClientRect().right;
+                    const width = Math.max(240, Math.min(560, gridRight - moveEvent.clientX));
+                    document.querySelector('.workspace-grid').style.setProperty('--right-sidebar-width', `${width}px`);
                     updateWorkspaceColumns();
                 };
                 const onEnd = () => {

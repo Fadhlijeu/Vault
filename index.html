@@ -60,7 +60,10 @@
                 <div style="position:relative;margin-top:0.25rem;">
                     <input type="password" id="tokenInput" placeholder="Masukkan token rahasia..." class="input-neu" style="padding-right:2.5rem;" autocomplete="off">
                     <button id="togglePwBtn" type="button" class="btn-neu" style="position:absolute;right:0.35rem;top:50%;transform:translateY(-50%);border:none;cursor:pointer;color:var(--text-tertiary);padding:0.3rem;display:grid;place-items:center;" title="Tampilkan/Sembunyikan Token">
-                        <span class="material-symbols-outlined" style="font-size:20px;">visibility</span>
+                        <svg id="togglePwIcon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path>
+                            <circle cx="12" cy="12" r="2.5"></circle>
+                        </svg>
                     </button>
                 </div>
             </div>
@@ -113,15 +116,25 @@
 
         const togglePwBtn = document.getElementById('togglePwBtn');
         const tokenInput = document.getElementById('tokenInput');
-        const togglePwIcon = togglePwBtn.querySelector('.material-symbols-outlined');
+        const togglePwIcon = document.getElementById('togglePwIcon');
+        const visibilityIcon = `
+            <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path>
+            <circle cx="12" cy="12" r="2.5"></circle>
+        `;
+        const visibilityOffIcon = `
+            <path d="M3 3l18 18"></path>
+            <path d="M10.6 10.6a2.5 2.5 0 0 0 2.8 2.8"></path>
+            <path d="M7.4 7.7C4.4 9.4 2.5 12 2.5 12s3.5 6 9.5 6c1.5 0 2.9-.4 4.1-1"></path>
+            <path d="M13.7 6.2C18.7 7 21.5 12 21.5 12s-.8 1.4-2.2 2.8"></path>
+        `;
 
         togglePwBtn.addEventListener('click', () => {
             if (tokenInput.type === 'password') {
                 tokenInput.type = 'text';
-                togglePwIcon.textContent = 'visibility_lock';
+                togglePwIcon.innerHTML = visibilityOffIcon;
             } else {
                 tokenInput.type = 'password';
-                togglePwIcon.textContent = 'visibility';
+                togglePwIcon.innerHTML = visibilityIcon;
             }
         });
 
