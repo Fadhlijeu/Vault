@@ -78,7 +78,7 @@ graph TD
 3. Klik tombol **New** -> **More** -> **Google Apps Script** (atau kunjungi [script.google.com](https://script.google.com)).
 4. Salin seluruh isi dari berkas [`code.gs`](./code.gs) ke editor Apps Script Anda.
 5. Konfigurasikan hak akses dan konfigurasi awal (opsional) di script properties:
-   - `HANDSHAKE_KEY` (passcode login yang kuat dan unik). Tidak ada nilai bawaan: atur sendiri di **Project Settings > Script properties** sebelum deploy.
+   - `HANDSHAKE_KEY` (Token login Anda, default: `default-cyber-secret-1337`).
 6. Klik **Deploy** -> **New Deployment**.
    - Pilih type: **Web App**.
    - Execute as: **Me** (akun Google Anda).

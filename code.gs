@@ -31,10 +31,24 @@ function validateToken(token) {
   const correctKey = scriptProperties.getProperty("HANDSHAKE_KEY");
   if (!correctKey) {
     scriptProperties.setProperty("HANDSHAKE_KEY", "default-cyber-secret-1337");
-    scriptProperties.setProperty("SYSTEM_CONFIG", JSON.stringify({
-      vaultName: "Cyber Vault Secure Storage", maxFileSizeMB: 15,
-      allowedExtensions: ["png", "jpg", "jpeg", "gif", "webp", "pdf", "txt", "zip", "mp4"],
-    }));
+    scriptProperties.setProperty(
+      "SYSTEM_CONFIG",
+      JSON.stringify({
+        vaultName: "Cyber Vault Secure Storage",
+        maxFileSizeMB: 15,
+        allowedExtensions: [
+          "png",
+          "jpg",
+          "jpeg",
+          "gif",
+          "webp",
+          "pdf",
+          "txt",
+          "zip",
+          "mp4",
+        ],
+      }),
+    );
     return token === "default-cyber-secret-1337";
   }
   return token === correctKey;
@@ -44,7 +58,8 @@ function getConfigs(requestKey) {
   const scriptProperties = PropertiesService.getScriptProperties();
   const correctKey = scriptProperties.getProperty("HANDSHAKE_KEY");
   const config = scriptProperties.getProperty("SYSTEM_CONFIG");
-  if (requestKey !== correctKey) return { status: "error", message: "Handshake Key tidak valid!" };
+  if (requestKey !== correctKey)
+    return { status: "error", message: "Handshake Key tidak valid!" };
   return { status: "success", config: config ? JSON.parse(config) : {} };
 }
 
@@ -54,7 +69,9 @@ function doGet(e) {
   const token = e.parameter.token;
 
   if (action === "handshake") {
-    return ContentService.createTextOutput(JSON.stringify(getConfigs(e.parameter.key))).setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(
+      JSON.stringify(getConfigs(e.parameter.key)),
+    ).setMimeType(ContentService.MimeType.JSON);
   }
 
   // B. Validasi Token untuk Aksi Lainnya
@@ -964,12 +981,23 @@ function searchVault(query) {
     while (folders.hasNext()) {
       const child = folders.next();
       const entry = {
-        id: child.getId(), name: child.getName(), isFolder: true,
-        size: 0, fileCount: 0, folderCount: 0,
-        dateCreated: Utilities.formatDate(child.getDateCreated(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm"),
+        id: child.getId(),
+        name: child.getName(),
+        isFolder: true,
+        size: 0,
+        fileCount: 0,
+        folderCount: 0,
+        dateCreated: Utilities.formatDate(
+          child.getDateCreated(),
+          Session.getScriptTimeZone(),
+          "dd/MM/yyyy HH:mm",
+        ),
       };
       const files = child.getFiles();
-      while (files.hasNext()) { entry.fileCount++; entry.size += files.next().getSize(); }
+      while (files.hasNext()) {
+        entry.fileCount++;
+        entry.size += files.next().getSize();
+      }
       if (entry.name.toLowerCase().indexOf(needle) !== -1) results.push(entry);
       visit(child);
     }
@@ -978,17 +1006,31 @@ function searchVault(query) {
       const file = files.next();
       if (file.getName().toLowerCase().indexOf(needle) !== -1) {
         results.push({
-          id: file.getId(), name: file.getName(), isFolder: false, size: file.getSize(),
-          dateCreated: Utilities.formatDate(file.getDateCreated(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm"),
+          id: file.getId(),
+          name: file.getName(),
+          isFolder: false,
+          size: file.getSize(),
+          dateCreated: Utilities.formatDate(
+            file.getDateCreated(),
+            Session.getScriptTimeZone(),
+            "dd/MM/yyyy HH:mm",
+          ),
         });
       }
     }
   }
   try {
     visit(getOrCreateFolder());
-    return ContentService.createTextOutput(JSON.stringify({ status: "success", data: results })).setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(
+      JSON.stringify({ status: "success", data: results }),
+    ).setMimeType(ContentService.MimeType.JSON);
   } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: "Pencarian gagal: " + error.toString() })).setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(
+      JSON.stringify({
+        status: "error",
+        message: "Pencarian gagal: " + error.toString(),
+      }),
+    ).setMimeType(ContentService.MimeType.JSON);
   }
 }
 
