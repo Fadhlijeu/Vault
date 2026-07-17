@@ -15,6 +15,11 @@
             transition: background-color var(--transition), color var(--transition);
         }
         .hidden { display: none !important; }
+        .skeleton { position:relative; overflow:hidden; background:var(--bg-elevated); border-radius:6px; }
+        .skeleton::after { content:""; position:absolute; inset:0; transform:translateX(-100%); background:linear-gradient(90deg,transparent,var(--border),transparent); animation:skeleton-shimmer 1.2s infinite; }
+        @keyframes skeleton-shimmer { to { transform:translateX(100%); } }
+        #propertiesSidebar.loading { position:relative; pointer-events:none; }
+        #propertiesSidebar.loading::after { content:""; position:absolute; inset:0; border-radius:12px; background:linear-gradient(90deg,transparent,var(--bg-elevated),transparent); animation:skeleton-shimmer 1.2s infinite; opacity:.8; }
         
         /* ── Terminal CLI ── */
         #cliOutput { scrollbar-width:thin; scrollbar-color:var(--text-muted) transparent; }
@@ -64,7 +69,8 @@
             /* Keep the application frame fixed; panels, not the page, scroll. */
             .workspace-grid { height: calc(100vh - 116px); min-height: 500px; overflow: hidden; }
             #leftSidebar, #middleContent, #rightSidebar { min-height: 0; overflow: hidden; }
-            #leftSidebar > div:first-child { min-height: 0; }
+            #leftSidebar { height: 100%; }
+            #leftSidebar > div:first-child { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
             #middleContent > div:last-child { min-height: 0; }
             #fileViewer { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
         }
@@ -1454,8 +1460,16 @@
         // ==================== END FOLDER EXPLORER TREE ENGINE ====================
 
         // Render Controller & API Loader
+        function showExplorerSkeleton() {
+            const tree = document.getElementById('fileExplorerTree');
+            if (!tree) return;
+            tree.innerHTML = Array.from({length: 8}, (_, i) => `<div class="skeleton" style="height:18px;width:${55 + (i % 4) * 10}%;margin:${i ? '5px' : '0'} 0 0 ${i % 3 * 12}px;"></div>`).join('');
+        }
+
         async function loadAndRender(folderId = null, recursive = false) {
             closeSidebar();
+            showExplorerSkeleton();
+            if (propertiesSidebar) propertiesSidebar.classList.add('loading');
             // Sembunyikan bulk action bar ketika berpindah direktori
             if (bulkActionBar) resetBulkActionBar();
             if (selectAllCheckbox) selectAllCheckbox.checked = false;
@@ -1503,6 +1517,7 @@
             } else {
                 fileViewer.innerHTML = `<div class="text-center py-20 text-xs text-red-400 font-mono-cyber">❌ ERROR: ${result.message}</div>`;
             }
+            if (propertiesSidebar) propertiesSidebar.classList.remove('loading');
         }
 
         // Update Breadcrumb Trail
@@ -1573,13 +1588,6 @@
 
         function openDownloadLink(id, isFolder) {
             window.open(getDownloadUrl(id, isFolder), '_blank', 'noopener');
-        }
-
-        function openBatchDownloadLink(fileIds) {
-            const token = localStorage.getItem('vault_token');
-            const apiUrl = getApiUrl();
-            const url = apiUrl + '?action=batch_download&fileIds=' + encodeURIComponent(fileIds.join(',')) + '&token=' + encodeURIComponent(token);
-            window.open(url, '_blank', 'noopener');
         }
 
         function renderFiles(items) {
@@ -1971,11 +1979,31 @@
             }
         });
 
-        // Search Engine
+        // Search Engine: query every directory, not only the current folder.
+        async function collectAllItems(folderId, results = [], visited = new Set()) {
+            const key = folderId || 'root';
+            if (visited.has(key)) return results;
+            visited.add(key);
+            const response = await fetchFiles(folderId);
+            if (response.status !== 'success') return results;
+            for (const item of response.data || []) {
+                results.push(item);
+                if (item.isFolder) await collectAllItems(item.id, results, visited);
+            }
+            return results;
+        }
+
+        let searchTimer;
         searchBar.addEventListener('input', (e) => {
-            const keyword = e.target.value.toLowerCase();
-            const filtered = localFilesState.filter(f => f.name.toLowerCase().includes(keyword));
-            renderFiles(filtered);
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(async () => {
+                const keyword = e.target.value.trim().toLowerCase();
+                if (!keyword) { renderFiles(localFilesState); return; }
+                searchBar.disabled = true;
+                const allItems = await collectAllItems(null);
+                renderFiles(allItems.filter(item => String(item.name || '').toLowerCase().includes(keyword)));
+                searchBar.disabled = false;
+            }, 180);
         });
 
 
@@ -2418,12 +2446,8 @@
                 
                 toast(`Mengunduh ${selectedItems.length} item...`, 'info');
                 
-                const files = selectedItems.filter(item => !item.isFolder);
-                const folders = selectedItems.filter(item => item.isFolder);
-
-                // Selected files share one ZIP link; folder ZIP links remain individual.
-                if (files.length) openBatchDownloadLink(files.map(item => item.id));
-                folders.forEach(item => openDownloadLink(item.id, true));
+                // Use the original, proven single-download link for every selected item.
+                selectedItems.forEach(item => openDownloadLink(item.id, item.isFolder));
             });
         }
 
@@ -2434,31 +2458,33 @@
         // Sidebar Toggle
         let leftSidebarVisible = true;
         let rightSidebarVisible = true;
-        document.getElementById('toggleLeftSidebarBtn').addEventListener('click', () => {
-            leftSidebarVisible = !leftSidebarVisible;
-            const sidebar = document.getElementById('leftSidebar');
-            const icon = document.getElementById('leftSidebarIcon');
-            sidebar.style.display = leftSidebarVisible ? '' : 'none';
+        function updateWorkspaceColumns() {
             const grid = document.querySelector('.workspace-grid');
             if (leftSidebarVisible && rightSidebarVisible) grid.style.gridTemplateColumns = '1fr 2fr 1.2fr';
             else if (leftSidebarVisible) grid.style.gridTemplateColumns = '1fr 2fr';
             else if (rightSidebarVisible) grid.style.gridTemplateColumns = '1fr 1.2fr';
             else grid.style.gridTemplateColumns = '1fr';
+        }
+        function setLeftSidebarVisible(visible) {
+            leftSidebarVisible = visible;
+            const sidebar = document.getElementById('leftSidebar');
+            const icon = document.getElementById('leftSidebarIcon');
+            sidebar.style.display = leftSidebarVisible ? '' : 'none';
+            updateWorkspaceColumns();
             // The glyph indicates the action available next: open when hidden, close when visible.
             icon.innerHTML = leftSidebarVisible
                 ? '<path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm200-80h360v-560H400v560Z"/>'
                 : '<path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm120-80v-560H200v560h120Zm80 0h360v-560H400v560Zm-80 0H200h120Z"/>';
+        }
+        document.getElementById('toggleLeftSidebarBtn').addEventListener('click', () => {
+            setLeftSidebarVisible(!leftSidebarVisible);
         });
         document.getElementById('toggleRightSidebarBtn').addEventListener('click', () => {
             rightSidebarVisible = !rightSidebarVisible;
             const sidebar = document.getElementById('rightSidebar');
             const icon = document.getElementById('rightSidebarIcon');
             sidebar.style.display = rightSidebarVisible ? '' : 'none';
-            const grid = document.querySelector('.workspace-grid');
-            if (leftSidebarVisible && rightSidebarVisible) grid.style.gridTemplateColumns = '1fr 2fr 1.2fr';
-            else if (leftSidebarVisible) grid.style.gridTemplateColumns = '1fr 2fr';
-            else if (rightSidebarVisible) grid.style.gridTemplateColumns = '1fr 1.2fr';
-            else grid.style.gridTemplateColumns = '1fr';
+            updateWorkspaceColumns();
             icon.innerHTML = rightSidebarVisible
                 ? '<path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm360-80v-560H200v560h360Z"/>'
                 : '<path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm440-80h120v-560H640v560Zm-80 0v-560H200v560h360Zm80 0h120-120Z"/>';
@@ -2466,6 +2492,9 @@
 
         // Disconnect Button
         document.getElementById('logoutBtn').addEventListener('click', () => logout());
+
+        // The explorer starts open, so initialize its icon and grid state to match.
+        setLeftSidebarVisible(true);
 
         // Initial Load (recursive to build full tree)
         loadAndRender(null, true);

@@ -19,20 +19,24 @@ function getOrCreateFolder() {
   const folderName = "Cyber Vault Data Store";
   const folders = DriveApp.getFoldersByName(folderName);
   if (folders.hasNext()) {
-    const folder = folders.next();
-    scriptProperties.setProperty("FOLDER_ID", folder.getId());
-    return folder;
+    return folders.next();
   }
-  const folder = DriveApp.createFolder(folderName);
-  scriptProperties.setProperty("FOLDER_ID", folder.getId());
-  return folder;
+  return DriveApp.createFolder(folderName);
 }
 
-// Original backend token validation.
+// Original backend token validation (including first-run setup).
 function validateToken(token) {
   if (!token) return false;
   const scriptProperties = PropertiesService.getScriptProperties();
   const correctKey = scriptProperties.getProperty("HANDSHAKE_KEY");
+  if (!correctKey) {
+    scriptProperties.setProperty("HANDSHAKE_KEY", "default-cyber-secret-1337");
+    scriptProperties.setProperty("SYSTEM_CONFIG", JSON.stringify({
+      vaultName: "Cyber Vault Secure Storage", maxFileSizeMB: 15,
+      allowedExtensions: ["png", "jpg", "jpeg", "gif", "webp", "pdf", "txt", "zip", "mp4"],
+    }));
+    return token === "default-cyber-secret-1337";
+  }
   return token === correctKey;
 }
 
@@ -42,17 +46,6 @@ function getConfigs(requestKey) {
   const config = scriptProperties.getProperty("SYSTEM_CONFIG");
   if (requestKey !== correctKey) return { status: "error", message: "Handshake Key tidak valid!" };
   return { status: "success", config: config ? JSON.parse(config) : {} };
-}
-
-// Shared polished page for link-based downloads (including batch ZIPs).
-function createDownloadPage(blob, filename, mimeType, label) {
-  const base64 = Utilities.base64Encode(blob.getBytes());
-  const safeFilename = JSON.stringify(filename);
-  const safeMimeType = JSON.stringify(mimeType);
-  const safeLabel = String(label).replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Downloading...</title><style>
-    *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(circle at top,#1e3a5f,#0b1220 58%);color:#e5eefb;font-family:system-ui,sans-serif}.card{width:min(420px,90vw);padding:32px;border:1px solid #38bdf844;border-radius:20px;background:#0f172ad9;box-shadow:0 20px 60px #0008;text-align:center}.mark{width:54px;height:54px;margin:auto auto 16px;border-radius:18px;display:grid;place-items:center;background:#38bdf822;color:#38bdf8;font-size:28px}h1{font-size:18px;margin:0 0 8px}.file{margin:18px 0 12px;padding:10px;border-radius:10px;background:#ffffff0d;color:#cbd5e1;font:12px ui-monospace,monospace;overflow-wrap:anywhere}.bar{height:5px;border-radius:99px;background:#ffffff16;overflow:hidden}.bar i{display:block;width:45%;height:100%;border-radius:inherit;background:#38bdf8;animation:load 1s ease-in-out infinite alternate}@keyframes load{to{transform:translateX(120%)}}p{margin:0;color:#94a3b8;font-size:13px}</style></head><body><main class="card"><div class="mark">↓</div><h1>${safeLabel}</h1><p>Menyiapkan unduhan Anda</p><div class="file">${filename.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div><div class="bar"><i></i></div></main><script>(function(){const b=Uint8Array.from(atob(${JSON.stringify(base64)}),c=>c.charCodeAt(0));const u=URL.createObjectURL(new Blob([b],{type:${safeMimeType}}));const a=document.createElement('a');a.href=u;a.download=${safeFilename};document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),10000);setTimeout(()=>window.close(),1800)})();</script></body></html>`;
-  return HtmlService.createHtmlOutput(html).setTitle("Downloading " + filename);
 }
 
 // 2. HTTP GET Request Handler
@@ -72,20 +65,6 @@ function doGet(e) {
         message: "Akses Ditolak: Token Tidak Valid!",
       }),
     ).setMimeType(ContentService.MimeType.JSON);
-  }
-
-  // Multiple selected files are packed into one ZIP, then served through the
-  // same download-page mechanism as an individual file.
-  if (action === "batch_download") {
-    const fileIds = (e.parameter.fileIds || "").split(",").filter(Boolean);
-    if (!fileIds.length) return ContentService.createTextOutput("Error: Tidak ada file yang dipilih.").setMimeType(ContentService.MimeType.TEXT);
-    try {
-      const blobs = fileIds.map(function(id) { return DriveApp.getFileById(id).getBlob(); });
-      const zipBlob = Utilities.zip(blobs, "vault-download.zip");
-      return createDownloadPage(zipBlob, "vault-download.zip", "application/zip", "Mengunduh beberapa berkas");
-    } catch (error) {
-      return ContentService.createTextOutput("Error: Gagal membuat ZIP. " + error.toString()).setMimeType(ContentService.MimeType.TEXT);
-    }
   }
 
   // D. Fixed Proxy Download Folder as ZIP Handler
