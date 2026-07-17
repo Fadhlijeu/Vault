@@ -70,6 +70,7 @@
             .workspace-grid { height: calc(100vh - 116px); min-height: 0; overflow: hidden; grid-template-columns:minmax(0,1fr) minmax(0,2fr) minmax(0,1.2fr) !important; }
             #leftSidebar, #middleContent, #rightSidebar { min-height: 0 !important; max-height: 100%; overflow: hidden !important; }
             #leftSidebar { height: 100% !important; display:flex !important; flex-direction:column !important; }
+            #leftSidebar.desktop-collapsed, #rightSidebar.desktop-collapsed { display:none !important; }
             #leftSidebar .explorer-scroll { flex:1 1 0 !important; min-height:0 !important; overflow-y:auto !important; overflow-x:hidden !important; overscroll-behavior:contain; scrollbar-gutter:stable; }
             #leftSidebar .explorer-scroll::-webkit-scrollbar { width: 8px; }
             #leftSidebar .explorer-scroll::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 99px; }
@@ -2456,16 +2457,17 @@
         let rightSidebarVisible = true;
         function updateWorkspaceColumns() {
             const grid = document.querySelector('.workspace-grid');
-            if (leftSidebarVisible && rightSidebarVisible) grid.style.gridTemplateColumns = '1fr 2fr 1.2fr';
-            else if (leftSidebarVisible) grid.style.gridTemplateColumns = '1fr 2fr';
-            else if (rightSidebarVisible) grid.style.gridTemplateColumns = '1fr 1.2fr';
-            else grid.style.gridTemplateColumns = '1fr';
+            const columns = leftSidebarVisible && rightSidebarVisible ? 'minmax(0,1fr) minmax(0,2fr) minmax(0,1.2fr)'
+                : leftSidebarVisible ? 'minmax(0,1fr) minmax(0,2fr)'
+                : rightSidebarVisible ? 'minmax(0,1fr) minmax(0,1.2fr)'
+                : 'minmax(0,1fr)';
+            grid.style.setProperty('grid-template-columns', columns, 'important');
         }
         function setLeftSidebarVisible(visible) {
             leftSidebarVisible = visible;
             const sidebar = document.getElementById('leftSidebar');
             const icon = document.getElementById('leftSidebarIcon');
-            sidebar.style.display = leftSidebarVisible ? '' : 'none';
+            sidebar.classList.toggle('desktop-collapsed', !leftSidebarVisible);
             updateWorkspaceColumns();
             // The glyph indicates the action available next: open when hidden, close when visible.
             icon.innerHTML = leftSidebarVisible
@@ -2479,7 +2481,7 @@
             rightSidebarVisible = !rightSidebarVisible;
             const sidebar = document.getElementById('rightSidebar');
             const icon = document.getElementById('rightSidebarIcon');
-            sidebar.style.display = rightSidebarVisible ? '' : 'none';
+            sidebar.classList.toggle('desktop-collapsed', !rightSidebarVisible);
             updateWorkspaceColumns();
             icon.innerHTML = rightSidebarVisible
                 ? '<path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm360-80v-560H200v560h360Z"/>'
