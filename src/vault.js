@@ -21,6 +21,19 @@ export async function fetchFiles(folderId = null, recursive = false) {
     }
 }
 
+// Server-side recursive search avoids one browser request per sub-folder.
+export async function searchFiles(query) {
+    const token = checkToken();
+    const apiUrl = getApiUrl();
+    try {
+        const response = await fetch(`${apiUrl}?action=search&token=${encodeURIComponent(token)}&q=${encodeURIComponent(query)}`);
+        return await response.json();
+    } catch (error) {
+        console.error('Gagal mencari berkas:', error);
+        return { status: 'error', message: 'Pencarian tidak dapat terhubung.' };
+    }
+}
+
 // 2. Unggah File Baru (Add)
 export function uploadFile(file, parentFolderId, onProgress, onComplete) {
     const token = checkToken();

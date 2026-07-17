@@ -67,6 +67,10 @@ function doGet(e) {
     ).setMimeType(ContentService.MimeType.JSON);
   }
 
+  if (action === "search") {
+    return searchVault(e.parameter.q || "");
+  }
+
   // D. Fixed Proxy Download Folder as ZIP Handler
   if (action === "download_folder") {
     const folderId = e.parameter.folderId;
@@ -948,6 +952,43 @@ function collectBlobs(folder, blobs, path) {
   while (subfolders.hasNext()) {
     const subfolder = subfolders.next();
     collectBlobs(subfolder, blobs, path + subfolder.getName() + "/");
+  }
+}
+
+// Searches the complete vault tree in one Apps Script request.
+function searchVault(query) {
+  const needle = String(query || "").toLowerCase();
+  const results = [];
+  function visit(folder) {
+    const folders = folder.getFolders();
+    while (folders.hasNext()) {
+      const child = folders.next();
+      const entry = {
+        id: child.getId(), name: child.getName(), isFolder: true,
+        size: 0, fileCount: 0, folderCount: 0,
+        dateCreated: Utilities.formatDate(child.getDateCreated(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm"),
+      };
+      const files = child.getFiles();
+      while (files.hasNext()) { entry.fileCount++; entry.size += files.next().getSize(); }
+      if (entry.name.toLowerCase().indexOf(needle) !== -1) results.push(entry);
+      visit(child);
+    }
+    const files = folder.getFiles();
+    while (files.hasNext()) {
+      const file = files.next();
+      if (file.getName().toLowerCase().indexOf(needle) !== -1) {
+        results.push({
+          id: file.getId(), name: file.getName(), isFolder: false, size: file.getSize(),
+          dateCreated: Utilities.formatDate(file.getDateCreated(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm"),
+        });
+      }
+    }
+  }
+  try {
+    visit(getOrCreateFolder());
+    return ContentService.createTextOutput(JSON.stringify({ status: "success", data: results })).setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: "Pencarian gagal: " + error.toString() })).setMimeType(ContentService.MimeType.JSON);
   }
 }
 
