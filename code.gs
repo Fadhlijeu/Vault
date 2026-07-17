@@ -1,4 +1,4 @@
-// code.gs - Google Apps Script Backend for Cyber Vault
+﻿// code.gs - Google Apps Script Backend for Cyber Vault
 
 // Helper: Membuka atau membuat folder Cyber Vault di Google Drive
 function getOrCreateFolder() {
@@ -179,13 +179,13 @@ function doGet(e) {
     <p style="color: #f1f5f9; font-weight: 600; margin-top: 15px; word-break: break-all;">${zipName}</p>
     <div class="spinner"></div>
   </div>
-  
+
   <script>
     (function() {
       const b64 = "${base64Data}";
       const filename = "${zipName}";
       const mime = "${contentType}";
-      
+
       const byteCharacters = atob(b64);
       const byteNumbers = new Array(byteCharacters.length);
       for (let i = 0; i < byteCharacters.length; i++) {
@@ -193,14 +193,14 @@ function doGet(e) {
       }
       const byteArray = new Uint8Array(byteNumbers);
       const blob = new Blob([byteArray], {type: mime});
-      
+
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
       link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       setTimeout(() => { window.close(); }, 2000);
     })();
   </script>
@@ -336,13 +336,13 @@ function doGet(e) {
     <p style="color: #f1f5f9; font-weight: 600; margin-top: 15px; word-break: break-all;">${filename}</p>
     <div class="spinner"></div>
   </div>
-  
+
   <script>
     (function() {
       const b64 = "${base64Data}";
       const filename = "${filename}";
       const mime = "${contentType}";
-      
+
       const byteCharacters = atob(b64);
       const byteNumbers = new Array(byteCharacters.length);
       for (let i = 0; i < byteCharacters.length; i++) {
@@ -350,14 +350,14 @@ function doGet(e) {
       }
       const byteArray = new Uint8Array(byteNumbers);
       const blob = new Blob([byteArray], {type: mime});
-      
+
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
       link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       // Tutup tab setelah download dimulai
       setTimeout(() => { window.close(); }, 2000);
     })();
