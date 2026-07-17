@@ -15,11 +15,18 @@
             transition: background-color var(--transition), color var(--transition);
         }
         .hidden { display: none !important; }
+        body:not(.selection-mode) .item-selector, #selectionControls { display:none !important; }
+        #leftSidebar { position:relative; }
+        #leftResizeHandle { position:absolute; top:0; right:-5px; bottom:0; width:10px; z-index:15; cursor:col-resize; touch-action:none; }
+        #leftResizeHandle::after { content:""; position:absolute; top:35%; bottom:35%; left:4px; width:2px; border-radius:2px; background:transparent; transition:background .2s; }
+        #leftResizeHandle:hover::after, body.resizing-sidebar #leftResizeHandle::after { background:var(--text-muted); }
         .skeleton { position:relative; overflow:hidden; background:var(--bg-elevated); border-radius:6px; }
         .skeleton::after { content:""; position:absolute; inset:0; transform:translateX(-100%); background:linear-gradient(90deg,transparent,var(--border),transparent); animation:skeleton-shimmer 1.2s infinite; }
         @keyframes skeleton-shimmer { to { transform:translateX(100%); } }
         #propertiesSidebar.loading { position:relative; pointer-events:none; }
         #propertiesSidebar.loading::after { content:""; position:absolute; inset:0; border-radius:12px; background:linear-gradient(90deg,transparent,var(--bg-elevated),transparent); animation:skeleton-shimmer 1.2s infinite; opacity:.8; }
+        .download-toast { display:flex;align-items:center;justify-content:space-between;width:min(340px,calc(100vw - 32px));min-height:56px;padding:10px;border-radius:10px;background:#232531;box-shadow:0 14px 38px rgba(0,0,0,.35);color:#fff;font:12px 'Outfit',sans-serif;animation:toastIn .35s ease forwards;pointer-events:auto; }
+        .download-toast-main { display:flex;align-items:center;gap:9px;min-width:0; }.download-toast-icon{width:32px;height:32px;padding:6px;border-radius:8px;background:rgba(255,255,255,.06);flex:none}.download-toast-icon svg{width:20px;height:20px}.download-toast.success .download-toast-icon{color:#2b9875}.download-toast.error .download-toast-icon{color:#d65563}.download-toast.info .download-toast-icon{color:#60a5fa}.download-toast-title{font-weight:700;color:#fff;margin:0 0 2px}.download-toast-text{margin:0;color:#9ca3af;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}.download-toast-close{background:none;border:0;color:#6b7280;cursor:pointer;border-radius:6px;padding:4px;display:grid;place-items:center}.download-toast-close:hover{background:rgba(255,255,255,.1);color:#fff}
         
         /* ── Terminal CLI ── */
         #cliOutput { scrollbar-width:thin; scrollbar-color:var(--text-muted) transparent; }
@@ -67,7 +74,7 @@
         @media (min-width: 1024px) {
             .lg-hidden { display: none !important; }
             /* Keep the application frame fixed; panels, not the page, scroll. */
-            .workspace-grid { height: calc(100vh - 116px); min-height: 0; overflow: hidden; grid-template-columns:minmax(0,1fr) minmax(0,2fr) minmax(0,1.2fr) !important; }
+            .workspace-grid { height: calc(100vh - 116px); min-height: 0; overflow: hidden; grid-template-columns:minmax(220px,var(--left-sidebar-width,320px)) minmax(0,2fr) minmax(240px,1.2fr) !important; }
             #leftSidebar, #middleContent, #rightSidebar { min-height: 0 !important; max-height: 100%; overflow: hidden !important; }
             #leftSidebar { height: 100% !important; display:flex !important; flex-direction:column !important; }
             #leftSidebar.desktop-collapsed, #rightSidebar.desktop-collapsed { display:none !important; }
@@ -504,6 +511,7 @@
                             </div>
                             <input type="file" id="fileInput" style="display:none;" multiple />
                         </div>
+                        <div id="leftResizeHandle" aria-label="Ubah lebar file explorer" title="Tarik untuk mengubah lebar sidebar"></div>
                     </div>
 
                     <!-- Middle Content -->
@@ -520,6 +528,7 @@
                             </div>
                             <div style="display:flex;align-items:center;gap:0.5rem;">
                                 <input type="text" id="searchBar" placeholder="Cari file..." class="input-neu" style="padding:0.35rem 0.75rem;font-size:11px;width:140px;">
+                                <button id="toggleSelectionMode" class="btn-neu" style="padding:0.35rem 0.6rem;font-size:9px;font-weight:700;text-transform:uppercase;">Pilih</button>
                                 <button id="setViewList" class="btn-neu" style="padding:0.35rem;" title="List View">
                                     <span class="material-symbols-outlined" style="font-size:16px;">list_alt</span>
                                 </button>
@@ -540,7 +549,7 @@
                         </div>
 
                         <div style="flex:1;display:flex;flex-direction:column;gap:0.5rem;min-height:0;">
-                            <div style="display:flex;align-items:center;gap:0.5rem;border-bottom:1px solid var(--border);padding-bottom:0.25rem;">
+                            <div id="selectionControls" style="display:flex;align-items:center;gap:0.5rem;border-bottom:1px solid var(--border);padding-bottom:0.25rem;">
                                 <label class="checkbox-svg" id="selectAllCheckboxWrapper">
                                     <input type="checkbox" id="selectAllCheckbox">
                                     <svg viewBox="0 0 64 64">
@@ -1075,6 +1084,7 @@
         // State Dashboard
         let localFilesState = [];
         let currentFolderItems = [];
+        let selectionMode = false;
         let currentViewMode = 'list';
         let currentFolderId = null;
         let parentFolderId = null;
@@ -1105,6 +1115,7 @@
         const bulkMoveBtn = document.getElementById('bulkMoveBtn');
         const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
         const bulkDownloadBtn = document.getElementById('bulkDownloadBtn');
+        const toggleSelectionModeBtn = document.getElementById('toggleSelectionMode');
         const breadcrumbs = document.getElementById('breadcrumbs');
 
         // Sidebar Selectors
@@ -1640,7 +1651,7 @@
 
                         html += `
                             <div data-id="${item.id}" class="file-item${isActive}">
-                                <label class="checkbox-svg" style="flex-shrink:0;" onclick="event.stopPropagation();">
+                                <label class="checkbox-svg item-selector" style="flex-shrink:0;" onclick="event.stopPropagation();">
                                     <input type="checkbox" data-index="${index}" class="item-select-checkbox" ${isSelected}>
                                     <svg viewBox="0 0 64 64" style="height:1.2em;width:1.2em;">
                                         <path d="M 0 16 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 16" pathLength="575.0541385938" class="path"></path>
@@ -1667,7 +1678,7 @@
                         const dateStr = item.dateCreated || '';
                         html += `
                             <div data-id="${item.id}" class="file-item${isActive}">
-                                <label class="checkbox-svg" style="flex-shrink:0;" onclick="event.stopPropagation();">
+                                <label class="checkbox-svg item-selector" style="flex-shrink:0;" onclick="event.stopPropagation();">
                                     <input type="checkbox" data-index="${index}" class="item-select-checkbox" ${isSelected}>
                                     <svg viewBox="0 0 64 64" style="height:1.2em;width:1.2em;">
                                         <path d="M 0 16 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 16" pathLength="575.0541385938" class="path"></path>
@@ -1701,7 +1712,7 @@
 
                         html += `
                             <div data-id="${item.id}" class="file-grid-item${isActive}">
-                                <label class="checkbox-svg" style="position:absolute;top:0.5rem;left:0.5rem;" onclick="event.stopPropagation();">
+                                <label class="checkbox-svg item-selector" style="position:absolute;top:0.5rem;left:0.5rem;" onclick="event.stopPropagation();">
                                     <input type="checkbox" data-index="${index}" class="item-select-checkbox" ${isSelected}>
                                     <svg viewBox="0 0 64 64" style="height:1em;width:1em;">
                                         <path d="M 0 16 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 16" pathLength="575.0541385938" class="path"></path>
@@ -1728,7 +1739,7 @@
                         const dateStr = item.dateCreated || '';
                         html += `
                             <div data-id="${item.id}" class="file-grid-item${isActive}">
-                                <label class="checkbox-svg" style="position:absolute;top:0.5rem;left:0.5rem;" onclick="event.stopPropagation();">
+                                <label class="checkbox-svg item-selector" style="position:absolute;top:0.5rem;left:0.5rem;" onclick="event.stopPropagation();">
                                     <input type="checkbox" data-index="${index}" class="item-select-checkbox" ${isSelected}>
                                     <svg viewBox="0 0 64 64" style="height:1em;width:1em;">
                                         <path d="M 0 16 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 16" pathLength="575.0541385938" class="path"></path>
@@ -1824,6 +1835,12 @@
                     const id = wrapper.getAttribute('data-id');
                     const targetItem = localFilesState.find(f => f.id === id);
                     if (targetItem) {
+                        if (selectionMode) {
+                            targetItem.selected = !targetItem.selected;
+                            renderFiles(localFilesState);
+                            updateBulkActionBar();
+                            return;
+                        }
                         if (targetItem.isFolder) {
                             loadAndRender(targetItem.id);
                         } else {
@@ -1897,6 +1914,18 @@
             bulkActionBar.style.display = 'none';
             selectAllCheckbox.checked = false;
         }
+
+        function setSelectionMode(enabled) {
+            selectionMode = enabled;
+            document.body.classList.toggle('selection-mode', enabled);
+            toggleSelectionModeBtn.innerText = enabled ? 'Batal Pilih' : 'Pilih';
+            if (!enabled) {
+                localFilesState.forEach(item => { item.selected = false; });
+                resetBulkActionBar();
+            }
+            renderFiles(localFilesState);
+        }
+        toggleSelectionModeBtn.addEventListener('click', () => setSelectionMode(!selectionMode));
 
         // Select All Handler
         selectAllCheckbox.addEventListener('change', () => {
@@ -2479,8 +2508,8 @@
         let rightSidebarVisible = true;
         function updateWorkspaceColumns() {
             const grid = document.querySelector('.workspace-grid');
-            const columns = leftSidebarVisible && rightSidebarVisible ? 'minmax(0,1fr) minmax(0,2fr) minmax(0,1.2fr)'
-                : leftSidebarVisible ? 'minmax(0,1fr) minmax(0,2fr)'
+            const columns = leftSidebarVisible && rightSidebarVisible ? 'minmax(220px,var(--left-sidebar-width,320px)) minmax(0,2fr) minmax(240px,1.2fr)'
+                : leftSidebarVisible ? 'minmax(220px,var(--left-sidebar-width,320px)) minmax(0,2fr)'
                 : rightSidebarVisible ? 'minmax(0,1fr) minmax(0,1.2fr)'
                 : 'minmax(0,1fr)';
             grid.style.setProperty('grid-template-columns', columns, 'important');
@@ -2512,6 +2541,29 @@
 
         // Disconnect Button
         document.getElementById('logoutBtn').addEventListener('click', () => logout());
+
+        const leftResizeHandle = document.getElementById('leftResizeHandle');
+        if (leftResizeHandle) {
+            leftResizeHandle.addEventListener('pointerdown', (event) => {
+                if (window.innerWidth < 1024) return;
+                event.preventDefault();
+                leftResizeHandle.setPointerCapture(event.pointerId);
+                document.body.classList.add('resizing-sidebar');
+                const onMove = (moveEvent) => {
+                    const gridLeft = document.querySelector('.workspace-grid').getBoundingClientRect().left;
+                    const width = Math.max(220, Math.min(520, moveEvent.clientX - gridLeft));
+                    document.querySelector('.workspace-grid').style.setProperty('--left-sidebar-width', `${width}px`);
+                    updateWorkspaceColumns();
+                };
+                const onEnd = () => {
+                    document.body.classList.remove('resizing-sidebar');
+                    window.removeEventListener('pointermove', onMove);
+                    window.removeEventListener('pointerup', onEnd);
+                };
+                window.addEventListener('pointermove', onMove);
+                window.addEventListener('pointerup', onEnd, { once: true });
+            });
+        }
 
         // The explorer starts open, so initialize its icon and grid state to match.
         setLeftSidebarVisible(true);
