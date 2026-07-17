@@ -20,14 +20,17 @@ export async function login(token) {
     }
     
     try {
-        // Lakukan Handshake dengan Key rahasia ke Google Apps Script
-        const handshakeUrl = `${gatewayUrl}?action=handshake&key=${encodeURIComponent(token)}`;
-        const response = await fetch(handshakeUrl);
+        // Keep the passcode out of URLs/history and exchange it for a short-lived session token.
+        const response = await fetch(gatewayUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'handshake', token })
+        });
         const data = await response.json();
         
         if (data.status === "success") {
-            // Simpan token keamanan dan konfigurasi sistem ke localStorage
-            localStorage.setItem('vault_token', token);
+            // Never retain the passcode in browser storage.
+            localStorage.setItem('vault_token', data.sessionToken);
             localStorage.setItem('vault_config', JSON.stringify(data.config));
             return { status: "success" };
         } else {

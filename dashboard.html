@@ -61,6 +61,12 @@
         }
         @media (min-width: 1024px) {
             .lg-hidden { display: none !important; }
+            /* Keep the application frame fixed; panels, not the page, scroll. */
+            .workspace-grid { height: calc(100vh - 116px); min-height: 500px; overflow: hidden; }
+            #leftSidebar, #middleContent, #rightSidebar { min-height: 0; overflow: hidden; }
+            #leftSidebar > div:first-child { min-height: 0; }
+            #middleContent > div:last-child { min-height: 0; }
+            #fileViewer { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
         }
 
         /* ── Mobile Responsive Overlay Layouts ── */
@@ -77,6 +83,7 @@
                 transform: translateX(-100%);
                 transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                 display: flex !important;
+                overflow: hidden;
             }
             #leftSidebar.active {
                 transform: translateX(0);
@@ -167,7 +174,11 @@
             #middleContent {
                 padding: 0.75rem !important;
                 min-width: 0;
-                overflow: hidden;
+                overflow: visible;
+            }
+            /* Desktop sidebar toggles duplicate the mobile menu and must not appear here. */
+            #toggleLeftSidebarBtn, #toggleRightSidebarBtn, .desktop-header > div:last-child > div {
+                display: none !important;
             }
             #fileViewer > div {
                 min-width: 0;
@@ -487,7 +498,7 @@
                     </div>
 
                     <!-- Middle Content -->
-                    <div id="middleContent" style="padding:1rem;display:flex;flex-direction:column;gap:0.75rem;background:var(--bg-body);">
+                    <div id="middleContent" style="padding:1rem;display:flex;flex-direction:column;gap:0.75rem;background:var(--bg-body);min-height:0;">
                         <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:0.75rem;border-bottom:1px solid var(--border);padding-bottom:0.5rem;">
                             <div style="display:flex;align-items:center;gap:0.5rem;font-size:11px;font-family:'Fira Code',monospace;">
                                 <button id="mobileSidebarToggle" class="btn-neu lg-hidden" style="padding:0.3rem 0.5rem;font-size:9px;font-weight:700;text-transform:uppercase;">
@@ -519,7 +530,7 @@
                             </div>
                         </div>
 
-                        <div style="flex:1;display:flex;flex-direction:column;gap:0.5rem;">
+                        <div style="flex:1;display:flex;flex-direction:column;gap:0.5rem;min-height:0;">
                             <div style="display:flex;align-items:center;gap:0.5rem;border-bottom:1px solid var(--border);padding-bottom:0.25rem;">
                                 <label class="checkbox-svg" id="selectAllCheckboxWrapper">
                                     <input type="checkbox" id="selectAllCheckbox">
@@ -2405,32 +2416,26 @@
                 
                 const token = localStorage.getItem('vault_token');
                 const apiUrl = getApiUrl();
-                const iframes = [];
-                
-                for (let i = 0; i < selectedItems.length; i++) {
-                    const item = selectedItems[i];
-                    let downloadUrl;
-                    
-                    if (item.isFolder) {
-                        downloadUrl = apiUrl + "?action=download_folder&folderId=" + item.id + "&token=" + encodeURIComponent(token);
-                    } else {
-                        downloadUrl = apiUrl + "?action=download&fileId=" + item.id + "&token=" + encodeURIComponent(token);
-                    }
-                    
+                const fileIds = selectedItems.filter(item => !item.isFolder).map(item => item.id);
+                const folders = selectedItems.filter(item => item.isFolder);
+
+                // Files are bundled once; selected folders retain their own recursive ZIP download.
+                if (fileIds.length) {
                     const iframe = document.createElement('iframe');
-                    iframe.style.display = 'none';
-                    iframe.src = downloadUrl;
+                    iframe.hidden = true;
+                    iframe.src = apiUrl + '?action=batch_download&fileIds=' + encodeURIComponent(fileIds.join(',')) + '&token=' + encodeURIComponent(token);
                     document.body.appendChild(iframe);
-                    iframes.push(iframe);
-                    
-                    if (i < selectedItems.length - 1) {
-                        await new Promise(r => setTimeout(r, 1000));
-                    }
+                    setTimeout(() => iframe.remove(), 60000);
                 }
-                
-                setTimeout(() => {
-                    iframes.forEach(f => f.remove());
-                }, 60000);
+                folders.forEach((item, index) => {
+                    setTimeout(() => {
+                        const iframe = document.createElement('iframe');
+                        iframe.hidden = true;
+                        iframe.src = apiUrl + '?action=download_folder&folderId=' + encodeURIComponent(item.id) + '&token=' + encodeURIComponent(token);
+                        document.body.appendChild(iframe);
+                        setTimeout(() => iframe.remove(), 60000);
+                    }, index * 800);
+                });
             });
         }
 
@@ -2451,9 +2456,10 @@
             else if (leftSidebarVisible) grid.style.gridTemplateColumns = '1fr 2fr';
             else if (rightSidebarVisible) grid.style.gridTemplateColumns = '1fr 1.2fr';
             else grid.style.gridTemplateColumns = '1fr';
+            // The glyph indicates the action available next: open when hidden, close when visible.
             icon.innerHTML = leftSidebarVisible
-                ? '<path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm120-80v-560H200v560h120Zm80 0h360v-560H400v560Zm-80 0H200h120Z"/>'
-                : '<path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm200-80h360v-560H400v560Z"/>';
+                ? '<path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm200-80h360v-560H400v560Z"/>'
+                : '<path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm120-80v-560H200v560h120Zm80 0h360v-560H400v560Zm-80 0H200h120Z"/>';
         });
         document.getElementById('toggleRightSidebarBtn').addEventListener('click', () => {
             rightSidebarVisible = !rightSidebarVisible;
