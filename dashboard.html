@@ -70,7 +70,9 @@
             .workspace-grid { height: calc(100vh - 116px); min-height: 500px; overflow: hidden; }
             #leftSidebar, #middleContent, #rightSidebar { min-height: 0; overflow: hidden; }
             #leftSidebar { height: 100%; }
-            #leftSidebar > div:first-child { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+            #leftSidebar > div:first-child { flex: 1 1 auto; min-height: 0; overflow-y: scroll !important; overscroll-behavior: contain; scrollbar-gutter: stable; }
+            #leftSidebar > div:first-child::-webkit-scrollbar { width: 8px; }
+            #leftSidebar > div:first-child::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 99px; }
             #middleContent > div:last-child { min-height: 0; }
             #fileViewer { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
         }
@@ -1994,16 +1996,19 @@
         }
 
         let searchTimer;
+        let searchRequestId = 0;
         searchBar.addEventListener('input', (e) => {
+            const requestId = ++searchRequestId;
             clearTimeout(searchTimer);
+            const keyword = e.target.value.trim().toLowerCase();
+            // Never lock the input: show the current directory immediately.
+            if (!keyword) { renderFiles(localFilesState); return; }
+            renderFiles(localFilesState.filter(item => String(item.name || '').toLowerCase().includes(keyword)));
             searchTimer = setTimeout(async () => {
-                const keyword = e.target.value.trim().toLowerCase();
-                if (!keyword) { renderFiles(localFilesState); return; }
-                searchBar.disabled = true;
                 const allItems = await collectAllItems(null);
+                if (requestId !== searchRequestId || searchBar.value.trim().toLowerCase() !== keyword) return;
                 renderFiles(allItems.filter(item => String(item.name || '').toLowerCase().includes(keyword)));
-                searchBar.disabled = false;
-            }, 180);
+            }, 450);
         });
 
 
