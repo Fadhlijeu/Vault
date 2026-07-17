@@ -570,6 +570,13 @@
 
                     <!-- Right Sidebar (Properties) -->
                     <div id="rightSidebar" style="padding:1rem 1rem 1.5rem 1rem;border-left:1px solid var(--border);background:var(--bg-card);overflow-y:auto;">
+                        <div id="detailSkeleton" class="hidden" style="display:flex;flex-direction:column;gap:0.75rem;padding-top:0.5rem;">
+                            <div class="skeleton" style="height:42px;width:42px;border-radius:10px;"></div>
+                            <div class="skeleton" style="height:14px;width:75%;"></div>
+                            <div class="skeleton" style="height:10px;width:100%;"></div>
+                            <div class="skeleton" style="height:10px;width:84%;"></div>
+                            <div class="skeleton" style="height:38px;width:100%;margin-top:0.5rem;"></div>
+                        </div>
                         <div id="propertiesSidebar" style="display:none;flex-direction:column;gap:0.75rem;font-size:11px;font-family:'Fira Code',monospace;">
                             <div style="display:flex;flex-direction:column;gap:0.75rem;">
                                 <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:0.4rem;">
@@ -691,7 +698,7 @@
     </div>
 
     <!-- Floating Terminal Panel -->
-    <div id="terminalWindow" class="card" style="position:fixed;bottom:80px;right:24px;width:min(600px,95vw);padding:0;overflow:hidden;display:flex;flex-direction:column;z-index:900;transition:all .3s;max-height:60vh;">
+    <div id="terminalWindow" class="card" style="position:fixed;bottom:48px;right:24px;width:min(780px,calc(100vw - 48px));padding:0;overflow:hidden;display:flex;flex-direction:column;z-index:900;transition:all .3s;max-height:70vh;">
         <div style="padding:0.5rem 1rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);">
             <span style="font-size:9px;font-weight:700;color:var(--text-secondary);font-family:'Fira Code',monospace;">⚡ Web-based Vault CLI</span>
             <div style="display:flex;align-items:center;gap:0.5rem;">
@@ -763,14 +770,11 @@
         const dialogCancel   = document.getElementById('dialogCancel');
 
         function toast(message, type = 'info', duration = 4000) {
-            const icons = { success:'✅', error:'❌', info:'ℹ️', warn:'⚠️' };
-            const labels = { success:'Berhasil', error:'Error', info:'Info', warn:'Peringatan' };
+            const labels = { success:'Unduhan berhasil', error:'Unduhan gagal', info:'Memproses unduhan', warn:'Perhatian' };
             const el = document.createElement('div');
-            el.className = `toast ${type}`;
+            el.className = `download-toast ${type}`;
             el.innerHTML = `
-                <span class="toast-icon">${icons[type]}</span>
-                <span class="toast-msg"><strong>${labels[type]}</strong>${message}</span>
-                <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>`;
+                <div class="download-toast-main"><span class="download-toast-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="${type === 'success' ? 'm4.5 12.75 6 6 9-13.5' : type === 'error' ? 'M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z' : 'M12 6.75v.008h.008V6.75H12Zm0 4.5v6m0 0h.008v.008H12V17.25Z'}"/></svg></span><div><p class="download-toast-title">${labels[type] || labels.info}</p><p class="download-toast-text">${message}</p></div></div><button class="download-toast-close" onclick="this.parentElement.remove()" aria-label="Tutup">&times;</button>`;
             toastContainer.appendChild(el);
             setTimeout(() => {
                 el.style.animation = 'toastOut .35s ease forwards';
@@ -1120,6 +1124,7 @@
 
         // Sidebar Selectors
         const propertiesSidebar = document.getElementById('propertiesSidebar');
+        const detailSkeleton = document.getElementById('detailSkeleton');
         const closeSidebarBtn = document.getElementById('closeSidebarBtn');
         const sidebarName = document.getElementById('sidebarName');
         const sidebarType = document.getElementById('sidebarType');
@@ -1485,6 +1490,7 @@
             closeSidebar();
             showExplorerSkeleton();
             if (propertiesSidebar) propertiesSidebar.classList.add('loading');
+            if (detailSkeleton && propertiesSidebar && propertiesSidebar.style.display === 'flex') detailSkeleton.classList.remove('hidden');
             // Sembunyikan bulk action bar ketika berpindah direktori
             if (bulkActionBar) resetBulkActionBar();
             if (selectAllCheckbox) selectAllCheckbox.checked = false;
@@ -1534,6 +1540,7 @@
                 fileViewer.innerHTML = `<div class="text-center py-20 text-xs text-red-400 font-mono-cyber">❌ ERROR: ${result.message}</div>`;
             }
             if (propertiesSidebar) propertiesSidebar.classList.remove('loading');
+            if (detailSkeleton) detailSkeleton.classList.add('hidden');
         }
 
         // Update Breadcrumb Trail
@@ -1608,6 +1615,13 @@
                 : [selectedItem, ...localFilesState, ...currentFolderItems].find(entry => entry && entry.id === itemOrId);
             const url = (item && item.url ? item.url : getDownloadUrl(itemOrId, isFolder)) + '&format=base64';
             try {
+                const downloadName = (item && item.name) || 'berkas';
+                toast(`Menyiapkan ${downloadName}...`, 'info', 2200);
+                const startedAt = performance.now();
+                if (statusConsole) {
+                    statusConsole.classList.remove('hidden');
+                    statusConsole.innerHTML = `<div>DOWNLOAD QUEUED</div><div>FILE: ${escapeHtml(downloadName)}</div><div>STATUS: FETCHING BLOB</div>`;
+                }
                 const response = await fetch(url);
                 const payload = await response.json();
                 if (payload.status !== 'success' || !payload.base64) throw new Error(payload.message || 'Respons unduhan tidak valid.');
@@ -1622,9 +1636,13 @@
                 link.click();
                 link.remove();
                 setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+                const elapsed = ((performance.now() - startedAt) / 1000).toFixed(1);
+                toast(`${payload.filename || downloadName} siap disimpan (${formatBytes(bytes.byteLength)} • ${elapsed} dtk)`, 'success');
+                if (statusConsole) statusConsole.innerHTML += `<div>STATUS: COMPLETE</div><div>SIZE: ${formatBytes(bytes.byteLength)} | TIME: ${elapsed}s</div>`;
             } catch (error) {
                 console.error('Download gagal:', error);
                 toast('Download gagal: ' + (error.message || 'respons backend tidak valid.'), 'error');
+                if (statusConsole) statusConsole.innerHTML += `<div>STATUS: FAILED</div>`;
             }
         }
 
