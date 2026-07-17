@@ -1,0 +1,2501 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vault | Control Panel</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            transition: background-color var(--transition), color var(--transition);
+        }
+        .hidden { display: none !important; }
+        .skeleton { position:relative; overflow:hidden; background:var(--bg-elevated); border-radius:6px; }
+        .skeleton::after { content:""; position:absolute; inset:0; transform:translateX(-100%); background:linear-gradient(90deg,transparent,var(--border),transparent); animation:skeleton-shimmer 1.2s infinite; }
+        @keyframes skeleton-shimmer { to { transform:translateX(100%); } }
+        #propertiesSidebar.loading { position:relative; pointer-events:none; }
+        #propertiesSidebar.loading::after { content:""; position:absolute; inset:0; border-radius:12px; background:linear-gradient(90deg,transparent,var(--bg-elevated),transparent); animation:skeleton-shimmer 1.2s infinite; opacity:.8; }
+        
+        /* ── Terminal CLI ── */
+        #cliOutput { scrollbar-width:thin; scrollbar-color:var(--text-muted) transparent; }
+        #cliOutput::-webkit-scrollbar { width:4px; }
+        #cliOutput::-webkit-scrollbar-thumb { background:var(--text-muted); border-radius:4px; }
+        #cliInput { background:transparent; outline:none; border:none; caret-color:var(--text-primary); color:var(--text-primary); width:100%; }
+        .cli-prompt  { color: var(--text-primary); opacity: 0.8; }
+        .cli-success { color: #4ade80; }
+        .cli-error   { color: #f87171; }
+        .cli-info    { color: var(--text-secondary); }
+        .cli-warn    { color: #fbbf24; }
+        .cli-folder  { color: var(--text-primary); opacity: 0.7; }
+        .cli-file    { color: var(--text-primary); }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+        .cursor-blink { display:inline-block; animation:blink 1s step-end infinite; }
+        
+        /* Floating terminal panel */
+        #terminalWindow {
+            position:fixed; bottom:80px; right:24px; width:min(640px,95vw);
+            transform:translateY(20px); opacity:0; pointer-events:none;
+            transition:all .3s cubic-bezier(.4,0,.2,1); z-index:900;
+            max-height: 60vh;
+        }
+        #terminalWindow.open { transform:translateY(0); opacity:1; pointer-events:all; }
+        
+        /* ── Markdown Rendering ── */
+        .markdown-body h1 { font-size: 1.5rem; font-weight: bold; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem; margin-top: 1rem; margin-bottom: 0.5rem; color: var(--text-primary); }
+        .markdown-body h2 { font-size: 1.25rem; font-weight: bold; margin-top: 1rem; margin-bottom: 0.5rem; color: var(--text-primary); }
+        .markdown-body h3 { font-size: 1.1rem; font-weight: bold; margin-top: 0.75rem; margin-bottom: 0.4rem; color: var(--text-primary); }
+        .markdown-body p { margin-bottom: 0.75rem; line-height: 1.6; color: var(--text-secondary); }
+        .markdown-body code { font-family: 'Fira Code', monospace; background: var(--bg-card); padding: 0.1rem 0.3rem; border-radius: 4px; color: var(--text-primary); box-shadow: var(--shadow-inset-sm); }
+        .markdown-body pre { background: var(--bg-card); padding: 0.75rem; border-radius: 8px; border: none; overflow-x: auto; margin-bottom: 0.75rem; box-shadow: var(--shadow-inset); }
+        .markdown-body pre code { background: transparent; padding: 0; color: var(--text-primary); box-shadow: none; }
+        .markdown-body ul, .markdown-body ol { margin-left: 1.5rem; margin-bottom: 0.75rem; }
+        .markdown-body ul { list-style-type: disc; }
+        .markdown-body ol { list-style-type: decimal; }
+        .markdown-body li { margin-bottom: 0.25rem; }
+        .markdown-body blockquote { border-left: 4px solid var(--text-primary); padding-left: 0.75rem; color: var(--text-secondary); font-style: italic; margin-bottom: 0.75rem; }
+
+        /* ── Utility Classes ── */
+        .p-4 { padding: 1rem; }
+        @media (min-width: 768px) {
+            .md\:p-8 { padding: 2rem; }
+        }
+        @media (min-width: 1024px) {
+            .lg-hidden { display: none !important; }
+            /* Keep the application frame fixed; panels, not the page, scroll. */
+            .workspace-grid { height: calc(100vh - 116px); min-height: 0; overflow: hidden; grid-template-columns:minmax(0,1fr) minmax(0,2fr) minmax(0,1.2fr) !important; }
+            #leftSidebar, #middleContent, #rightSidebar { min-height: 0 !important; max-height: 100%; overflow: hidden !important; }
+            #leftSidebar { height: 100% !important; display:flex !important; flex-direction:column !important; }
+            #leftSidebar.desktop-collapsed, #rightSidebar.desktop-collapsed { display:none !important; }
+            #leftSidebar .explorer-scroll { flex:1 1 0 !important; min-height:0 !important; overflow-y:auto !important; overflow-x:hidden !important; overscroll-behavior:contain; scrollbar-gutter:stable; }
+            #leftSidebar .explorer-scroll::-webkit-scrollbar { width: 8px; }
+            #leftSidebar .explorer-scroll::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 99px; }
+            #middleContent > div:last-child { min-height: 0; }
+            #fileViewer { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+        }
+
+        /* ── Mobile Responsive Overlay Layouts ── */
+        @media (max-width: 1023px) {
+            #leftSidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                width: 290px;
+                z-index: 90;
+                background: var(--bg-card);
+                box-shadow: var(--shadow-lg);
+                transform: translateX(-100%);
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                display: flex !important;
+                overflow: hidden;
+            }
+            #leftSidebar.active {
+                transform: translateX(0);
+            }
+            #rightSidebar {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                max-height: 80vh;
+                height: auto;
+                z-index: 90;
+                background: var(--bg-card);
+                box-shadow: 0 -15px 40px rgba(0, 0, 0, 0.5);
+                transform: translateY(100%);
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                border-radius: 24px 24px 0 0;
+                display: block !important;
+                overflow-y: auto;
+                padding: 24px;
+                padding-bottom: 40px;
+            }
+            #rightSidebar.active {
+                transform: translateY(0);
+            }
+            #propertiesSidebar {
+                display: flex !important;
+                flex-direction: column !important;
+                height: auto !important;
+                justify-content: flex-start !important;
+                gap: 16px !important;
+            }
+            #mobileBackdrop {
+                transition: opacity 0.3s ease;
+            }
+            #mobileBackdrop.active {
+                display: block !important;
+            }
+            /* ── Collapse 3-column grid to single column ── */
+            .workspace-grid {
+                grid-template-columns: 1fr !important;
+                min-width: 0;
+                max-width: 100%;
+            }
+            .workspace-grid > * {
+                min-width: 0;
+                max-width: 100%;
+                overflow: hidden;
+            }
+            /* ── Progress engine: stack vertically ── */
+            #operationProgressContainer {
+                grid-template-columns: 1fr !important;
+            }
+            #operationProgressContainer > div:last-child {
+                border-left: none !important;
+                border-top: 1px solid var(--border);
+            }
+            /* ── Search bar full width ── */
+            #searchBar {
+                width: 100% !important;
+                max-width: 200px;
+            }
+            /* ── File viewer taller on mobile ── */
+            #fileViewer {
+                max-height: 60vh !important;
+                min-height: 200px !important;
+                overflow-x: hidden !important;
+            }
+            /* ── Sort bar scrollable ── */
+            #sortBar {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            /* ── Title smaller ── */
+            h1 {
+                font-size: 1.4rem !important;
+            }
+            /* ── Desktop header bar compact ── */
+            .desktop-header {
+                padding: 0.5rem 0.75rem !important;
+            }
+            /* ── Bulk action bar wrap buttons ── */
+            #bulkActionBar {
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+            /* ── Middle content area full width ── */
+            #middleContent {
+                padding: 0.75rem !important;
+                min-width: 0;
+                overflow: visible;
+            }
+            /* Desktop sidebar toggles duplicate the mobile menu and must not appear here. */
+            #toggleLeftSidebarBtn, #toggleRightSidebarBtn, .desktop-header > div:last-child > div {
+                display: none !important;
+            }
+            #fileViewer > div {
+                min-width: 0;
+                max-width: 100%;
+                overflow: hidden;
+            }
+            /* ── Card outer padding smaller ── */
+            body > div:first-child {
+                padding: 0.75rem !important;
+            }
+            @media (max-width: 640px) {
+                #terminalWindow {
+                    bottom: 12px !important;
+                    right: 12px !important;
+                    left: 12px !important;
+                    width: calc(100% - 24px) !important;
+                    max-width: none !important;
+                    height: auto !important;
+                    max-height: 60vh !important;
+                }
+                /* ── Extra small screen fixes ── */
+                .workspace-grid {
+                    grid-template-columns: 1fr !important;
+                }
+                /* ── Force all content areas to not overflow ── */
+                #fileViewer > div {
+                    min-width: 0;
+                    max-width: 100%;
+                    overflow: hidden;
+                }
+                #breadcrumbs {
+                    font-size: 10px !important;
+                    max-width: 160px;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+                #sortBar button {
+                    font-size: 7px !important;
+                    padding: 0.15rem 0.3rem !important;
+                }
+                #searchBar {
+                    max-width: 120px;
+                    font-size: 10px !important;
+                }
+                .sidebar-btn, .sidebar-btn-download {
+                    height: 36px !important;
+                }
+                #rightSidebar {
+                    padding: 16px !important;
+                }
+                .card {
+                    padding: 0.75rem !important;
+                }
+                h1 {
+                    font-size: 1.2rem !important;
+                }
+                .desktop-header span:first-child {
+                    font-size: 8px !important;
+                }
+                #logoutBtn {
+                    padding: 0.25rem 0.5rem !important;
+                    font-size: 8px !important;
+                }
+            }
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 0.8; }
+        }
+
+        /* ── Sidebar Action Buttons ── */
+        .sidebar-btn {
+            width: 100%;
+            height: 40px;
+            border-radius: 40px;
+            background: var(--bg-elevated);
+            border: none;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition-duration: .3s;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.164);
+            font-family: inherit;
+        }
+        .sidebar-btn:disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .sidebar-btn .sb-icon {
+            transition-duration: .3s;
+        }
+        .sidebar-btn .sb-icon path {
+            fill: var(--text-primary);
+        }
+
+        /* Rename */
+        .sidebar-btn-rename .sb-icon {
+            width: 17px;
+        }
+        .sidebar-btn-rename:hover {
+            background: rgb(69, 255, 69);
+        }
+        .sidebar-btn-rename:hover .sb-icon {
+            width: 20px;
+            transform: rotate(360deg);
+        }
+        .sidebar-btn-rename::before {
+            content: "Rename";
+            color: var(--text-primary);
+            font-size: 2px;
+            transition-duration: .3s;
+            opacity: 0;
+        }
+        .sidebar-btn-rename:hover::before {
+            font-size: 13px;
+            padding-right: 6px;
+            opacity: 1;
+        }
+
+        /* Move */
+        .sidebar-btn-move .sb-icon {
+            width: 20px;
+        }
+        .sidebar-btn-move:hover {
+            background: rgb(69, 255, 69);
+        }
+        .sidebar-btn-move:hover .sb-icon {
+            transform: translateX(30px);
+        }
+        .sidebar-btn-move::before {
+            content: "Move";
+            color: var(--text-primary);
+            font-size: 13px;
+            position: absolute;
+            left: -40px;
+            opacity: 0;
+            transition: all .3s ease;
+        }
+        .sidebar-btn-move:hover::before {
+            opacity: 1;
+            transform: translateX(60px);
+        }
+
+        /* Delete */
+        .sidebar-btn-delete .sb-icon {
+            width: 12px;
+        }
+        .sidebar-btn-delete:hover {
+            background: rgb(255, 69, 69);
+        }
+        .sidebar-btn-delete:hover .sb-icon {
+            width: 50px;
+            transform: translateY(60%);
+        }
+        .sidebar-btn-delete::before {
+            content: "Delete";
+            color: var(--text-primary);
+            font-size: 13px;
+            position: absolute;
+            top: -20px;
+            opacity: 0;
+            transition-duration: .3s;
+        }
+        .sidebar-btn-delete:hover::before {
+            opacity: 1;
+            transform: translateY(30px);
+        }
+
+        /* Download */
+        .sidebar-btn-download {
+            width: 100%;
+            height: 40px;
+            border-radius: 40px;
+            background: var(--bg-elevated);
+            position: relative;
+            cursor: pointer;
+            transition: background 0.3s;
+            overflow: hidden;
+            box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.164);
+        }
+        .sidebar-btn-download .sb-wrap {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        .sidebar-btn-download .sb-wrap .sb-text,
+        .sidebar-btn-download .sb-wrap .sb-icon {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            left: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-primary);
+            transition: top 0.5s;
+        }
+        .sidebar-btn-download .sb-wrap .sb-icon {
+            top: 0;
+        }
+        .sidebar-btn-download .sb-wrap .sb-text {
+            top: 100%;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
+        }
+        .sidebar-btn-download .sb-wrap .sb-icon svg {
+            width: 24px;
+            height: 24px;
+        }
+        .sidebar-btn-download .sb-wrap .sb-icon svg path {
+            fill: none;
+            stroke: var(--text-primary);
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-width: 2;
+        }
+        .sidebar-btn-download:hover {
+            background: rgb(69, 255, 69);
+        }
+        .sidebar-btn-download:hover .sb-wrap .sb-icon {
+            top: -100%;
+        }
+        .sidebar-btn-download:hover .sb-wrap .sb-text {
+            top: 0;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8" style="min-height:100vh;">
+
+    <div class="card" style="max-width:1400px;margin:0 auto;padding:1.5rem;display:flex;flex-direction:column;gap:1.5rem;position:relative;">
+        
+        <!-- Top Bar with Theme Toggle & CLI -->
+        <div style="display:flex;justify-content:flex-end;align-items:center;gap:0.75rem;">
+            <label class="theme-switch" style="margin-right:auto;">
+                <span class="sun"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="#ffd43b"><circle r="5" cy="12" cx="12"></circle><path d="m21 13h-1a1 1 0 0 1 0-2h1a1 1 0 0 1 0 2zm-17 0h-1a1 1 0 0 1 0-2h1a1 1 0 0 1 0 2zm13.66-5.66a1 1 0 0 1 -.66-.29 1 1 0 0 1 0-1.41l.71-.71a1 1 0 1 1 1.41 1.41l-.71.71a1 1 0 0 1 -.75.29zm-12.02 12.02a1 1 0 0 1 -.71-.29 1 1 0 0 1 0-1.41l.71-.66a1 1 0 0 1 1.41 1.41l-.71.71a1 1 0 0 1 -.7.24zm6.36-14.36a1 1 0 0 1 -1-1v-1a1 1 0 0 1 2 0v1a1 1 0 0 1 -1 1zm0 17a1 1 0 0 1 -1-1v-1a1 1 0 0 1 2 0v1a1 1 0 0 1 -1 1zm-5.66-14.66a1 1 0 0 1 -.7-.29l-.71-.71a1 1 0 0 1 1.41-1.41l.71.71a1 1 0 0 1 0 1.41 1 1 0 0 1 -.71.29zm12.02 12.02a1 1 0 0 1 -.7-.29l-.66-.71a1 1 0 0 1 1.36-1.36l.71.71a1 1 0 0 1 0 1.41 1 1 0 0 1 -.71.24z"></path></g></svg></span>
+                <span class="moon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path d="m223.5 32c-123.5 0-223.5 100.3-223.5 224s100 224 223.5 224c60.6 0 115.5-24.2 155.8-63.4 5-4.9 6.3-12.5 3.1-18.7s-10.1-9.7-17-8.5c-9.8 1.7-19.8 2.6-30.1 2.6-96.9 0-175.5-78.8-175.5-176 0-65.8 36-123.1 89.3-153.3 6.1-3.5 9.2-10.5 7.7-17.3s-7.3-11.9-14.3-12.5c-6.3-.5-12.6-.8-19-.8z"></path></svg></span>   
+                <input type="checkbox" id="themeToggleCheckbox">
+                <span class="slider"></span>
+            </label>
+            <button id="toggleCliBtn" class="btn-neu" style="padding:0.5rem 1rem;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;" title="Buka CLI Terminal">
+                <span class="material-symbols-outlined" style="font-size:16px;">terminal</span>
+                CLI
+            </button>
+        </div>
+
+        <!-- Title -->
+        <div style="text-align:center;">
+            <h1 style="font-size:1.8rem;font-weight:800;letter-spacing:0.1em;color:var(--text-primary);">VAULT</h1>
+            <p style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.25rem;text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">Secure Encrypted Storage System</p>
+        </div>
+
+        <!-- Main Desktop Container -->
+        <div class="card" style="padding:0;overflow:hidden;">
+            <div class="desktop-header" style="padding:0.75rem 1.25rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);">
+                <div style="display:flex;align-items:center;gap:0.5rem;">
+                    <span class="material-symbols-outlined" style="font-size:18px;color:var(--text-secondary);">folder</span>
+                    <span style="font-size:10px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--text-secondary);font-family:'Fira Code',monospace;">Vault File Manager</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:0.5rem;">
+                    <button id="toggleLeftSidebarBtn" class="btn-neu" style="padding:0.3rem;font-size:10px;display:flex;align-items:center;" title="Toggle File Explorer">
+                        <svg id="leftSidebarIcon" xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 -960 960 960" width="18px" fill="var(--text-secondary)"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm120-80v-560H200v560h120Zm80 0h360v-560H400v560Zm-80 0H200h120Z"/></svg>
+                    </button>
+                    <button id="toggleRightSidebarBtn" class="btn-neu" style="padding:0.3rem;font-size:10px;display:flex;align-items:center;" title="Toggle Properties">
+                        <svg id="rightSidebarIcon" xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 -960 960 960" width="18px" fill="var(--text-secondary)"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm360-80v-560H200v560h360Z"/></svg>
+                    </button>
+                    <div style="width:1px;height:20px;background:var(--border);"></div>
+                    <button id="logoutBtn" class="btn-neu" style="padding:0.35rem 0.75rem;font-size:10px;font-weight:700;" title="Logout Session">
+                        <span class="material-symbols-outlined" style="font-size:14px;">logout</span>
+                        DISCONNECT
+                    </button>
+                </div>
+            </div>
+
+            <!-- 3-Column Layout Workspace -->
+            <div style="display:grid;grid-template-columns:1fr;min-height:500px;position:relative;background:var(--bg-body);"><!-- workspace outer -->
+                
+                <!-- Mobile Backdrop Overlay -->
+                <div id="mobileBackdrop" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:40;display:none;" class="lg-hidden"></div>
+                
+                <div class="workspace-grid" style="display:grid;grid-template-columns:1fr 2fr 1.2fr;gap:0;">
+                    
+                    <!-- Left Sidebar -->
+                    <div id="leftSidebar" style="padding:1rem;display:flex;flex-direction:column;gap:1rem;border-right:1px solid var(--border);background:var(--bg-card);">
+                        <div class="explorer-scroll" style="display:flex;flex-direction:column;gap:0.5rem;flex:1;min-height:0;overflow-y:auto;">
+                            <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:0.5rem;">
+                                <span style="font-size:10px;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.1em;">File Explorer</span>
+                            </div>
+                            <div id="fileExplorerTree" class="font-mono" style="display:flex;flex-direction:column;gap:0.2rem;font-size:11px;min-width:0;"></div>
+                        </div>
+                        
+                        <div style="border-top:1px solid var(--border);padding-top:0.75rem;display:flex;flex-direction:column;gap:0.5rem;">
+                            <div style="display:flex;gap:0.4rem;">
+                                <button id="createFolderBtn" class="btn-neu" style="flex:1;padding:0.4rem 0.5rem;font-size:9px;font-weight:700;text-transform:uppercase;">
+                                    <span class="material-symbols-outlined" style="font-size:14px;">create_new_folder</span> Folder
+                                </button>
+                                <button id="createTextFileBtn" class="btn-neu" style="flex:1;padding:0.4rem 0.5rem;font-size:9px;font-weight:700;text-transform:uppercase;">
+                                    <span class="material-symbols-outlined" style="font-size:14px;">docs</span> File
+                                </button>
+                            </div>
+                            <div style="display:flex;gap:0.4rem;">
+                                <button id="uploadTriggerBtn" class="btn-neu" style="flex:1;padding:0.4rem 0.5rem;font-size:9px;font-weight:700;text-transform:uppercase;">
+                                    <span class="material-symbols-outlined" style="font-size:14px;">upload</span> Unggah
+                                </button>
+                                <button id="importDriveBtn" class="btn-neu" style="flex:1;padding:0.4rem 0.5rem;font-size:9px;font-weight:700;text-transform:uppercase;">
+                                    <span class="material-symbols-outlined" style="font-size:14px;">add_to_drive</span> Drive
+                                </button>
+                            </div>
+                            <input type="file" id="fileInput" style="display:none;" multiple />
+                        </div>
+                    </div>
+
+                    <!-- Middle Content -->
+                    <div id="middleContent" style="padding:1rem;display:flex;flex-direction:column;gap:0.75rem;background:var(--bg-body);min-height:0;">
+                        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:0.75rem;border-bottom:1px solid var(--border);padding-bottom:0.5rem;">
+                            <div style="display:flex;align-items:center;gap:0.5rem;font-size:11px;font-family:'Fira Code',monospace;">
+                                <button id="mobileSidebarToggle" class="btn-neu lg-hidden" style="padding:0.3rem 0.5rem;font-size:9px;font-weight:700;text-transform:uppercase;">
+                                    <span class="material-symbols-outlined" style="font-size:14px;">menu</span>
+                                </button>
+                                <span style="color:var(--text-tertiary);">Path:</span>
+                                <div id="breadcrumbs" style="display:flex;align-items:center;gap:0.3rem;color:var(--text-secondary);">
+                                    <span style="cursor:pointer;" id="navRoot">Root</span>
+                                </div>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:0.5rem;">
+                                <input type="text" id="searchBar" placeholder="Cari file..." class="input-neu" style="padding:0.35rem 0.75rem;font-size:11px;width:140px;">
+                                <button id="setViewList" class="btn-neu" style="padding:0.35rem;" title="List View">
+                                    <span class="material-symbols-outlined" style="font-size:16px;">list_alt</span>
+                                </button>
+                                <button id="setViewGrid" class="btn-neu" style="padding:0.35rem;" title="Grid View">
+                                    <span class="material-symbols-outlined" style="font-size:16px;">grid_on</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Bulk Action Bar -->
+                        <div id="bulkActionBar" style="display:none;align-items:center;justify-content:space-between;padding:0.5rem 0.75rem;background:var(--bg-card);border-radius:var(--radius-sm);box-shadow:var(--shadow-xs);">
+                            <span id="selectedCountText" style="font-size:10px;color:var(--text-secondary);font-family:'Fira Code',monospace;">0 terpilih</span>
+                            <div style="display:flex;gap:0.4rem;">
+                                <button id="bulkDownloadBtn" class="btn-neu" style="padding:0.3rem 0.6rem;font-size:9px;font-weight:700;">Download</button>
+                                <button id="bulkMoveBtn" class="btn-neu" style="padding:0.3rem 0.6rem;font-size:9px;font-weight:700;">Pindah</button>
+                                <button id="bulkDeleteBtn" class="btn-neu" style="padding:0.3rem 0.6rem;font-size:9px;font-weight:700;">Hapus</button>
+                            </div>
+                        </div>
+
+                        <div style="flex:1;display:flex;flex-direction:column;gap:0.5rem;min-height:0;">
+                            <div style="display:flex;align-items:center;gap:0.5rem;border-bottom:1px solid var(--border);padding-bottom:0.25rem;">
+                                <label class="checkbox-svg" id="selectAllCheckboxWrapper">
+                                    <input type="checkbox" id="selectAllCheckbox">
+                                    <svg viewBox="0 0 64 64">
+                                        <path d="M 0 16 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 16" pathLength="575.0541381835938" class="path"></path>
+                                    </svg>
+                                </label>
+                                <label for="selectAllCheckbox" style="font-size:10px;color:var(--text-tertiary);cursor:pointer;">Pilih Semua</label>
+                            </div>
+                            <div id="sortBar" style="display:flex;align-items:center;gap:0.3rem;padding:0.25rem 0;border-bottom:1px solid var(--border);margin-bottom:0.25rem;">
+                                <span style="font-size:8px;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.05em;">Sort:</span>
+                                <button class="sort-btn btn-neu" data-sort="name" style="padding:0.2rem 0.4rem;font-size:8px;font-weight:700;">Nama ↑</button>
+                                <button class="sort-btn btn-neu" data-sort="size" style="padding:0.2rem 0.4rem;font-size:8px;font-weight:700;">Ukuran</button>
+                                <button class="sort-btn btn-neu" data-sort="date" style="padding:0.2rem 0.4rem;font-size:8px;font-weight:700;">Tanggal</button>
+                            </div>
+                            <div id="fileViewer" style="flex:1;overflow-y:auto;max-height:400px;min-height:250px;font-family:'Fira Code',monospace;font-size:11px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Right Sidebar (Properties) -->
+                    <div id="rightSidebar" style="padding:1rem 1rem 1.5rem 1rem;border-left:1px solid var(--border);background:var(--bg-card);overflow-y:auto;">
+                        <div id="propertiesSidebar" style="display:none;flex-direction:column;gap:0.75rem;font-size:11px;font-family:'Fira Code',monospace;">
+                            <div style="display:flex;flex-direction:column;gap:0.75rem;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:0.4rem;">
+                                    <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-secondary);">Properties</span>
+                                    <button id="closeSidebarBtn" style="background:none;border:none;cursor:pointer;color:var(--text-tertiary);font-size:16px;">&times;</button>
+                                </div>
+                                
+                                <div style="display:flex;justify-content:center;padding:0.5rem;background:var(--bg-body);border-radius:var(--radius-sm);box-shadow:var(--shadow-inset-sm);" id="sidebarIconContainer">
+                                    <span style="font-size:1rem;">📄</span>
+                                </div>
+                                
+                                <div><span style="color:var(--text-tertiary);display:block;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;">Nama:</span><span id="sidebarName" style="color:var(--text-primary);font-weight:600;overflow:hidden;display:flex;align-items:baseline;">file.txt</span></div>
+                                <div><span style="color:var(--text-tertiary);display:block;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;">Tipe:</span><span id="sidebarType" style="color:var(--text-secondary);">Text</span></div>
+                                <div><span style="color:var(--text-tertiary);display:block;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;">Size:</span><span id="sidebarSize" style="color:var(--text-secondary);">12.5 KB</span></div>
+                                
+                                <div><span style="color:var(--text-tertiary);display:block;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;">ID:</span>
+                                    <div style="display:flex;align-items:center;gap:0.25rem;">
+                                        <span id="sidebarId" style="font-size:9px;color:var(--text-secondary);flex:1;overflow:hidden;text-overflow:ellipsis;background:var(--bg-body);padding:0.2rem 0.4rem;border-radius:4px;box-shadow:var(--shadow-inset-sm);">id</span>
+                                        <button id="copyIdBtn" class="btn-neu" style="padding:0.2rem;" title="Copy ID">
+                                            <span class="material-symbols-outlined" style="font-size:14px;">content_copy</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div id="sidebarLinkContainer"><span style="color:var(--text-tertiary);display:block;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;">URL:</span>
+                                    <div style="display:flex;align-items:center;gap:0.25rem;">
+                                        <span id="sidebarUrl" style="font-size:9px;color:var(--text-secondary);flex:1;overflow:hidden;text-overflow:ellipsis;background:var(--bg-body);padding:0.2rem 0.4rem;border-radius:4px;box-shadow:var(--shadow-inset-sm);">url</span>
+                                        <button id="copyUrlBtn" class="btn-neu" style="padding:0.2rem;" title="Copy URL">
+                                            <span class="material-symbols-outlined" style="font-size:14px;">content_copy</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div id="sidebarFolderDetail" style="display:none;flex-direction:column;gap:0.5rem;">
+                                    <div><span style="color:var(--text-tertiary);display:block;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;">Files:</span><span id="sidebarFileCount" style="color:var(--text-secondary);">0</span></div>
+                                    <div><span style="color:var(--text-tertiary);display:block;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;">Folders:</span><span id="sidebarFolderCount" style="color:var(--text-secondary);">0</span></div>
+                                    <div><span style="color:var(--text-tertiary);display:block;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;">Total Size:</span><span id="sidebarTotalSize" style="color:var(--text-secondary);">0</span></div>
+                                    <div><span style="color:var(--text-tertiary);display:block;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;">Created:</span><span id="sidebarDateCreated" style="color:var(--text-secondary);">-</span></div>
+                                </div>
+                            </div>
+                            
+                            <div style="display:flex;flex-direction:column;gap:0.4rem;border-top:1px solid var(--border);padding-top:0.5rem;">
+                                <button id="sidebarPreviewBtn" class="btn-open-file" style="width:100%;padding:0.5rem;">
+                                    <span class="file-wrapper">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 71 67">
+                                            <path stroke-width="5" stroke="currentColor" d="M41.7322 11.7678L42.4645 12.5H43.5H68.5V64.5H2.5V2.5H32.4645L41.7322 11.7678Z"></path>
+                                        </svg>
+                                        <span class="file-front"></span>
+                                    </span>
+                                    Open file
+                                </button>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                                    <div class="sidebar-btn-download" id="sidebarDownloadBtn">
+                                        <div class="sb-wrap">
+                                            <span class="sb-text">Download</span>
+                                            <span class="sb-icon">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                                                    <path d="M12 15V3m0 12l-4-4m4 4l4-4M2 17l.621 2.485A2 2 0 0 0 4.561 21h14.878a2 2 0 0 0 1.94-1.515L22 17"/>
+                                                </svg>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <button class="sidebar-btn sidebar-btn-rename" id="sidebarRenameBtn">
+                                        <svg class="sb-icon" viewBox="0 0 512 512">
+                                            <path d="M410.3 231l11.3-11.3-33.9-33.9-62.1-62.1L291.7 89.8l-11.3 11.3-22.6 22.6L58.6 322.9c-10.4 10.4-18 23.3-22.2 37.4L1 480.7c-2.5 8.4-.2 17.5 6.1 23.7s15.3 8.5 23.7 6.1l120.3-35.4c14.1-4.2 27-11.8 37.4-22.2L387.7 253.7 410.3 231zM160 399.4l-9.1 22.7c-4 3.1-8.5 5.4-13.3 6.9L59.4 452l23-78.1c1.4-4.9 3.8-9.4 6.9-13.3l22.7-9.1v32c0 8.8 7.2 16 16 16h32zM362.7 18.7L348.3 33.2 325.7 55.8 314.3 67.1l33.9 33.9 62.1 62.1 33.9 33.9 11.3-11.3 22.6-22.6 14.5-14.5c25-25 25-65.5 0-90.5L453.3 18.7c-25-25-65.5-25-90.5 0zm-47.4 168l-144 144c-6.2 6.2-16.4 6.2-22.6 0s-6.2-16.4 0-22.6l144-144c6.2-6.2 16.4-6.2 22.6 0s6.2 16.4 0 22.6z"/>
+                                        </svg>
+                                    </button>
+                                    <button class="sidebar-btn sidebar-btn-move" id="sidebarMoveBtn">
+                                        <svg class="sb-icon" viewBox="0 0 512 512">
+                                            <path d="M256 0C114.6 0 0 114.6 0 256s114.6 256 256 256 256-114.6 256-256S397.4 0 256 0zm0 48c114.9 0 208 93.1 208 208s-93.1 208-208 208S48 370.9 48 256 141.1 48 256 48zm-64 176h128v-64l96 96-96 96v-64H192v-64z"/>
+                                        </svg>
+                                    </button>
+                                    <button class="sidebar-btn sidebar-btn-delete" id="sidebarDeleteBtn">
+                                        <svg class="sb-icon" viewBox="0 0 448 512">
+                                            <path d="M135.2 17.7L128 32H32C14.3 32 0 46.3 0 64S14.3 96 32 96H416c17.7 0 32-14.3 32-32s-14.3-32-32-32H320l-7.2-14.3C307.4 6.8 296.3 0 284.2 0H163.8c-12.1 0-23.2 6.8-28.6 17.7zM416 128H32L53.2 467c1.6 25.3 22.6 45 47.9 45H346.9c25.3 0 46.3-19.7 47.9-45L416 128z"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="propertiesPlaceholder" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;color:var(--text-tertiary);font-size:10px;font-style:italic;">
+                            <span>Pilih item untuk detail</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress Engine Window -->
+        <div class="card" style="padding:0;overflow:hidden;">
+            <div style="padding:0.5rem 1rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);">
+                <span style="font-size:9px;font-weight:700;color:var(--text-secondary);font-family:'Fira Code',monospace;">📊 Dashboard / Progress Engine</span>
+                <div style="display:flex;gap:0.3rem;">
+                    <span style="width:8px;height:8px;border-radius:50%;background:#ff5252;opacity:0.5;"></span>
+                    <span style="width:8px;height:8px;border-radius:50%;background:#ffca28;opacity:0.5;"></span>
+                    <span style="width:8px;height:8px;border-radius:50%;background:#4ade80;opacity:0.5;"></span>
+                </div>
+            </div>
+            <div id="operationProgressContainer" style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
+                <div style="padding:0.75rem;display:flex;flex-direction:column;justify-content:center;gap:0.5rem;">
+                    <div><span style="font-size:9px;color:var(--text-tertiary);font-family:'Fira Code',monospace;display:block;">OPERATION STATUS</span>
+                        <span id="progressStatusText" style="font-size:11px;font-weight:700;color:var(--text-primary);font-family:'Fira Code',monospace;">⚡ STANDBY</span>
+                    </div>
+                    <div class="progress-bar"><div id="operationProgressBar" class="progress-bar-fill" style="width:0%;"></div></div>
+                    <div style="display:flex;justify-content:space-between;font-size:9px;font-family:'Fira Code',monospace;color:var(--text-tertiary);">
+                        <span id="progressPercentText" style="color:var(--text-primary);font-weight:700;">0%</span>
+                        <span id="progressFilesText">File: 0/0</span>
+                    </div>
+                    <div style="font-size:8px;color:var(--text-muted);font-family:'Fira Code',monospace;" id="progressBytesText">-</div>
+                </div>
+                <div style="padding:0.5rem;display:flex;flex-direction:column;border-left:1px solid var(--border);">
+                    <span style="font-size:9px;color:var(--text-tertiary);display:block;margin-bottom:0.4rem;font-family:'Fira Code',monospace;">CONSOLE LOGS</span>
+                    <div id="statusConsole" style="flex:1;overflow-y:auto;font-size:9px;font-family:'Fira Code',monospace;color:var(--text-secondary);display:flex;flex-direction:column;gap:0.2rem;padding:0.4rem;background:var(--bg-inset);border-radius:6px;max-height:80px;box-shadow:var(--shadow-inset-sm);"></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Floating Terminal Panel -->
+    <div id="terminalWindow" class="card" style="position:fixed;bottom:80px;right:24px;width:min(600px,95vw);padding:0;overflow:hidden;display:flex;flex-direction:column;z-index:900;transition:all .3s;max-height:60vh;">
+        <div style="padding:0.5rem 1rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);">
+            <span style="font-size:9px;font-weight:700;color:var(--text-secondary);font-family:'Fira Code',monospace;">⚡ Web-based Vault CLI</span>
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+                <div style="display:flex;gap:0.25rem;">
+                    <span style="width:8px;height:8px;border-radius:50%;background:#ff5252;opacity:0.5;cursor:pointer;" onclick="document.getElementById('terminalWindow').classList.remove('open')"></span>
+                    <span style="width:8px;height:8px;border-radius:50%;background:#ffca28;opacity:0.5;"></span>
+                    <span style="width:8px;height:8px;border-radius:50%;background:#4ade80;opacity:0.5;"></span>
+                </div>
+                <button id="termClose" style="background:none;border:none;cursor:pointer;color:var(--text-tertiary);font-size:18px;">&times;</button>
+            </div>
+        </div>
+        <div id="cliOutput" class="font-mono" style="flex:1;padding:0.75rem;background:var(--bg-inset);font-size:11px;overflow-y:auto;display:flex;flex-direction:column;gap:0.25rem;box-shadow:var(--shadow-inset) inset;"></div>
+        <div style="padding:0.4rem 0.75rem;display:flex;align-items:center;gap:0.5rem;border-top:1px solid var(--border);background:var(--bg-card);">
+            <span style="font-size:9px;font-weight:700;font-family:'Fira Code',monospace;color:var(--text-primary);">vault:~$</span>
+            <input type="text" id="cliInput" class="input-neu" style="flex:1;background:transparent;box-shadow:none;padding:0.25rem 0;font-size:11px;" autocomplete="off" placeholder="Ketik perintah... (help)">
+            <button id="cliClearBtn" class="btn-neu" style="padding:0.25rem 0.5rem;font-size:9px;font-weight:700;">CLEAR</button>
+        </div>
+    </div>
+
+
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
+
+    <!-- Styled Dialog -->
+    <div id="dialogOverlay">
+        <div id="dialogBox">
+            <h4 id="dialogTitle">Konfirmasi</h4>
+            <p id="dialogMessage"></p>
+            <input id="dialogInput" type="text" class="hidden" placeholder="" />
+            <div class="dialog-actions">
+                <button class="dialog-btn-cancel" id="dialogCancel">Batal</button>
+                <button class="dialog-btn-ok" id="dialogOk">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preview / Editor Modal -->
+    <div id="previewModal" style="position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:1rem;z-index:1000;">
+        <div class="card" style="width:100%;max-width:1400px;padding:1.5rem;display:flex;flex-direction:column;gap:1rem;max-height:95vh;">
+            <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:0.75rem;">
+                <input type="text" id="editorFileName" class="input-neu" style="font-size:11px;font-weight:600;padding:0.4rem 0.75rem;flex:1;font-family:'Fira Code',monospace;" placeholder="nama_file.txt">
+                <div style="display:flex;align-items:center;gap:0.5rem;">
+                    <button id="closeModalBtn" style="background:none;border:none;cursor:pointer;color:var(--text-tertiary);font-size:24px;line-height:1;">&times;</button>
+                </div>
+            </div>
+            <div id="editorControls" style="display:none;align-items:center;gap:0.4rem;padding-bottom:0.5rem;border-bottom:1px solid var(--border);">
+                <div style="display:flex;align-items:center;gap:0.25rem;padding-right:0.5rem;border-right:1px solid var(--border);color:var(--text-secondary);font-size:11px;"></div>
+                <button id="editorToggleMode" class="btn-neu" style="padding:0.35rem 0.75rem;font-size:9px;font-weight:700;text-transform:uppercase;">Mode Edit</button>
+                <button id="editorSaveBtn" class="btn-neu-primary" style="padding:0.35rem 0.75rem;font-size:9px;font-weight:700;text-transform:uppercase;">
+                    <span class="material-symbols-outlined" style="font-size:16px;">save</span> Save
+                </button>
+            </div>
+            <div id="modalBody" style="flex:1;overflow-y:auto;min-height:500px;background:var(--bg-inset);border-radius:var(--radius-sm);padding:1rem;box-shadow:var(--shadow-inset);"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { checkAuth, logout, getApiUrl } from './src/auth.js';
+        import { fetchFiles, searchFiles, uploadFile, deleteFile, renameFile, fetchFileBlob, createFolder, deleteMultiple, importFromUrl, moveItems, saveTextFile, importFromDrive } from './src/vault.js';
+        import { formatBytes, getFileMeta } from './src/utils.js?v=2';
+
+        // ==================== TOAST & DIALOG ENGINE ====================
+        const toastContainer = document.getElementById('toastContainer');
+        const dialogOverlay  = document.getElementById('dialogOverlay');
+        const dialogTitle    = document.getElementById('dialogTitle');
+        const dialogMessage  = document.getElementById('dialogMessage');
+        const dialogInput    = document.getElementById('dialogInput');
+        const dialogOk       = document.getElementById('dialogOk');
+        const dialogCancel   = document.getElementById('dialogCancel');
+
+        function toast(message, type = 'info', duration = 4000) {
+            const icons = { success:'✅', error:'❌', info:'ℹ️', warn:'⚠️' };
+            const labels = { success:'Berhasil', error:'Error', info:'Info', warn:'Peringatan' };
+            const el = document.createElement('div');
+            el.className = `toast ${type}`;
+            el.innerHTML = `
+                <span class="toast-icon">${icons[type]}</span>
+                <span class="toast-msg"><strong>${labels[type]}</strong>${message}</span>
+                <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>`;
+            toastContainer.appendChild(el);
+            setTimeout(() => {
+                el.style.animation = 'toastOut .35s ease forwards';
+                setTimeout(() => el.remove(), 350);
+            }, duration);
+        }
+
+        function showDialog(title, message, { hasInput = false, inputDefault = '', inputPlaceholder = '' } = {}) {
+            return new Promise((resolve) => {
+                dialogTitle.textContent = title;
+                dialogMessage.textContent = message;
+                dialogInput.value = inputDefault;
+                dialogInput.placeholder = inputPlaceholder;
+                dialogInput.classList.toggle('hidden', !hasInput);
+                dialogOverlay.classList.add('show');
+                if (hasInput) setTimeout(() => dialogInput.focus(), 50);
+
+                const cleanup = () => { dialogOverlay.classList.remove('show'); };
+                dialogOk.onclick = () => { cleanup(); resolve(hasInput ? dialogInput.value.trim() : true); };
+                dialogCancel.onclick = () => { cleanup(); resolve(null); };
+                dialogInput.onkeydown = (e) => { if (e.key === 'Enter') dialogOk.click(); if (e.key === 'Escape') dialogCancel.click(); };
+            });
+        }
+        // ==================== END TOAST & DIALOG ENGINE ====================
+
+        // ==================== VAULT CLI ENGINE ====================
+        const cliOutput   = document.getElementById('cliOutput');
+        const cliInput    = document.getElementById('cliInput');
+        const cliClearBtn = document.getElementById('cliClearBtn');
+        const toggleCliBtn = document.getElementById('toggleCliBtn');
+        const terminalWindow = document.getElementById('terminalWindow');
+        const termClose   = document.getElementById('termClose');
+        let cliHistory = [], cliHistoryIdx = -1;
+        let cliCurrentFolder = { id: null, name: 'root' };
+        let cliParentStack  = [];
+
+        // CLI Toggle Button
+        toggleCliBtn.addEventListener('click', () => {
+            terminalWindow.classList.toggle('open');
+            if (terminalWindow.classList.contains('open')) {
+                cliInput.focus();
+            }
+        });
+        termClose.addEventListener('click', () => {
+            terminalWindow.classList.remove('open');
+        });
+
+        function cliPrint(text) {
+            const line = document.createElement('div');
+            line.innerHTML = text;
+            cliOutput.appendChild(line);
+            cliOutput.scrollTop = cliOutput.scrollHeight;
+        }
+        function cliSep() { cliPrint('<span class="cli-info">─────────────────────────────────────</span>'); }
+
+        cliPrint('<span class="cli-prompt">⚡ Vault CLI v2.0 — ketik <strong>help</strong> untuk panduan</span>');
+        cliSep();
+
+        // Normalisasi URL agar repo GitHub bisa langsung di-curl
+        // github.com/OWNER/REPO                -> archive zip (branch main)
+        // github.com/OWNER/REPO/tree/BRANCH    -> archive zip branch tsb
+        // github.com/OWNER/REPO/blob/...        -> raw file
+        function normalizeCurlUrl(raw) {
+            let u = raw.trim();
+            // Hapus suffix .git di akhir URL jika ada
+            u = u.replace(/\.git$/, '');
+            let m;
+            if ((m = u.match(/^https?:\/\/github\.com\/([^\/]+)\/([^\/]+)\/tree\/([^\/]+)/))) {
+                return `https://github.com/${m[1]}/${m[2]}/archive/refs/heads/${m[3]}.zip`;
+            }
+            if ((m = u.match(/^https?:\/\/github\.com\/([^\/]+)\/([^\/]+)\/?$/))) {
+                return `https://github.com/${m[1]}/${m[2]}/archive/refs/heads/main.zip`;
+            }
+            if ((m = u.match(/^https?:\/\/github\.com\/([^\/]+)\/([^\/]+)\/blob\/(.+)$/))) {
+                return `https://raw.githubusercontent.com/${m[1]}/${m[2]}/${m[3]}`;
+            }
+            return u;
+        }
+
+        const CLI_COMMANDS = {
+            help: async () => {
+                cliPrint('<span class="cli-warn">Daftar perintah:</span>');
+                [
+                    ['ls [folder-id?]',          'Tampilkan isi folder'],
+                    ['cd [folder-id | ..]',       'Navigasi folder'],
+                    ['pwd',                       'Folder aktif saat ini'],
+                    ['mkdir [nama]',              'Buat folder baru'],
+                    ['rm [id]',                   'Hapus file/folder'],
+                    ['rename [id] [nama baru]',   'Ganti nama item'],
+                    ['mv [id] [folder-id/root]',  'Pindahkan file/folder ke folder tujuan'],
+                    ['git status',                'Info vault & sesi saat ini'],
+                    ['git log',                   'Riwayat file terbaru'],
+                    ['git push',                  'Info cara push via drive.bat'],
+                    ['curl -o [nama] [url]',      'Download file dari URL ke vault'],
+                    ['import-drive [url|id]',     'Impor Google Drive folder publik (D2D)'],
+                    ['clear',                     'Bersihkan terminal'],
+                ].forEach(([cmd, desc]) => {
+                    cliPrint(`  <span class="cli-prompt">${cmd.padEnd(30)}</span><span class="cli-info">${desc}</span>`);
+                });
+            },
+
+            pwd: async () => {
+                cliPrint(`<span class="cli-info">Direktori: </span><span class="cli-prompt">${cliCurrentFolder.name}</span><span class="cli-info"> [${cliCurrentFolder.id || 'root'}]</span>`);
+            },
+
+            ls: async (args) => {
+                cliPrint('<span class="cli-info">Memuat...</span>');
+                const result = await fetchFiles(args[0] || cliCurrentFolder.id);
+                if (result.status !== 'success') { cliPrint(`<span class="cli-error">Error: ${result.message}</span>`); return; }
+                if (!result.data.length) { cliPrint('<span class="cli-info">Folder kosong.</span>'); return; }
+                cliPrint(`<span class="cli-info">${result.data.length} item di <strong>${result.currentFolderName}</strong></span>`);
+                cliSep();
+                result.data.forEach(item => {
+                    const icon = item.isFolder ? '📁' : '📄';
+                    const cls  = item.isFolder ? 'cli-folder' : 'cli-file';
+                    const size = item.isFolder ? '<DIR>  ' : formatBytes(item.size);
+                    cliPrint(`  ${icon} <span class="${cls}">${item.name}</span> <span class="cli-info">(${size}) [${item.id}]</span>`);
+                });
+            },
+
+            cd: async (args) => {
+                if (!args[0]) { cliPrint('<span class="cli-error">Penggunaan: cd [folder-id] | cd ..</span>'); return; }
+                if (args[0] === '..') {
+                    if (!cliParentStack.length) { cliPrint('<span class="cli-warn">Sudah di root.</span>'); return; }
+                    cliCurrentFolder = cliParentStack.pop();
+                    cliPrint(`<span class="cli-success">↑ Kembali ke: ${cliCurrentFolder.name}</span>`);
+                    return;
+                }
+                const result = await fetchFiles(args[0]);
+                if (result.status !== 'success') { cliPrint(`<span class="cli-error">Error: ${result.message}</span>`); return; }
+                cliParentStack.push({ ...cliCurrentFolder });
+                cliCurrentFolder = { id: result.currentFolderId, name: result.currentFolderName };
+                cliPrint(`<span class="cli-success">→ Masuk ke: ${result.currentFolderName}</span>`);
+            },
+
+            mkdir: async (args) => {
+                const name = args.join(' ');
+                if (!name) { cliPrint('<span class="cli-error">Penggunaan: mkdir [nama]</span>'); return; }
+                const result = await createFolder(name, cliCurrentFolder.id);
+                if (result.status === 'success') {
+                    cliPrint(`<span class="cli-success">✓ Folder "${name}" dibuat! ID: ${result.data.id}</span>`);
+                    if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
+                } else { cliPrint(`<span class="cli-error">✗ ${result.message}</span>`); }
+            },
+
+            rm: async (args) => {
+                if (!args[0]) { cliPrint('<span class="cli-error">Penggunaan: rm [id]</span>'); return; }
+                cliPrint(`<span class="cli-warn">Menghapus ${args[0]}...</span>`);
+                const result = await deleteFile(args[0]);
+                if (result.status === 'success') {
+                    cliPrint(`<span class="cli-success">✓ Dihapus.</span>`);
+                    if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
+                } else {
+                    cliPrint(`<span class="cli-error">✗ ${result.message}</span>`);
+                }
+            },
+
+            rename: async (args) => {
+                const [id, ...rest] = args;
+                const newName = rest.join(' ');
+                if (!id || !newName) { cliPrint('<span class="cli-error">Penggunaan: rename [id] [nama baru]</span>'); return; }
+                const result = await renameFile(id, newName);
+                if (result.status === 'success') {
+                    cliPrint(`<span class="cli-success">✓ Diganti menjadi "${newName}"</span>`);
+                    if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
+                } else {
+                    cliPrint(`<span class="cli-error">✗ ${result.message}</span>`);
+                }
+            },
+
+            mv: async (args) => {
+                const [id, targetFolderId] = args;
+                if (!id || !targetFolderId) { cliPrint('<span class="cli-error">Penggunaan: mv [id] [id_tujuan/root]</span>'); return; }
+                cliPrint(`<span class="cli-warn">Memindahkan ${id} ke ${targetFolderId}...</span>`);
+                const isRoot = targetFolderId.toLowerCase() === 'root';
+                const destId = isRoot ? null : targetFolderId;
+                const res = await moveItems([id], [id], destId);
+                if (res.status === 'success') {
+                    cliPrint(`<span class="cli-success">✓ Item berhasil dipindahkan!</span>`);
+                    if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
+                } else {
+                    cliPrint(`<span class="cli-error">✗ ${res.message}</span>`);
+                }
+            },
+
+            git: async (args) => {
+                const sub = (args[0] || '').toLowerCase();
+                if (sub === 'status') {
+                    const cfg  = JSON.parse(localStorage.getItem('vault_config') || '{}');
+                    const url  = localStorage.getItem('vault_api_url') || 'N/A';
+                    cliPrint('<span class="cli-warn">== VAULT GIT STATUS ==</span>');
+                    cliPrint(`  <span class="cli-info">Vault Name  : </span><span class="cli-prompt">${cfg.vaultName || 'Cyber Vault'}</span>`);
+                    cliPrint(`  <span class="cli-info">Backend URL : </span><span class="cli-file">${url.substring(0,60)}...</span>`);
+                    cliPrint(`  <span class="cli-info">Folder      : </span><span class="cli-prompt">${cliCurrentFolder.name}</span>`);
+                    cliPrint(`  <span class="cli-info">Max Size    : </span><span class="cli-prompt">${cfg.maxFileSizeMB || 15} MB</span>`);
+                } else if (sub === 'log') {
+                    cliPrint('<span class="cli-info">Mengambil daftar file terbaru...</span>');
+                    const result = await fetchFiles(cliCurrentFolder.id);
+                    if (result.status !== 'success') { cliPrint(`<span class="cli-error">${result.message}</span>`); return; }
+                    cliPrint('<span class="cli-warn">== VAULT LOG (folder aktif) ==</span>');
+                    result.data.slice(0, 10).forEach((item, i) => {
+                        cliPrint(`  <span class="cli-info">#${String(i+1).padStart(2,'0')}</span> <span class="cli-prompt">${item.name}</span> <span class="cli-info">[${item.id}]</span>`);
+                    });
+                } else if (sub === 'push') {
+                    cliPrint('<span class="cli-warn">Untuk push project ke Google Drive, gunakan drive.bat di terminal lokal:</span>');
+                    cliPrint('  <span class="cli-file">drive push "pesan commit"</span>');
+                    cliPrint('<span class="cli-info">Pastikan d:\\vault sudah ada di PATH environment variables Windows Anda.</span>');
+                } else {
+                    cliPrint('<span class="cli-error">Perintah git yang tersedia: status | log | push</span>');
+                }
+            },
+
+            curl: async (args) => {
+                // Format: curl -o [nama_file] [url]
+                let fileName = null, url = null;
+                const oIdx = args.indexOf('-o');
+                if (oIdx !== -1 && args[oIdx + 1] && args[oIdx + 2]) {
+                    fileName = args[oIdx + 1];
+                    url = args[oIdx + 2];
+                } else if (args[0] && !args[0].startsWith('-')) {
+                    url = args[0];
+                    fileName = url.split('/').pop().split('?')[0] || 'download';
+                }
+                if (!url) { cliPrint('<span class="cli-error">Penggunaan: curl -o [nama_file] [url]</span>'); return; }
+
+                const finalUrl = normalizeCurlUrl(url);
+                if (finalUrl !== url) {
+                    cliPrint(`<span class="cli-info">↪ URL GitHub repo terdeteksi, diarahkan ke: ${finalUrl.substring(0,70)}${finalUrl.length > 70 ? '…' : ''}</span>`);
+                }
+
+                cliPrint(`<span class="cli-info">⏳ Mengunduh dari: ${finalUrl.substring(0,70)}${finalUrl.length > 70 ? '…' : ''}</span>`);
+                const result = await importFromUrl(finalUrl, fileName, cliCurrentFolder.id);
+                if (result.status === 'success') {
+                    const savedName = (result.data && result.data.name) || fileName || 'file';
+                    cliPrint(`<span class="cli-success">✓ Berhasil diimpor ke vault: ${savedName}</span>`);
+                    // Refresh file explorer jika berada di folder yang sama
+                    if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
+                } else {
+                    cliPrint(`<span class="cli-error">✗ Gagal: ${result.message}</span>`);
+                }
+            },
+
+            'import-drive': async (args) => {
+                const urlOrId = args[0];
+                if (!urlOrId) { cliPrint('<span class="cli-error">Penggunaan: import-drive [google_drive_folder_url_or_id]</span>'); return; }
+                cliPrint(`<span class="cli-warn">⏳ Memulai impor Google Drive ke Drive (D2D)...</span>`);
+                cliPrint(`<span class="cli-info">Menyalin seluruh isi folder: ${urlOrId.substring(0, 50)}...</span>`);
+                
+                const result = await importFromDrive(urlOrId, cliCurrentFolder.id);
+                if (result.status === 'success') {
+                    cliPrint(`<span class="cli-success">✓ Berhasil mengimpor folder: ${result.data.name}</span>`);
+                    if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
+                } else {
+                    cliPrint(`<span class="cli-error">✗ Gagal: ${result.message}</span>`);
+                }
+            },
+
+            clear: async () => { cliOutput.innerHTML = ''; },
+        };
+
+        cliInput.addEventListener('keydown', async (e) => {
+            if (e.key === 'Enter') {
+                const raw = cliInput.value.trim();
+                if (!raw) return;
+                cliHistory.unshift(raw);
+                if (cliHistory.length > 50) cliHistory.pop();
+                cliHistoryIdx = -1;
+                cliPrint(`<span class="cli-prompt">vault@cyber:~$ </span><span>${raw}</span>`);
+                cliInput.value = '';
+                const parts = raw.trim().split(/\s+/);
+                const cmd = parts[0].toLowerCase();
+                const args = parts.slice(1);
+                if (CLI_COMMANDS[cmd]) { await CLI_COMMANDS[cmd](args); }
+                else { cliPrint(`<span class="cli-error">Command tidak dikenali: '${cmd}'. Ketik help.</span>`); }
+            }
+            if (e.key === 'ArrowUp') { e.preventDefault(); if (cliHistoryIdx < cliHistory.length - 1) { cliHistoryIdx++; cliInput.value = cliHistory[cliHistoryIdx]; } }
+            if (e.key === 'ArrowDown') { e.preventDefault(); if (cliHistoryIdx > 0) { cliHistoryIdx--; cliInput.value = cliHistory[cliHistoryIdx]; } else { cliHistoryIdx = -1; cliInput.value = ''; } }
+        });
+        cliClearBtn.addEventListener('click', () => cliOutput.innerHTML = '');
+        cliOutput.addEventListener('click', () => cliInput.focus());
+        // ==================== END CLI ENGINE ====================
+
+
+        // 1. Jalankan Proteksi Halaman
+        checkAuth();
+
+        // ==================== THEME TOGGLE ====================
+        const themeCheckbox = document.getElementById('themeToggleCheckbox');
+        
+        function getPreferredTheme() {
+            const saved = localStorage.getItem('vault_theme');
+            if (saved) return saved;
+            return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        }
+
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            if (themeCheckbox) themeCheckbox.checked = theme === 'light';
+            localStorage.setItem('vault_theme', theme);
+        }
+
+        applyTheme(getPreferredTheme());
+
+        if (themeCheckbox) {
+            themeCheckbox.addEventListener('change', () => {
+                applyTheme(themeCheckbox.checked ? 'light' : 'dark');
+            });
+        }
+        // ==================== END THEME TOGGLE ====================
+
+        // State Dashboard
+        let localFilesState = [];
+        let currentFolderItems = [];
+        let currentViewMode = 'list';
+        let currentFolderId = null;
+        let parentFolderId = null;
+        let folderPathHistory = []; // Untuk breadcrumbs: [{id, name}]
+        let sortField = 'name';
+        let sortAsc = true;
+
+        // State Selection & Editor
+        let selectedItem = null;
+        let editorActiveFileId = null;
+        let editorActiveContent = "";
+        let editorActiveName = "";
+        let editorCurrentMode = "read"; // 'read' or 'edit'
+
+        const TEXT_EXTS = ['txt', 'md', 'json', 'js', 'css', 'html', 'xml', 'sh', 'py', 'bat', 'log', 'ini', 'cfg', 'gs'];
+
+        // Element Selectors
+        const fileViewer = document.getElementById('fileViewer');
+        const searchBar = document.getElementById('searchBar');
+        const statusConsole = document.getElementById('statusConsole');
+        const fInput = document.getElementById('fileInput');
+        const createFolderBtn = document.getElementById('createFolderBtn');
+        const createTextFileBtn = document.getElementById('createTextFileBtn');
+        
+        const bulkActionBar = document.getElementById('bulkActionBar');
+        const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+        const selectedCountText = document.getElementById('selectedCountText');
+        const bulkMoveBtn = document.getElementById('bulkMoveBtn');
+        const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+        const bulkDownloadBtn = document.getElementById('bulkDownloadBtn');
+        const breadcrumbs = document.getElementById('breadcrumbs');
+
+        // Sidebar Selectors
+        const propertiesSidebar = document.getElementById('propertiesSidebar');
+        const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+        const sidebarName = document.getElementById('sidebarName');
+        const sidebarType = document.getElementById('sidebarType');
+        const sidebarSize = document.getElementById('sidebarSize');
+        const sidebarId = document.getElementById('sidebarId');
+        const sidebarUrl = document.getElementById('sidebarUrl');
+        const sidebarLinkContainer = document.getElementById('sidebarLinkContainer');
+        const sidebarIconContainer = document.getElementById('sidebarIconContainer');
+        const sidebarFolderDetail = document.getElementById('sidebarFolderDetail');
+        const sidebarFileCount = document.getElementById('sidebarFileCount');
+        const sidebarFolderCount = document.getElementById('sidebarFolderCount');
+        const sidebarTotalSize = document.getElementById('sidebarTotalSize');
+        const sidebarDateCreated = document.getElementById('sidebarDateCreated');
+        
+        const sidebarPreviewBtn = document.getElementById('sidebarPreviewBtn');
+        const sidebarRenameBtn = document.getElementById('sidebarRenameBtn');
+        const sidebarMoveBtn = document.getElementById('sidebarMoveBtn');
+        const sidebarDeleteBtn = document.getElementById('sidebarDeleteBtn');
+        
+        const copyIdBtn = document.getElementById('copyIdBtn');
+        const copyUrlBtn = document.getElementById('copyUrlBtn');
+
+        // Editor Selectors
+        const editorFileName = document.getElementById('editorFileName');
+        const editorControls = document.getElementById('editorControls');
+        const editorToggleMode = document.getElementById('editorToggleMode');
+        const editorSaveBtn = document.getElementById('editorSaveBtn');
+
+        // ==================== FIX BUG 1: Upload trigger button opens file explorer ====================
+        const uploadTriggerBtn = document.getElementById('uploadTriggerBtn');
+        if (uploadTriggerBtn && fInput) {
+            uploadTriggerBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                fInput.click();
+            });
+        }
+
+        // ==================== FIX BUG 2: Auto-upload when files are selected ====================
+        async function processSelectedFiles() {
+            const files = fInput.files;
+            if (!files.length) return;
+            
+            await uploadMultipleFiles(files);
+            fInput.value = "";
+            loadAndRender(currentFolderId);
+        }
+
+        async function uploadMultipleFiles(files) {
+            const progressContainer = document.getElementById('operationProgressContainer');
+            const progressStatusText = document.getElementById('progressStatusText');
+            const progressPercentText = document.getElementById('progressPercentText');
+            const progressBar = document.getElementById('operationProgressBar');
+            const progressFilesText = document.getElementById('progressFilesText');
+            const progressBytesText = document.getElementById('progressBytesText');
+
+            progressContainer.classList.remove('hidden');
+            progressBar.style.width = '0%';
+            progressPercentText.innerText = '0%';
+
+            statusConsole.classList.remove('hidden');
+            statusConsole.innerHTML = "";
+
+            const logMessage = (msg) => {
+                statusConsole.innerHTML += `<div>CONSOLE > ${msg}</div>`;
+                statusConsole.scrollTop = statusConsole.scrollHeight;
+                cliPrint(`<span class="cli-info">[UPLOAD LOG] ${msg}</span>`);
+            };
+
+            const N = files.length;
+            let totalBytes = 0;
+            for (let i = 0; i < N; i++) {
+                totalBytes += files[i].size;
+            }
+            let uploadedBytes = 0;
+
+            logMessage(`Memulai proses bulk upload untuk ${N} file (Total: ${(totalBytes / (1024 * 1024)).toFixed(2)} MB)...`);
+
+            for (let i = 0; i < N; i++) {
+                const file = files[i];
+                logMessage(`[${i+1}/${N}] Mempersiapkan file: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`);
+                
+                progressStatusText.innerText = `⚡ MENGUNGGAH: ${file.name}`;
+                progressFilesText.innerText = `File: ${i}/${N}`;
+                progressBytesText.innerText = `${(uploadedBytes / (1024 * 1024)).toFixed(2)} MB / ${(totalBytes / (1024 * 1024)).toFixed(2)} MB`;
+                
+                const basePct = (i / N) * 100;
+                progressBar.style.width = `${basePct}%`;
+                progressPercentText.innerText = `${Math.round(basePct)}%`;
+
+                await new Promise((resolve) => {
+                    uploadFile(file, currentFolderId, 
+                        (progressText) => {
+                            logMessage(`[${i+1}/${N}] status: ${progressText}`);
+                            if (progressText && progressText.includes("cloud")) {
+                                progressStatusText.innerText = `⚡ MENGIRIM KE CLOUD: ${file.name}`;
+                                progressBar.style.width = `${basePct + (0.5 / N) * 100}%`;
+                                progressPercentText.innerText = `${Math.round(basePct + (0.5 / N) * 100)}%`;
+                            }
+                        }, 
+                        (result) => {
+                            if (result.status === "success") {
+                                logMessage(`[${i+1}/${N}] Berhasil: ${file.name}`);
+                                uploadedBytes += file.size;
+                            } else {
+                                logMessage(`[${i+1}/${N}] Gagal: ${result.message}`);
+                            }
+                            const endPct = ((i + 1) / N) * 100;
+                            progressBar.style.width = `${endPct}%`;
+                            progressPercentText.innerText = `${Math.round(endPct)}%`;
+                            progressFilesText.innerText = `File: ${i+1}/${N}`;
+                            progressBytesText.innerText = `${(uploadedBytes / (1024 * 1024)).toFixed(2)} MB / ${(totalBytes / (1024 * 1024)).toFixed(2)} MB`;
+                            resolve();
+                        }
+                    );
+                });
+            }
+
+            progressStatusText.innerText = `✅ SELESAI`;
+            progressBar.style.width = '100%';
+            progressPercentText.innerText = '100%';
+            logMessage("Bulk upload selesai! Sinkronisasi database...");
+            
+            setTimeout(() => { 
+                statusConsole.classList.add('hidden'); 
+                progressContainer.classList.add('hidden');
+            }, 6000);
+        }
+
+        if (fInput) {
+            fInput.addEventListener('change', processSelectedFiles);
+        }
+
+        // ==================== FOLDER EXPLORER TREE ENGINE ====================
+        let folderTree = {
+            id: 'root',
+            name: 'Root',
+            isFolder: true,
+            children: [],
+            isOpen: true,
+            isLoaded: false
+        };
+
+        function findTreeNode(node, id) {
+            if (node.id === id) return node;
+            if (node.children) {
+                for (let child of node.children) {
+                    const found = findTreeNode(child, id);
+                    if (found) return found;
+                }
+            }
+            return null;
+        }
+
+        function findPathInTree(node, id, path = []) {
+            if (node.id === id) {
+                return [...path, node];
+            }
+            if (node.children) {
+                for (let child of node.children) {
+                    const found = findPathInTree(child, id, [...path, node]);
+                    if (found) return found;
+                }
+            }
+            return null;
+        }
+
+        function deepMapChildren(children) {
+            return children.map(child => {
+                if (child.isFolder) {
+                    return {
+                        id: child.id,
+                        name: child.name,
+                        isFolder: true,
+                        children: child.children ? deepMapChildren(child.children) : [],
+                        isOpen: false,
+                        isLoaded: true
+                    };
+                } else {
+                    return {
+                        id: child.id,
+                        name: child.name,
+                        isFolder: false,
+                        size: child.size,
+                        url: child.url
+                    };
+                }
+            });
+        }
+
+        function updateTreeNode(folderId, items) {
+            const targetId = folderId || folderTree.id;
+            let node = findTreeNode(folderTree, targetId);
+            if (!node) return;
+
+            node.isLoaded = true;
+            
+            const newChildren = items.map(item => {
+                if (item.isFolder) {
+                    const existing = node.children.find(c => c.id === item.id);
+                    if (existing) {
+                        if (item.children) {
+                            existing.children = deepMapChildren(item.children);
+                            existing.isLoaded = true;
+                        }
+                        return existing;
+                    }
+                    return {
+                        id: item.id,
+                        name: item.name,
+                        isFolder: true,
+                        children: item.children ? deepMapChildren(item.children) : [],
+                        isOpen: false,
+                        isLoaded: !!item.children
+                    };
+                } else {
+                    return {
+                        id: item.id,
+                        name: item.name,
+                        isFolder: false,
+                        size: item.size,
+                        url: item.url
+                    };
+                }
+            });
+
+            // Sort: folders first (alphabetical), then files (alphabetical)
+            node.children = newChildren.sort((a, b) => {
+                if (a.isFolder && !b.isFolder) return -1;
+                if (!a.isFolder && b.isFolder) return 1;
+                return a.name.localeCompare(b.name);
+            });
+        }
+
+        function findParentOf(tree, target) {
+            if (!tree || !tree.children) return null;
+            for (const child of tree.children) {
+                if (child === target) return tree;
+                const found = findParentOf(child, target);
+                if (found) return found;
+            }
+            return null;
+        }
+
+        function renderFolderTree() {
+            const container = document.getElementById('fileExplorerTree');
+            if (!container) return;
+
+            function buildHtml(node, depth = 0) {
+                const isSelected = (currentFolderId === null && node.id === 'root') || (selectedItem && selectedItem.id === node.id) || (!selectedItem && currentFolderId === node.id);
+                const paddingLeft = depth * 12;
+
+                if (!node.isFolder && node.id !== 'root') {
+                    // It's a file
+                    const meta = getFileMeta(node.name);
+                    const deviconStyle = "width:14px;height:14px;";
+                    const iconHtml = meta.devicon 
+                        ? `<span style="flex-shrink:0;display:flex;align-items:center;"><img src="${meta.devicon}" style="${deviconStyle}" onerror="this.style.display='none';this.nextElementSibling.style.display='inline'" /><span style="display:none;font-size:11px;line-height:1;">${meta.icon}</span></span>`
+                        : `<span style="font-size:11px;line-height:1;flex-shrink:0;">${meta.icon}</span>`;
+                    return `
+                        <div class="group flex items-center py-1 pr-2 rounded-lg text-xs transition-colors hover:bg-cyan-500/5 ${isSelected ? 'bg-cyan-500/10 text-cyan-400 font-semibold' : 'text-slate-300'}" 
+                             style="padding-left: ${paddingLeft + 20}px;position:relative;min-width:0;overflow:hidden;">
+                            <div style="display:grid;grid-template-columns:auto 1fr;gap:4px;align-items:center;cursor:pointer;flex:1;min-width:0;" onclick="selectItemFromTree('${node.id}')" ondblclick="openFileFromTree('${node.id}')">
+                                ${iconHtml}
+                                <span title="${escapeHtml(node.name)}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${renderFileName(node.name)}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // It's a folder (or root)
+                const toggleIcon = node.isOpen ? 'keyboard_arrow_down' : 'keyboard_arrow_right';
+                const hasChildren = node.children && node.children.length > 0;
+                let html = `
+                    <div class="group flex items-center py-1 pr-2 rounded-lg text-xs transition-colors hover:bg-cyan-500/5 ${isSelected ? 'bg-cyan-500/10 text-cyan-400 font-semibold' : 'text-slate-300'}"
+                         style="padding-left: ${paddingLeft}px;position:relative;min-width:0;overflow:hidden;">
+                        <div style="display:grid;grid-template-columns:auto auto 1fr;gap:2px;align-items:center;cursor:pointer;flex:1;min-width:0;" onclick="navigateToFolder('${node.id}')">
+                            <span class="material-symbols-outlined" style="font-size:14px;color:var(--text-tertiary);cursor:pointer;user-select:none;" onclick="event.stopPropagation(); toggleTreeNode('${node.id}')">${toggleIcon}</span>
+                            <span class="material-symbols-outlined" style="font-size:1.1rem;color:var(--text-secondary);">folder</span>
+                            <span title="${escapeHtml(node.name)}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${renderFileName(node.name)}</span>
+                        </div>
+                    </div>
+                `;
+
+                if (node.isOpen && hasChildren) {
+                    html += `<div class="space-y-0.5 mt-0.5">`;
+                    node.children.forEach(child => {
+                        html += buildHtml(child, depth + 1);
+                    });
+                    html += `</div>`;
+                }
+
+                return html;
+            }
+
+            container.innerHTML = buildHtml(folderTree);
+        }
+
+        window.toggleTreeNode = async function(id) {
+            let node = findTreeNode(folderTree, id);
+            if (node) {
+                if (!node.isOpen) {
+                    node.isOpen = true;
+                    if (!node.isLoaded) {
+                        const result = await fetchFiles(id === 'root' ? null : id);
+                        if (result.status === "success") {
+                            updateTreeNode(id === 'root' ? null : id, result.data);
+                        }
+                    }
+                } else {
+                    node.isOpen = false;
+                }
+                renderFolderTree();
+            }
+        };
+
+        window.navigateToFolder = function(id) {
+            const targetId = id === 'root' ? null : id;
+            loadAndRender(targetId);
+
+            // Auto close mobile left sidebar drawer
+            const leftSidebar = document.getElementById('leftSidebar');
+            if (leftSidebar) leftSidebar.classList.remove('active');
+            
+            // Only hide backdrop if Right Sidebar is also closed
+            const rightSidebar = document.getElementById('rightSidebar');
+            if (rightSidebar && !rightSidebar.classList.contains('active')) {
+                const backdrop = document.getElementById('mobileBackdrop');
+                if (backdrop) backdrop.classList.remove('active');
+            }
+        };
+
+        window.selectItemFromTree = function(id) {
+            let node = findTreeNode(folderTree, id);
+            if (node) {
+                selectItem(node);
+            }
+
+            // Auto close mobile left sidebar drawer
+            const leftSidebar = document.getElementById('leftSidebar');
+            if (leftSidebar) leftSidebar.classList.remove('active');
+        };
+
+        window.openFileFromTree = function(id) {
+            let node = findTreeNode(folderTree, id);
+            if (node) {
+                openModalViewer(node);
+            }
+
+            // Auto close mobile left sidebar drawer
+            const leftSidebar = document.getElementById('leftSidebar');
+            if (leftSidebar) leftSidebar.classList.remove('active');
+        };
+        // ==================== END FOLDER EXPLORER TREE ENGINE ====================
+
+        // Render Controller & API Loader
+        function showExplorerSkeleton() {
+            const tree = document.getElementById('fileExplorerTree');
+            if (!tree) return;
+            tree.innerHTML = Array.from({length: 8}, (_, i) => `<div class="skeleton" style="height:18px;width:${55 + (i % 4) * 10}%;margin:${i ? '5px' : '0'} 0 0 ${i % 3 * 12}px;"></div>`).join('');
+        }
+
+        async function loadAndRender(folderId = null, recursive = false) {
+            closeSidebar();
+            showExplorerSkeleton();
+            if (propertiesSidebar) propertiesSidebar.classList.add('loading');
+            // Sembunyikan bulk action bar ketika berpindah direktori
+            if (bulkActionBar) resetBulkActionBar();
+            if (selectAllCheckbox) selectAllCheckbox.checked = false;
+            
+            // Show skeleton loading
+            fileViewer.innerHTML = `
+                <div style="display:flex;flex-direction:column;gap:0.75rem;padding:0.5rem;">
+                    <div class="skeleton-card">
+                        <div class="skeleton" style="height:14px;width:60%;"></div>
+                        <div class="skeleton" style="height:10px;width:90%;"></div>
+                    </div>
+                    <div class="skeleton-card">
+                        <div class="skeleton" style="height:14px;width:45%;"></div>
+                        <div class="skeleton" style="height:10px;width:80%;"></div>
+                    </div>
+                    <div class="skeleton-card">
+                        <div class="skeleton" style="height:14px;width:55%;"></div>
+                        <div class="skeleton" style="height:10px;width:85%;"></div>
+                    </div>
+                    <div class="skeleton-card">
+                        <div class="skeleton" style="height:14px;width:50%;"></div>
+                        <div class="skeleton" style="height:10px;width:75%;"></div>
+                    </div>
+                </div>`;
+            const result = await fetchFiles(folderId, recursive);
+            
+            if (result.status === "success") {
+                // Bind the root node id dynamically if it is currently 'root'
+                if (folderTree.id === 'root' && result.currentFolderId) {
+                    folderTree.id = result.currentFolderId;
+                }
+
+                currentFolderItems = result.data.map(item => ({ ...item, selected: false }));
+                localFilesState = currentFolderItems;
+                currentFolderId = result.currentFolderId;
+                parentFolderId = result.parentFolderId;
+                
+                // Update tree node first
+                updateTreeNode(result.currentFolderId, result.data);
+                
+                // Then calculate breadcrumbs path based on tree structure
+                updateBreadcrumbs(result.currentFolderName, result.currentFolderId, result.parentFolderId);
+                
+                renderFolderTree();
+                renderFiles(localFilesState);
+            } else {
+                fileViewer.innerHTML = `<div class="text-center py-20 text-xs text-red-400 font-mono-cyber">❌ ERROR: ${result.message}</div>`;
+            }
+            if (propertiesSidebar) propertiesSidebar.classList.remove('loading');
+        }
+
+        // Update Breadcrumb Trail
+        function updateBreadcrumbs(currentName, currentId, parentId = null) {
+            const targetId = currentId || folderTree.id;
+            const path = findPathInTree(folderTree, targetId);
+            
+            if (path && path.length > 0) {
+                // Map the computed tree path to folderPathHistory (ignoring the root node)
+                folderPathHistory = path.slice(1).map(node => ({
+                    id: node.id,
+                    name: node.name
+                }));
+            } else {
+                // Fallback to manual breadcrumb management
+                if (!currentId || currentId === folderTree.id) {
+                    folderPathHistory = [];
+                } else {
+                    const idx = folderPathHistory.findIndex(f => f.id === currentId);
+                    if (idx !== -1) {
+                        folderPathHistory = folderPathHistory.slice(0, idx + 1);
+                    } else if (parentId === null || parentId === folderTree.id) {
+                        // Sibling of root, reset to this folder
+                        folderPathHistory = [{ id: currentId, name: currentName }];
+                    } else {
+                        // Check if parent of this new folder is in history
+                        const pIdx = folderPathHistory.findIndex(f => f.id === parentId);
+                        if (pIdx !== -1) {
+                            folderPathHistory = folderPathHistory.slice(0, pIdx + 1);
+                            folderPathHistory.push({ id: currentId, name: currentName });
+                        } else {
+                            // Default reset to prevent piling up unrelated folders
+                            folderPathHistory = [{ id: currentId, name: currentName }];
+                        }
+                    }
+                }
+            }
+
+            let html = `<span class="cursor-pointer hover:text-white" id="navRoot">Root</span>`;
+            folderPathHistory.forEach((folder) => {
+                html += ` <span class="text-slate-600">/</span> <span class="cursor-pointer hover:text-white nav-breadcrumb-item" data-id="${folder.id}">${folder.name}</span>`;
+            });
+            breadcrumbs.innerHTML = html;
+
+            // Bind click to root
+            document.getElementById('navRoot').addEventListener('click', () => {
+                currentFolderId = null;
+                loadAndRender(null);
+            });
+
+            // Bind click to sub-breadcrumbs
+            document.querySelectorAll('.nav-breadcrumb-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const targetId = item.getAttribute('data-id');
+                    loadAndRender(targetId);
+                });
+            });
+        }
+
+        // Render List / Grid View with neumorphic boxes & Material Symbols
+        // One URL builder keeps every download surface on the same backend route.
+        function getDownloadUrl(id, isFolder) {
+            const token = localStorage.getItem('vault_token');
+            const apiUrl = getApiUrl();
+            const resource = isFolder ? 'download_folder&folderId=' : 'download&fileId=';
+            return apiUrl + '?action=' + resource + encodeURIComponent(id) + '&token=' + encodeURIComponent(token);
+        }
+
+        function openDownloadLink(id, isFolder) {
+            window.open(getDownloadUrl(id, isFolder), '_blank', 'noopener');
+        }
+
+        function renderFiles(items) {
+            if (items.length === 0) {
+                fileViewer.innerHTML = `
+                    <div style="text-align:center;padding:3rem 1rem;color:var(--text-tertiary);font-family:'Fira Code',monospace;font-size:11px;font-style:italic;">
+                        Folder ini kosong.
+                    </div>`;
+                return;
+            }
+
+            if (currentViewMode === 'list') {
+                let html = `<div style="display:flex;flex-direction:column;gap:0.5rem;">`;
+                items.forEach((item, index) => {
+                    const isSelected = item.selected ? 'checked' : '';
+                    const isActive = (selectedItem && selectedItem.id === item.id) ? ' active' : '';
+                    
+                    if (item.isFolder) {
+                        const countStr = item.fileCount !== undefined ? `${item.fileCount} file` : '';
+                        const sizeStr = item.size > 0 ? formatBytes(item.size) : '';
+                        const dateStr = item.dateCreated || '';
+                        const metaStr = [countStr, sizeStr, dateStr].filter(Boolean).join(' • ');
+
+                        html += `
+                            <div data-id="${item.id}" class="file-item${isActive}">
+                                <label class="checkbox-svg" style="flex-shrink:0;" onclick="event.stopPropagation();">
+                                    <input type="checkbox" data-index="${index}" class="item-select-checkbox" ${isSelected}>
+                                    <svg viewBox="0 0 64 64" style="height:1.2em;width:1.2em;">
+                                        <path d="M 0 16 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 16" pathLength="575.0541385938" class="path"></path>
+                                    </svg>
+                                </label>
+                                <span class="material-symbols-outlined" style="font-size:1.3rem;color:var(--text-secondary);flex-shrink:0;">folder</span>
+                                <div style="flex:1;min-width:0;">
+                                    <div style="font-size:11px;font-weight:600;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${renderFileName(item.name)}</div>
+                                    <div style="font-size:9px;color:var(--text-tertiary);">${metaStr || 'Folder'}</div>
+                                </div>
+                                <button class="row-download-btn btn-neu" style="padding:0.3rem;font-size:14px;" data-id="${item.id}" data-type="folder" title="Download ZIP">
+                                    <span class="material-symbols-outlined" style="font-size:14px;">download</span>
+                                </button>
+                                <button class="folder-detail-btn btn-neu" style="padding:0.3rem;font-size:14px;" data-id="${item.id}" title="Detail Folder">
+                                    <span class="material-symbols-outlined" style="font-size:14px;">info</span>
+                                </button>
+                            </div>`;
+                    } else {
+                        const meta = getFileMeta(item.name);
+                        const fileIconStyle = "width:16px;height:16px;display:block;";
+                        const fileIconHtml = meta.devicon
+                            ? `<span style="flex-shrink:0;display:flex;align-items:center;"><img src="${meta.devicon}" style="${fileIconStyle}" onerror="this.style.display='none';this.parentNode.querySelector('.fi-fallback').style.display='inline'" /><span class="fi-fallback" style="display:none;font-size:14px;line-height:1;">${meta.icon}</span></span>`
+                            : `<span style="font-size:14px;line-height:1;flex-shrink:0;">${meta.icon}</span>`;
+                        const dateStr = item.dateCreated || '';
+                        html += `
+                            <div data-id="${item.id}" class="file-item${isActive}">
+                                <label class="checkbox-svg" style="flex-shrink:0;" onclick="event.stopPropagation();">
+                                    <input type="checkbox" data-index="${index}" class="item-select-checkbox" ${isSelected}>
+                                    <svg viewBox="0 0 64 64" style="height:1.2em;width:1.2em;">
+                                        <path d="M 0 16 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 16" pathLength="575.0541385938" class="path"></path>
+                                    </svg>
+                                </label>
+                                ${fileIconHtml}
+                                <div style="flex:1;min-width:0;">
+                                    <div style="font-size:11px;font-weight:500;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${renderFileName(item.name)}</div>
+                                    <div style="font-size:9px;color:var(--text-tertiary);">${formatBytes(item.size)}${dateStr ? ` • ${dateStr}` : ''}</div>
+
+                                </div>
+                                <button class="row-download-btn btn-neu" style="padding:0.3rem;font-size:14px;" data-id="${item.id}" data-type="file" title="Download File">
+                                    <span class="material-symbols-outlined" style="font-size:14px;">download</span>
+                                </button>
+                            </div>`;
+                    }
+                });
+                html += `</div>`;
+                fileViewer.innerHTML = html;
+            } else {
+                // Grid View
+                let html = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:0.75rem;">`;
+                items.forEach((item, index) => {
+                    const isSelected = item.selected ? 'checked' : '';
+                    const isActive = (selectedItem && selectedItem.id === item.id) ? ' active' : '';
+                    
+                    if (item.isFolder) {
+                        const countStr = item.fileCount !== undefined ? `${item.fileCount} file` : '';
+                        const sizeStr = item.size > 0 ? formatBytes(item.size) : '';
+                        const metaStr = [countStr, sizeStr].filter(Boolean).join(' • ');
+
+                        html += `
+                            <div data-id="${item.id}" class="file-grid-item${isActive}">
+                                <label class="checkbox-svg" style="position:absolute;top:0.5rem;left:0.5rem;" onclick="event.stopPropagation();">
+                                    <input type="checkbox" data-index="${index}" class="item-select-checkbox" ${isSelected}>
+                                    <svg viewBox="0 0 64 64" style="height:1em;width:1em;">
+                                        <path d="M 0 16 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 16" pathLength="575.0541385938" class="path"></path>
+                                    </svg>
+                                </label>
+                                <div style="position:absolute;top:0.5rem;right:0.5rem;display:flex;gap:0.2rem;">
+                                    <button class="row-download-btn btn-neu" style="padding:0.2rem;" data-id="${item.id}" data-type="folder" title="Download">
+                                        <span class="material-symbols-outlined" style="font-size:12px;">download</span>
+                                    </button>
+                                    <button class="folder-detail-btn btn-neu" style="padding:0.2rem;" data-id="${item.id}" title="Detail">
+                                        <span class="material-symbols-outlined" style="font-size:12px;">info</span>
+                                    </button>
+                                </div>
+                                <span class="material-symbols-outlined" style="font-size:2rem;color:var(--text-secondary);margin-top:0.5rem;flex-shrink:0;">folder</span>
+                                <div style="font-size:11px;font-weight:600;color:var(--text-primary);width:100%;text-align:center;padding:0 0.25rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${renderFileName(item.name)}</div>
+                                <div style="font-size:9px;color:var(--text-tertiary);">${metaStr || 'Folder'}</div>
+                            </div>`;
+                    } else {
+                        const meta = getFileMeta(item.name);
+                        const gridIconStyle = "width:32px;height:32px;display:block;margin:0.5rem auto 0;";
+                        const gridIconHtml = meta.devicon
+                            ? `<span style="display:flex;align-items:center;justify-content:center;margin-top:0.5rem;"><img src="${meta.devicon}" style="width:32px;height:32px;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='inline'" /><span style="display:none;font-size:2rem;text-align:center;">${meta.icon}</span></span>`
+                            : `<span style="font-size:2rem;text-align:center;display:block;margin-top:0.5rem;">${meta.icon}</span>`;
+                        const dateStr = item.dateCreated || '';
+                        html += `
+                            <div data-id="${item.id}" class="file-grid-item${isActive}">
+                                <label class="checkbox-svg" style="position:absolute;top:0.5rem;left:0.5rem;" onclick="event.stopPropagation();">
+                                    <input type="checkbox" data-index="${index}" class="item-select-checkbox" ${isSelected}>
+                                    <svg viewBox="0 0 64 64" style="height:1em;width:1em;">
+                                        <path d="M 0 16 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 16" pathLength="575.0541385938" class="path"></path>
+                                    </svg>
+                                </label>
+                                <button class="row-download-btn btn-neu" style="position:absolute;top:0.5rem;right:0.5rem;padding:0.2rem;" data-id="${item.id}" data-type="file" title="Download">
+                                    <span class="material-symbols-outlined" style="font-size:12px;">download</span>
+                                </button>
+                                ${gridIconHtml}
+                                <div style="font-size:11px;font-weight:500;color:var(--text-primary);width:100%;text-align:center;padding:0 0.25rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${renderFileName(item.name)}</div>
+                                <div style="font-size:9px;color:var(--text-tertiary);">${formatBytes(item.size)}</div>
+                                ${dateStr ? `<div style="font-size:8px;color:var(--text-muted);">${dateStr}</div>` : ''}
+                            </div>`;
+                    }
+                });
+                html += `</div>`;
+                fileViewer.innerHTML = html;
+            }
+
+            setupActionListeners();
+        }
+
+        // Sort files
+        function sortFiles(field, asc) {
+            sortField = field;
+            sortAsc = asc;
+            localFilesState.sort((a, b) => {
+                let valA, valB;
+                if (field === 'name') {
+                    valA = a.name.toLowerCase();
+                    valB = b.name.toLowerCase();
+                } else if (field === 'size') {
+                    valA = a.size || 0;
+                    valB = b.size || 0;
+                } else if (field === 'date') {
+                    valA = a.dateCreated || '';
+                    valB = b.dateCreated || '';
+                }
+                if (valA < valB) return asc ? -1 : 1;
+                if (valA > valB) return asc ? 1 : -1;
+                return 0;
+            });
+            // Keep folders before files
+            localFilesState.sort((a, b) => {
+                if (a.isFolder && !b.isFolder) return -1;
+                if (!a.isFolder && b.isFolder) return 1;
+                let valA, valB;
+                if (field === 'name') {
+                    valA = a.name.toLowerCase();
+                    valB = b.name.toLowerCase();
+                } else if (field === 'size') {
+                    valA = a.size || 0;
+                    valB = b.size || 0;
+                } else if (field === 'date') {
+                    valA = a.dateCreated || '';
+                    valB = b.dateCreated || '';
+                }
+                if (valA < valB) return asc ? -1 : 1;
+                if (valA > valB) return asc ? 1 : -1;
+                return 0;
+            });
+            renderFiles(localFilesState);
+            updateSortButtons();
+        }
+
+        function updateSortButtons() {
+            document.querySelectorAll('.sort-btn').forEach(btn => {
+                const field = btn.getAttribute('data-sort');
+                if (field === sortField) {
+                    btn.style.background = 'var(--accent)';
+                    btn.style.color = '#fff';
+                    if (sortAsc) {
+                        btn.innerText = field === 'name' ? 'Nama ↑' : field === 'size' ? 'Ukuran ↑' : 'Tanggal ↑';
+                    } else {
+                        btn.innerText = field === 'name' ? 'Nama ↓' : field === 'size' ? 'Ukuran ↓' : 'Tanggal ↓';
+                    }
+                } else {
+                    btn.style.background = '';
+                    btn.style.color = '';
+                    btn.innerText = field === 'name' ? 'Nama ↑' : field === 'size' ? 'Ukuran' : 'Tanggal';
+                }
+            });
+        }
+
+        // Action Bindings (Selection, Double click, Checkbox)
+        function setupActionListeners() {
+            // 0. Single click to Enter folder OR Select & Open file details sidebar
+            document.querySelectorAll('.file-item, .file-grid-item').forEach(wrapper => {
+                wrapper.addEventListener('click', (e) => {
+                    if (e.target.closest('.checkbox-svg') || e.target.closest('input') || e.target.closest('.folder-detail-btn') || e.target.closest('.row-download-btn')) {
+                        return;
+                    }
+                    const id = wrapper.getAttribute('data-id');
+                    const targetItem = localFilesState.find(f => f.id === id);
+                    if (targetItem) {
+                        if (targetItem.isFolder) {
+                            loadAndRender(targetItem.id);
+                        } else {
+                            selectItem(targetItem);
+                        }
+                    }
+                });
+            });
+
+            // 1. Double click to open Preview modal for files
+            document.querySelectorAll('.file-item, .file-grid-item').forEach(wrapper => {
+                wrapper.addEventListener('dblclick', (e) => {
+                    if (e.target.closest('.checkbox-svg') || e.target.closest('input') || e.target.closest('.folder-detail-btn') || e.target.closest('.row-download-btn')) {
+                        return;
+                    }
+                    const id = wrapper.getAttribute('data-id');
+                    const targetItem = localFilesState.find(f => f.id === id);
+                    if (targetItem && !targetItem.isFolder) {
+                        openModalViewer(targetItem);
+                    }
+                });
+            });
+
+            // Row download buttons trigger the same direct-download link as the detail panel.
+            document.querySelectorAll('.row-download-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const id = btn.getAttribute('data-id');
+                    const type = btn.getAttribute('data-type');
+                    openDownloadLink(id, type === 'folder');
+                });
+            });
+
+            // 2. Folder Detail Button click -> Select and show details (without entering)
+            document.querySelectorAll('.folder-detail-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const id = btn.getAttribute('data-id');
+                    const targetItem = localFilesState.find(f => f.id === id);
+                    if (targetItem) {
+                        selectItem(targetItem);
+                    }
+                });
+            });
+
+            // 3. Checkbox selection for bulk operations
+            document.querySelectorAll('.item-select-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    const index = parseInt(checkbox.getAttribute('data-index'));
+                    localFilesState[index].selected = checkbox.checked;
+                    updateBulkActionBar();
+                });
+            });
+        }
+
+        // Update bulk action bar visibility and count
+        function updateBulkActionBar() {
+            const selectedItems = localFilesState.filter(item => item.selected);
+            if (selectedItems.length > 0) {
+                bulkActionBar.style.display = 'flex';
+                selectedCountText.innerText = `${selectedItems.length} terpilih`;
+                
+                // Set state Select All checkbox
+                selectAllCheckbox.checked = (selectedItems.length === localFilesState.length);
+            } else {
+                bulkActionBar.style.display = 'none';
+                selectAllCheckbox.checked = false;
+            }
+        }
+        function resetBulkActionBar() {
+            bulkActionBar.style.display = 'none';
+            selectAllCheckbox.checked = false;
+        }
+
+        // Select All Handler
+        selectAllCheckbox.addEventListener('change', () => {
+            const isChecked = selectAllCheckbox.checked;
+            localFilesState.forEach(item => {
+                item.selected = isChecked;
+            });
+            document.querySelectorAll('.item-select-checkbox').forEach(cb => {
+                cb.checked = isChecked;
+            });
+            updateBulkActionBar();
+        });
+        
+        // Sort button event listeners
+        document.querySelectorAll('.sort-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const field = btn.getAttribute('data-sort');
+                if (field === sortField) {
+                    sortAsc = !sortAsc;
+                } else {
+                    sortField = field;
+                    sortAsc = true;
+                }
+                sortFiles(sortField, sortAsc);
+            });
+        });
+
+        // Bulk Delete Executer with Progress Bar
+        bulkDeleteBtn.addEventListener('click', async () => {
+            const selectedItems = localFilesState.filter(item => item.selected);
+            if (!selectedItems.length) return;
+            const confirmed = await showDialog('Bulk Delete', `Hancurkan ${selectedItems.length} item terpilih secara permanen di Google Drive?`);
+            if (confirmed) {
+                // Show progress container
+                const progressContainer = document.getElementById('operationProgressContainer');
+                const progressStatusText = document.getElementById('progressStatusText');
+                const progressPercentText = document.getElementById('progressPercentText');
+                const progressBar = document.getElementById('operationProgressBar');
+                const progressFilesText = document.getElementById('progressFilesText');
+                const progressBytesText = document.getElementById('progressBytesText');
+
+                progressContainer.classList.remove('hidden');
+                progressBar.style.width = '0%';
+                progressPercentText.innerText = '0%';
+                progressFilesText.innerText = `Item: 0/${selectedItems.length}`;
+                progressBytesText.innerText = `-`;
+
+                bulkDeleteBtn.innerText = 'DESTROYING...';
+                bulkDeleteBtn.disabled = true;
+                
+                const fileIds   = selectedItems.filter(i => !i.isFolder).map(i => i.id);
+                const folderIds = selectedItems.filter(i =>  i.isFolder).map(i => i.id);
+                
+                // Print progress log to CLI
+                cliPrint(`<span class="cli-warn">[DELETE LOG] Menghancurkan ${selectedItems.length} item secara bulk...</span>`);
+                
+                progressStatusText.innerText = `⚡ MENGHAPUS DARI CLOUD...`;
+                progressBar.style.width = '50%';
+                progressPercentText.innerText = '50%';
+                
+                const res = await deleteMultiple(fileIds, folderIds);
+                toast(res.message, res.status === 'success' ? 'success' : 'error');
+                
+                cliPrint(`<span class="cli-success">[DELETE LOG] Selesai: ${res.message}</span>`);
+                
+                progressStatusText.innerText = `✅ PENGHAPUSAN SELESAI`;
+                progressBar.style.width = '100%';
+                progressPercentText.innerText = '100%';
+                progressFilesText.innerText = `Item: ${selectedItems.length}/${selectedItems.length}`;
+                
+                bulkDeleteBtn.innerText = 'Hapus Terpilih 🗑️';
+                bulkDeleteBtn.disabled = false;
+                
+                setTimeout(() => {
+                    progressContainer.classList.add('hidden');
+                }, 4000);
+                
+                loadAndRender(currentFolderId);
+            }
+        });
+
+        // Bulk Move Executer
+        bulkMoveBtn.addEventListener('click', async () => {
+            const selectedItems = localFilesState.filter(item => item.selected);
+            if (!selectedItems.length) return;
+            const targetId = await showDialog('Bulk Move', `Pindahkan ${selectedItems.length} item terpilih ke folder mana? Masukkan ID folder tujuan (atau ketik "root" untuk kembali ke folder utama):`, { hasInput: true, inputDefault: '', inputPlaceholder: 'ID Folder tujuan...' });
+            if (targetId !== null) {
+                bulkMoveBtn.innerText = 'MOVING...';
+                bulkMoveBtn.disabled = true;
+                const fileIds   = selectedItems.filter(i => !i.isFolder).map(i => i.id);
+                const folderIds = selectedItems.filter(i =>  i.isFolder).map(i => i.id);
+                const res = await moveItems(fileIds, folderIds, targetId.toLowerCase() === 'root' ? null : targetId);
+                toast(res.message, res.status === 'success' ? 'success' : 'error');
+                bulkMoveBtn.innerText = 'Pindah Terpilih 📦';
+                bulkMoveBtn.disabled = false;
+                loadAndRender(currentFolderId);
+            }
+        });
+
+        // Create Folder Action
+        createFolderBtn.addEventListener('click', async () => {
+            const folderName = await showDialog('Buat Folder Baru', 'Masukkan nama folder yang ingin dibuat:', { hasInput: true, inputPlaceholder: 'Nama folder...' });
+            if (folderName) {
+                const res = await createFolder(folderName, currentFolderId);
+                toast(res.message, res.status === 'success' ? 'success' : 'error');
+                loadAndRender(currentFolderId);
+            }
+        });
+
+        let searchTimer;
+        let searchRequestId = 0;
+        searchBar.addEventListener('input', (e) => {
+            const requestId = ++searchRequestId;
+            clearTimeout(searchTimer);
+            const keyword = e.target.value.trim().toLowerCase();
+            // Never lock the input: show the current directory immediately.
+            if (!keyword) { localFilesState = currentFolderItems; renderFiles(localFilesState); return; }
+            renderFiles(currentFolderItems.filter(item => String(item.name || '').toLowerCase().includes(keyword)));
+            searchTimer = setTimeout(async () => {
+                const response = await searchFiles(keyword);
+                if (requestId !== searchRequestId || searchBar.value.trim().toLowerCase() !== keyword) return;
+                if (response.status === 'success') {
+                    localFilesState = (response.data || []).map(item => ({ ...item, selected: false }));
+                    renderFiles(localFilesState);
+                }
+            }, 450);
+        });
+
+
+        // ==================== SIDEBAR & UTILITIES ====================
+        function selectItem(item) {
+            selectedItem = item;
+            
+            // Highlight selected item in file list
+            document.querySelectorAll('.file-item-wrapper').forEach(wrapper => {
+                if (wrapper.getAttribute('data-id') === item.id) {
+                    wrapper.classList.add('border-cyan-400/80', 'shadow-[0_0_12px_rgba(6,182,212,0.15)]', 'bg-cyan-950/20');
+                    wrapper.classList.remove('border-white/5', 'border-cyan-500/10');
+                } else {
+                    wrapper.classList.remove('border-cyan-400/80', 'shadow-[0_0_12px_rgba(6,182,212,0.15)]', 'bg-cyan-950/20');
+                    const target = localFilesState.find(f => f.id === wrapper.getAttribute('data-id'));
+                    if (target) {
+                        if (target.isFolder) {
+                            wrapper.classList.add('border-cyan-500/10');
+                        } else {
+                            wrapper.classList.add('border-white/5');
+                        }
+                    }
+                }
+            });
+
+            sidebarName.innerHTML = renderFileName(item.name);
+            sidebarId.innerText = item.id;
+            
+            if (item.isFolder) {
+                sidebarType.innerText = "Folder Direktori";
+                sidebarSize.innerText = item.size > 0 ? formatBytes(item.size) : '-';
+                sidebarLinkContainer.classList.add('hidden');
+                sidebarIconContainer.innerHTML = `<span class="material-symbols-outlined" style="font-size:1.5rem;color:var(--text-secondary);">folder</span>`;
+                
+                // Show folder details
+                sidebarFolderDetail.style.display = 'flex';
+                sidebarFileCount.innerText = item.fileCount !== undefined ? `${item.fileCount} file` : '0';
+                sidebarFolderCount.innerText = item.folderCount !== undefined ? `${item.folderCount} folder` : '0';
+                sidebarTotalSize.innerText = item.size > 0 ? formatBytes(item.size) : '0 Bytes';
+                sidebarDateCreated.innerText = item.dateCreated || '-';
+            } else {
+                const meta = getFileMeta(item.name);
+                sidebarType.innerText = item.name.split('.').pop().toUpperCase() + " File";
+                sidebarSize.innerText = formatBytes(item.size);
+                sidebarLinkContainer.classList.remove('hidden');
+                sidebarFolderDetail.style.display = 'none';
+                
+            const directUrl = getDownloadUrl(item.id, false);
+                sidebarUrl.innerText = directUrl;
+                const deviconStyle = "width:28px;height:28px;display:block;";
+                if (meta.devicon) {
+                    sidebarIconContainer.innerHTML = `<span style="display:flex;align-items:center;justify-content:center;"><img src="${meta.devicon}" style="${deviconStyle}" onerror="this.style.display='none';this.nextElementSibling.style.display='inline'" /><span style="display:none;font-size:1rem;line-height:1;">${meta.icon}</span></span>`;
+                } else {
+                    sidebarIconContainer.innerHTML = `<span style="font-size:1rem;">${meta.icon}</span>`;
+                }
+            }
+
+            propertiesSidebar.style.display = 'flex';
+            const placeholder = document.getElementById('propertiesPlaceholder');
+            if (placeholder) placeholder.style.display = 'none';
+
+            // Mobile compatibility: Auto-open Right Sidebar drawer
+            if (window.innerWidth < 1024) {
+                const rightSidebar = document.getElementById('rightSidebar');
+                const backdrop = document.getElementById('mobileBackdrop');
+                if (rightSidebar) rightSidebar.classList.add('active');
+                if (backdrop) backdrop.classList.add('active');
+            }
+        }
+
+        function closeSidebar() {
+            selectedItem = null;
+            if (propertiesSidebar) {
+                propertiesSidebar.style.display = 'none';
+            }
+            const placeholder = document.getElementById('propertiesPlaceholder');
+            if (placeholder) placeholder.style.display = '';
+            document.querySelectorAll('.file-item-wrapper').forEach(wrapper => {
+                wrapper.classList.remove('border-cyan-400/80', 'shadow-[0_0_12px_rgba(6,182,212,0.15)]', 'bg-cyan-950/20');
+                const id = wrapper.getAttribute('data-id');
+                const target = localFilesState.find(f => f.id === id);
+                if (target) {
+                    if (target.isFolder) {
+                        wrapper.classList.add('border-cyan-500/10');
+                    } else {
+                        wrapper.classList.add('border-white/5');
+                    }
+                }
+            });
+
+            // Mobile compatibility: Auto-close Right Sidebar drawer
+            const rightSidebar = document.getElementById('rightSidebar');
+            if (rightSidebar) rightSidebar.classList.remove('active');
+            
+            // Only hide backdrop if Left Sidebar is also closed
+            const leftSidebar = document.getElementById('leftSidebar');
+            if (leftSidebar && !leftSidebar.classList.contains('active')) {
+                const backdrop = document.getElementById('mobileBackdrop');
+                if (backdrop) backdrop.classList.remove('active');
+            }
+        }
+
+        // ==================== EDITOR & PREVIEW MODAL RENDERING ====================
+        function renderEditorModal(mode) {
+            editorCurrentMode = mode;
+            const body = document.getElementById('modalBody');
+            
+            if (mode === "read") {
+                editorToggleMode.innerText = "Mode Edit";
+                const ext = editorActiveName.split('.').pop().toLowerCase();
+                if (ext === 'md' && typeof marked !== 'undefined') {
+                    body.innerHTML = `<div class="markdown-body" style="max-height:75vh;overflow-y:auto;padding:1rem;">${marked.parse(editorActiveContent)}</div>`;
+                } else {
+                    body.innerHTML = `<pre style="max-height:75vh;overflow-y:auto;white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.5;padding:1rem;background:var(--bg-inset);border-radius:var(--radius-sm);color:var(--text-primary);">${escapeHtml(editorActiveContent)}</pre>`;
+                }
+            } else {
+                editorToggleMode.innerText = "Mode Baca";
+                body.innerHTML = `<textarea id="editorTextarea" style="width:100%;height:70vh;background:var(--bg-inset);border:1px solid var(--border);outline:none;padding:1rem;border-radius:var(--radius-sm);resize:none;font-size:12px;font-family:monospace;color:var(--text-primary);" spellcheck="false" placeholder="Ketik isi file di sini...">${escapeHtml(editorActiveContent)}</textarea>`;
+                
+                const ta = document.getElementById('editorTextarea');
+                ta.addEventListener('input', () => {
+                    editorActiveContent = ta.value;
+                });
+            }
+        }
+        
+        function escapeHtml(text) {
+            if (text == null) return '';
+            return String(text)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+        
+        // Render filename with extension always visible
+        function renderFileName(name) {
+            return escapeHtml(name);
+        }
+
+        // Preview Modal Viewer (Media Handshake & Text Editor)
+        async function openModalViewer(file) {
+            const modal = document.getElementById('previewModal');
+            const body = document.getElementById('modalBody');
+            
+            editorActiveFileId = file.id;
+            editorActiveName = file.name;
+            editorFileName.value = file.name;
+            
+            body.innerHTML = `<div style="display:flex;flex-direction:column;gap:0.75rem;padding:1rem;">
+                <div style="height:16px;width:60%;background:var(--border);border-radius:4px;animation:pulse 1.5s infinite;"></div>
+                <div style="height:16px;width:40%;background:var(--border);border-radius:4px;animation:pulse 1.5s infinite;"></div>
+                <div style="height:200px;width:100%;background:var(--border);border-radius:6px;animation:pulse 1.5s infinite;"></div>
+            </div>`;
+            modal.style.display = 'flex';
+
+            const ext = file.name.split('.').pop().toLowerCase();
+            
+            // Check if it's a text/code file
+            if (TEXT_EXTS.includes(ext)) {
+                editorControls.style.display = 'flex';
+                try {
+                    const blob = await fetchFileBlob(file.id);
+                    if (blob) {
+                        editorActiveContent = await blob.text();
+                        renderEditorModal("read");
+                    } else {
+                        body.innerHTML = `<div class="text-center py-20 text-xs text-red-400 font-mono-cyber">❌ Gagal membaca konten berkas teks.</div>`;
+                    }
+                } catch (e) {
+                    body.innerHTML = `<div class="text-center py-20 text-xs text-red-400 font-mono-cyber">❌ Error: ${e.toString()}</div>`;
+                }
+            } else {
+                // Non-text file (image, video, pdf, document, or unsupported)
+                editorControls.style.display = 'none';
+                
+                if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'ico', 'bmp'].includes(ext)) {
+                    const blob = await fetchFileBlob(file.id);
+                    if (blob) {
+                        const objectUrl = URL.createObjectURL(blob);
+                        body.innerHTML = `<img src="${objectUrl}" style="max-height:70vh;width:auto;object-fit:contain;display:block;margin:0 auto;border-radius:var(--radius-sm);" />`;
+                    } else {
+                        body.innerHTML = `<div class="text-center py-20 text-xs text-red-400 font-mono-cyber">❌ Gagal memuat pratinjau gambar.</div>`;
+                    }
+                } else if (ext === 'pdf') {
+                    try {
+                        const blob = await fetchFileBlob(file.id);
+                        if (blob) {
+                            const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+                            const objectUrl = URL.createObjectURL(pdfBlob);
+                            body.innerHTML = `<iframe src="${objectUrl}" style="width:100%;height:75vh;border-radius:var(--radius-sm);border:1px solid var(--border);"></iframe>`;
+                        } else {
+                            body.innerHTML = `<div class="text-center py-20 text-xs text-red-400 font-mono-cyber">❌ Gagal memuat PDF.</div>`;
+                        }
+                    } catch (e) {
+                        body.innerHTML = `<div class="text-center py-20 text-xs text-red-400 font-mono-cyber">❌ Error: ${e.toString()}</div>`;
+                    }
+                } else if (['mp4', 'mkv', 'mov', 'webm'].includes(ext)) {
+                    const blob = await fetchFileBlob(file.id);
+                    if (blob) {
+                        const objectUrl = URL.createObjectURL(blob);
+                            body.innerHTML = `<video src="${objectUrl}" controls style="max-height:70vh;width:100%;border-radius:var(--radius-sm);" autoplay></video>`;
+                    } else {
+                        body.innerHTML = `<div class="text-center py-20 text-xs text-red-400 font-mono-cyber">❌ Gagal memuat pratinjau video.</div>`;
+                    }
+                } else if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(ext)) {
+                    const embedUrl = `https://drive.google.com/file/d/${file.id}/preview`;
+                    body.innerHTML = `
+                        <div class="w-full space-y-2">
+                            <p class="text-[10px] text-slate-400 font-mono-cyber text-center">💡 Memuat pratinjau dokumen dari Google Drive Secure Viewer. Pastikan Anda sudah login ke akun Google pemilik file.</p>
+                            <iframe src="${embedUrl}" style="width:100%;height:70vh;border-radius:var(--radius-sm);border:1px solid var(--border);" frameborder="0"></iframe>
+                        </div>`;
+                } else {
+                    body.innerHTML = `
+                        <div class="text-center p-6 space-y-4">
+                            <p class="text-xs text-slate-400 font-mono-cyber">Pratinjau langsung tidak didukung untuk tipe file ini.</p>
+                            <a href="${file.url}" target="_blank" class="inline-block btn-cyber-primary px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-white">
+                                Buka / Unduh File Direct Link 🔗
+                            </a>
+                        </div>`;
+                }
+            }
+        }
+
+        // ==================== BIND SIDEBAR & EDITOR EVENTS ====================
+        // Sidebar Close
+        closeSidebarBtn.addEventListener('click', () => closeSidebar());
+
+        // Copy Clipboard Buttons
+        copyIdBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = sidebarId.innerText;
+            navigator.clipboard.writeText(id);
+            toast('ID File disalin ke clipboard!', 'success');
+        });
+        
+        copyUrlBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const url = sidebarUrl.innerText;
+            navigator.clipboard.writeText(url);
+            toast('Direct Download Link disalin ke clipboard!', 'success');
+        });
+
+        // Sidebar Action Buttons
+        sidebarPreviewBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (!selectedItem) return;
+            if (selectedItem.isFolder) {
+                loadAndRender(selectedItem.id);
+            } else {
+                openModalViewer(selectedItem);
+            }
+        });
+
+        sidebarRenameBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (!selectedItem) return;
+            const id = selectedItem.id;
+            const oldName = selectedItem.name;
+            const newName = await showDialog('Rename Item', `Masukkan nama baru untuk "${oldName}"`, { hasInput: true, inputDefault: oldName, inputPlaceholder: 'Nama baru...' });
+            if (newName && newName !== oldName) {
+                sidebarRenameBtn.disabled = true;
+                const res = await renameFile(id, newName);
+                toast(res.message, res.status === 'success' ? 'success' : 'error');
+                sidebarRenameBtn.disabled = false;
+                loadAndRender(currentFolderId);
+            }
+        });
+
+        sidebarMoveBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (!selectedItem) return;
+            const id = selectedItem.id;
+            const name = selectedItem.name;
+            const isFolder = selectedItem.isFolder;
+            const targetId = await showDialog('Pindahkan Item', `Pindahkan "${name}" ke folder mana? Masukkan ID folder tujuan (atau ketik "root" untuk kembali ke folder utama):`, { hasInput: true, inputDefault: '', inputPlaceholder: 'ID Folder tujuan...' });
+            if (targetId !== null) {
+                sidebarMoveBtn.disabled = true;
+                const fileIds = isFolder ? [] : [id];
+                const folderIds = isFolder ? [id] : [];
+                const res = await moveItems(fileIds, folderIds, targetId.toLowerCase() === 'root' ? null : targetId);
+                toast(res.message, res.status === 'success' ? 'success' : 'error');
+                sidebarMoveBtn.disabled = false;
+                loadAndRender(currentFolderId);
+            }
+        });
+
+        sidebarDeleteBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (!selectedItem) return;
+            const id = selectedItem.id;
+            const name = selectedItem.name;
+            const confirmed = await showDialog('Konfirmasi Hapus', `Kirim perintah penghancuran item "${name}" ke cloud Google Drive?`);
+            if (confirmed) {
+                sidebarDeleteBtn.disabled = true;
+                const res = await deleteFile(id);
+                toast(res.message, res.status === 'success' ? 'success' : 'error');
+                sidebarDeleteBtn.disabled = false;
+                loadAndRender(currentFolderId);
+            }
+        });
+
+        const sidebarDownloadBtn = document.getElementById('sidebarDownloadBtn');
+        if (sidebarDownloadBtn) {
+            sidebarDownloadBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (!selectedItem) return;
+                const id = selectedItem.id;
+                const type = selectedItem.isFolder ? 'folder' : 'file';
+                openDownloadLink(id, type === 'folder');
+            });
+        }
+
+        // Editor Toggle Read/Edit Mode
+        editorToggleMode.addEventListener('click', () => {
+            if (editorCurrentMode === "read") {
+                renderEditorModal("edit");
+            } else {
+                const ta = document.getElementById('editorTextarea');
+                if (ta) editorActiveContent = ta.value;
+                renderEditorModal("read");
+            }
+        });
+
+        // Editor Save Action
+        editorSaveBtn.addEventListener('click', async () => {
+            const ta = document.getElementById('editorTextarea');
+            if (ta) editorActiveContent = ta.value;
+            
+            const name = editorFileName.value.trim();
+            if (!name) return toast("Nama file tidak boleh kosong!", "warn");
+            
+            editorSaveBtn.innerText = "SAVING...";
+            editorSaveBtn.disabled = true;
+            
+            const res = await saveTextFile(name, editorActiveContent, editorActiveFileId, currentFolderId);
+            toast(res.message, res.status === "success" ? "success" : "error");
+            
+            editorSaveBtn.innerText = "SAVE 💾";
+            editorSaveBtn.disabled = false;
+            
+            if (res.status === "success") {
+                document.getElementById('closeModalBtn').click();
+                loadAndRender(currentFolderId);
+            }
+        });
+
+        // Create Text File Handler
+        createTextFileBtn.addEventListener('click', () => {
+            const modal = document.getElementById('previewModal');
+            
+            editorActiveFileId = null;
+            editorActiveContent = "";
+            editorActiveName = "baru.txt";
+            editorFileName.value = "baru.txt";
+            
+            editorControls.style.display = 'flex';
+            modal.style.display = 'flex';
+            
+            renderEditorModal("edit");
+        });
+
+        document.getElementById('closeModalBtn').addEventListener('click', () => {
+            const modal = document.getElementById('previewModal');
+            document.getElementById('modalBody').innerHTML = "";
+            editorControls.style.display = 'none';
+            editorActiveFileId = null;
+            editorActiveContent = "";
+            editorActiveName = "";
+            modal.style.display = 'none';
+        });
+
+        // Mobile Sidebar Toggle Clicks
+        const mobileSidebarToggle = document.getElementById('mobileSidebarToggle');
+        const leftSidebar = document.getElementById('leftSidebar');
+        const rightSidebar = document.getElementById('rightSidebar');
+        const mobileBackdrop = document.getElementById('mobileBackdrop');
+
+        if (mobileSidebarToggle && leftSidebar && mobileBackdrop) {
+            mobileSidebarToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                leftSidebar.classList.toggle('active');
+                if (leftSidebar.classList.contains('active')) {
+                    mobileBackdrop.classList.add('active');
+                } else if (!rightSidebar.classList.contains('active')) {
+                    mobileBackdrop.classList.remove('active');
+                }
+            });
+        }
+
+        if (mobileBackdrop) {
+            mobileBackdrop.addEventListener('click', () => {
+                if (leftSidebar) leftSidebar.classList.remove('active');
+                if (rightSidebar) rightSidebar.classList.remove('active');
+                mobileBackdrop.classList.remove('active');
+            });
+        }
+
+        // importFromDrive and bulk download event bindings
+        const importDriveBtn = document.getElementById('importDriveBtn');
+        if (importDriveBtn) {
+            importDriveBtn.addEventListener('click', async () => {
+                const driveUrl = await showDialog('Impor Google Drive (D2D)', 'Masukkan URL atau ID folder Google Drive publik yang ingin Anda impor ke folder saat ini:', { hasInput: true, inputPlaceholder: 'https://drive.google.com/drive/folders/...' });
+                if (driveUrl) {
+                    toast('Memulai impor Google Drive (Proses di latar belakang)...', 'info');
+                    
+                    // Show progress bar
+                    const progressContainer = document.getElementById('operationProgressContainer');
+                    const progressStatusText = document.getElementById('progressStatusText');
+                    const progressBar = document.getElementById('operationProgressBar');
+                    const progressPercentText = document.getElementById('progressPercentText');
+                    
+                    if (progressContainer) {
+                        progressContainer.classList.remove('hidden');
+                        progressStatusText.innerText = '⚡ MENGIMPOR DRIVE...';
+                        progressBar.style.width = '40%';
+                        progressPercentText.innerText = '40%';
+                    }
+                    
+                    const res = await importFromDrive(driveUrl, currentFolderId);
+                    
+                    if (progressContainer) {
+                        progressBar.style.width = '100%';
+                        progressPercentText.innerText = '100%';
+                        progressStatusText.innerText = res.status === 'success' ? '✅ IMPOR SELESAI' : '❌ IMPOR GAGAL';
+                        setTimeout(() => progressContainer.classList.add('hidden'), 3000);
+                    }
+                    
+                    toast(res.message, res.status === 'success' ? 'success' : 'error');
+                    loadAndRender(currentFolderId);
+                }
+            });
+        }
+
+        if (bulkDownloadBtn) {
+            bulkDownloadBtn.addEventListener('click', async () => {
+                const selectedItems = localFilesState.filter(item => item.selected);
+                if (!selectedItems.length) return;
+                
+                toast(`Mengunduh ${selectedItems.length} item...`, 'info');
+                
+                // Use the original, proven single-download link for every selected item.
+                selectedItems.forEach(item => openDownloadLink(item.id, item.isFolder));
+            });
+        }
+
+        // View Mode Switchers
+        document.getElementById('setViewList').addEventListener('click', () => { currentViewMode = 'list'; renderFiles(localFilesState); });
+        document.getElementById('setViewGrid').addEventListener('click', () => { currentViewMode = 'grid'; renderFiles(localFilesState); });
+        
+        // Sidebar Toggle
+        let leftSidebarVisible = true;
+        let rightSidebarVisible = true;
+        function updateWorkspaceColumns() {
+            const grid = document.querySelector('.workspace-grid');
+            const columns = leftSidebarVisible && rightSidebarVisible ? 'minmax(0,1fr) minmax(0,2fr) minmax(0,1.2fr)'
+                : leftSidebarVisible ? 'minmax(0,1fr) minmax(0,2fr)'
+                : rightSidebarVisible ? 'minmax(0,1fr) minmax(0,1.2fr)'
+                : 'minmax(0,1fr)';
+            grid.style.setProperty('grid-template-columns', columns, 'important');
+        }
+        function setLeftSidebarVisible(visible) {
+            leftSidebarVisible = visible;
+            const sidebar = document.getElementById('leftSidebar');
+            const icon = document.getElementById('leftSidebarIcon');
+            sidebar.classList.toggle('desktop-collapsed', !leftSidebarVisible);
+            updateWorkspaceColumns();
+            // The glyph indicates the action available next: open when hidden, close when visible.
+            icon.innerHTML = leftSidebarVisible
+                ? '<path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm200-80h360v-560H400v560Z"/>'
+                : '<path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm120-80v-560H200v560h120Zm80 0h360v-560H400v560Zm-80 0H200h120Z"/>';
+        }
+        document.getElementById('toggleLeftSidebarBtn').addEventListener('click', () => {
+            setLeftSidebarVisible(!leftSidebarVisible);
+        });
+        document.getElementById('toggleRightSidebarBtn').addEventListener('click', () => {
+            rightSidebarVisible = !rightSidebarVisible;
+            const sidebar = document.getElementById('rightSidebar');
+            const icon = document.getElementById('rightSidebarIcon');
+            sidebar.classList.toggle('desktop-collapsed', !rightSidebarVisible);
+            updateWorkspaceColumns();
+            icon.innerHTML = rightSidebarVisible
+                ? '<path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm360-80v-560H200v560h360Z"/>'
+                : '<path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm440-80h120v-560H640v560Zm-80 0v-560H200v560h360Zm80 0h120-120Z"/>';
+        });
+
+        // Disconnect Button
+        document.getElementById('logoutBtn').addEventListener('click', () => logout());
+
+        // The explorer starts open, so initialize its icon and grid state to match.
+        setLeftSidebarVisible(true);
+
+        // Initial Load (recursive to build full tree)
+        loadAndRender(null, true);
+    </script>
+</body>
+</html>

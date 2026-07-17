@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vault | Secure Access</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <style>
+        body {
+            background-color: var(--bg-body);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            min-height: 100vh;
+        }
+        .hidden { display: none !important; }
+        .auth-loader { width:32px; height:32px; vertical-align:middle; margin-right:8px; }
+        .auth-loader .ring { transform-origin:28px 28px; animation:auth-spin 1.2s linear infinite; }
+        .auth-loader circle { fill:none; stroke:var(--text-primary); stroke-linecap:round; }
+        @keyframes auth-spin { to { transform:rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div class="card" style="width:100%;max-width:420px;padding:2rem;text-align:center;display:flex;flex-direction:column;gap:1.5rem;position:relative;">
+        
+        <!-- Theme Toggle -->
+        <div style="position:absolute;top:1rem;right:1rem;">
+            <label class="theme-switch">
+                <span class="sun"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="#ffd43b"><circle r="5" cy="12" cx="12"></circle><path d="m21 13h-1a1 1 0 0 1 0-2h1a1 1 0 0 1 0 2zm-17 0h-1a1 1 0 0 1 0-2h1a1 1 0 0 1 0 2zm13.66-5.66a1 1 0 0 1 -.66-.29 1 1 0 0 1 0-1.41l.71-.71a1 1 0 1 1 1.41 1.41l-.71.71a1 1 0 0 1 -.75.29zm-12.02 12.02a1 1 0 0 1 -.71-.29 1 1 0 0 1 0-1.41l.71-.66a1 1 0 0 1 1.41 1.41l-.71.71a1 1 0 0 1 -.7.24zm6.36-14.36a1 1 0 0 1 -1-1v-1a1 1 0 0 1 2 0v1a1 1 0 0 1 -1 1zm0 17a1 1 0 0 1 -1-1v-1a1 1 0 0 1 2 0v1a1 1 0 0 1 -1 1zm-5.66-14.66a1 1 0 0 1 -.7-.29l-.71-.71a1 1 0 0 1 1.41-1.41l.71.71a1 1 0 0 1 0 1.41 1 1 0 0 1 -.71.29zm12.02 12.02a1 1 0 0 1 -.7-.29l-.66-.71a1 1 0 0 1 1.36-1.36l.71.71a1 1 0 0 1 0 1.41 1 1 0 0 1 -.71.24z"></path></g></svg></span>
+                <span class="moon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path d="m223.5 32c-123.5 0-223.5 100.3-223.5 224s100 224 223.5 224c60.6 0 115.5-24.2 155.8-63.4 5-4.9 6.3-12.5 3.1-18.7s-10.1-9.7-17-8.5c-9.8 1.7-19.8 2.6-30.1 2.6-96.9 0-175.5-78.8-175.5-176 0-65.8 36-123.1 89.3-153.3 6.1-3.5 9.2-10.5 7.7-17.3s-7.3-11.9-14.3-12.5c-6.3-.5-12.6-.8-19-.8z"></path></svg></span>   
+                <input type="checkbox" id="themeToggleCheckbox">
+                <span class="slider"></span>
+            </label>
+        </div>
+        
+        <!-- Settings Toggle -->
+        <button id="toggleSettingsBtn" class="btn-neu" style="position:absolute;top:1rem;left:1rem;padding:0.5rem 0.8rem;font-size:12px;" title="Pengaturan URL Backend">
+            <span class="material-symbols-outlined" style="font-size:18px;">settings</span>
+        </button>
+        
+        <div style="padding-top:1.5rem;">
+            <h1 style="font-size:1.8rem;font-weight:800;letter-spacing:0.1em;color:var(--text-primary);">VAULT</h1>
+            <p style="font-size:0.85rem;color:var(--text-secondary);margin-top:0.4rem;">Secure Encrypted Storage</p>
+        </div>
+
+        <!-- Settings Section -->
+        <div id="settingsSection" class="hidden" style="text-align:left;padding-bottom:1rem;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:0.75rem;">
+            <label style="font-size:10px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.1em;">Google Apps Script URL</label>
+            <input type="text" id="apiUrlInput" placeholder="https://script.google.com/macros/s/.../exec" class="input-neu" autocomplete="off">
+            <button id="saveSettingsBtn" class="btn-neu" style="width:100%;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">
+                Simpan URL
+            </button>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:1rem;">
+            <div style="text-align:left;">
+                <label style="font-size:10px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.1em;">Access Token</label>
+                <div style="position:relative;margin-top:0.25rem;">
+                    <input type="password" id="tokenInput" placeholder="Masukkan token rahasia..." class="input-neu" style="padding-right:2.5rem;" autocomplete="off">
+                    <button id="togglePwBtn" type="button" style="position:absolute;right:0.5rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-tertiary);padding:0.25rem;" title="Tampilkan/Sembunyikan Token">
+                        <span class="material-symbols-outlined" style="font-size:20px;">visibility</span>
+                    </button>
+                </div>
+            </div>
+            <button id="loginBtn" class="btn-neu-primary" style="width:100%;padding:0.9rem 1.7rem;font-size:0.9rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">
+                <span class="material-symbols-outlined" style="font-size:20px;">lock_open</span>
+                Buka Brankas
+            </button>
+        </div>
+        
+        <p id="errorMsg" style="color:#ff5252;font-size:0.75rem;display:none;" class="font-mono">Token tidak boleh kosong!</p>
+    </div>
+
+    <!-- Toast Container (di atas, tengah) -->
+    <div id="toastContainer" style="position:fixed;top:1rem;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;align-items:center;gap:0.5rem;pointer-events:none;"></div>
+
+    <script type="module">
+        import { login, checkToken } from './src/auth.js';
+
+        // ==================== THEME TOGGLE ====================
+        const themeCheckbox = document.getElementById('themeToggleCheckbox');
+        
+        function getPreferredTheme() {
+            const saved = localStorage.getItem('vault_theme');
+            if (saved) return saved;
+            return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        }
+
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            themeCheckbox.checked = theme === 'light';
+            localStorage.setItem('vault_theme', theme);
+        }
+
+        applyTheme(getPreferredTheme());
+
+        themeCheckbox.addEventListener('change', () => {
+            applyTheme(themeCheckbox.checked ? 'light' : 'dark');
+        });
+        // ==================== END THEME TOGGLE ====================
+
+        if (checkToken()) {
+            window.location.href = 'dashboard.html';
+        }
+
+        const toastContainer = document.getElementById('toastContainer');
+        const toggleSettingsBtn = document.getElementById('toggleSettingsBtn');
+        const settingsSection = document.getElementById('settingsSection');
+        const apiUrlInput = document.getElementById('apiUrlInput');
+        const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+
+        const togglePwBtn = document.getElementById('togglePwBtn');
+        const tokenInput = document.getElementById('tokenInput');
+        const togglePwIcon = togglePwBtn.querySelector('.material-symbols-outlined');
+
+        togglePwBtn.addEventListener('click', () => {
+            if (tokenInput.type === 'password') {
+                tokenInput.type = 'text';
+                togglePwIcon.textContent = 'visibility_lock';
+            } else {
+                tokenInput.type = 'password';
+                togglePwIcon.textContent = 'visibility';
+            }
+        });
+
+        function showSettingsToast(msg) {
+            const el = document.createElement('div');
+            el.className = 'toast info';
+            el.innerHTML = `
+                <span class="toast-icon">⚡</span>
+                <span class="toast-msg"><strong>Info</strong>${msg}</span>
+                <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>`;
+            toastContainer.appendChild(el);
+            setTimeout(() => {
+                el.style.animation = 'toastOut .35s ease forwards';
+                setTimeout(() => el.remove(), 350);
+            }, 3000);
+        }
+
+        if (localStorage.getItem('vault_api_url')) {
+            apiUrlInput.value = localStorage.getItem('vault_api_url');
+        }
+
+        toggleSettingsBtn.addEventListener('click', () => {
+            settingsSection.classList.toggle('hidden');
+        });
+
+        saveSettingsBtn.addEventListener('click', () => {
+            const url = apiUrlInput.value.trim();
+            if (url) {
+                localStorage.setItem('vault_api_url', url);
+                showSettingsToast("URL Google Apps Script berhasil disimpan!");
+                settingsSection.classList.add('hidden');
+            } else {
+                localStorage.removeItem('vault_api_url');
+                showSettingsToast("URL Google Apps Script dihapus.");
+                settingsSection.classList.add('hidden');
+            }
+        });
+
+        document.getElementById('loginBtn').addEventListener('click', async () => {
+            const token = tokenInput.value.trim();
+            const errorMsg = document.getElementById('errorMsg');
+            const loginBtn = document.getElementById('loginBtn');
+            
+            if (token) {
+                loginBtn.disabled = true;
+                loginBtn.innerHTML = '<svg class="auth-loader" viewBox="0 0 56 56" role="img" aria-label="Memverifikasi akses"><g class="ring"><circle cx="28" cy="28" r="23" stroke-width="2.5" stroke-dasharray="42 104"></circle><circle cx="28" cy="28" r="18" stroke-width="1.7" stroke-dasharray="28 85" transform="rotate(120 28 28)"></circle><path d="M22 15h12c0 6-2 8-6 11-4-3-6-5-6-11zm0 26h12c0-6-2-8-6-11-4 3-6 5-6 11z" fill="currentColor"></path></g></svg> AUTHENTICATING...';
+                errorMsg.style.display = 'none';
+                
+                const result = await login(token);
+                if (result.status === "success") {
+                    window.location.href = 'dashboard.html';
+                } else {
+                    loginBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:20px;">lock_open</span> Buka Brankas';
+                    loginBtn.disabled = false;
+                    errorMsg.textContent = result.message;
+                    errorMsg.style.display = 'block';
+                }
+            } else {
+                errorMsg.textContent = "Token tidak boleh kosong!";
+                errorMsg.style.display = 'block';
+            }
+        });
+
+        tokenInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') document.getElementById('loginBtn').click();
+        });
+    </script>
+</body>
+</html>

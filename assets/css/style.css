@@ -1,0 +1,478 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --bg-body: #1a1a1a;
+    --bg-card: #252525;
+    --bg-elevated: #2e2e2e;
+    --bg-inset: #1e1e1e;
+    --text-primary: #f0f0f0;
+    --text-secondary: #a0a0a0;
+    --text-tertiary: #666666;
+    --text-muted: #444444;
+    --border: #333333;
+    --skeleton: #333;
+    --shadow-dark: rgba(0, 0, 0, 0.6);
+    --shadow-light: rgba(255, 255, 255, 0.04);
+    --shadow-xs: 3px 3px 6px var(--shadow-dark), -3px -3px 6px var(--shadow-light);
+    --shadow-sm: 5px 5px 10px var(--shadow-dark), -5px -5px 10px var(--shadow-light);
+    --shadow-md: 8px 8px 16px var(--shadow-dark), -8px -8px 16px var(--shadow-light);
+    --shadow-lg: 12px 12px 24px var(--shadow-dark), -12px -12px 24px var(--shadow-light);
+    --shadow-inset: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
+    --shadow-inset-sm: inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light);
+    --shadow-none: 3px 3px 6px var(--shadow-dark), -3px -3px 6px var(--shadow-light);
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    --radius-full: 30px;
+    --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme="light"] {
+    --bg-body: #e8e8e8;
+    --bg-card: #e0e0e0;
+    --bg-elevated: #d8d8d8;
+    --bg-inset: #f0f0f0;
+    --text-primary: #090909;
+    --text-secondary: #555555;
+    --text-tertiary: #888888;
+    --text-muted: #aaaaaa;
+    --border: #d0d0d0;
+    --skeleton: #ccc;
+    --shadow-dark: #bebebe;
+    --shadow-light: #ffffff;
+    --shadow-xs: 3px 3px 6px var(--shadow-dark), -3px -3px 6px var(--shadow-light);
+    --shadow-sm: 5px 5px 10px var(--shadow-dark), -5px -5px 10px var(--shadow-light);
+    --shadow-md: 8px 8px 16px var(--shadow-dark), -8px -8px 16px var(--shadow-light);
+    --shadow-lg: 12px 12px 24px var(--shadow-dark), -12px -12px 24px var(--shadow-light);
+    --shadow-inset: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
+    --shadow-inset-sm: inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light);
+    --shadow-none: 3px 3px 6px var(--shadow-dark), -3px -3px 6px var(--shadow-light);
+}
+
+body {
+    font-family: 'Outfit', 'Inter', sans-serif;
+    background-color: var(--bg-body);
+    color: var(--text-primary);
+    min-height: 100vh;
+    transition: background-color var(--transition), color var(--transition);
+    overflow-x: hidden;
+}
+
+/* ========== NEUMORPHIC CARD ========== */
+.card {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    transition: all var(--transition);
+}
+.card:hover { box-shadow: var(--shadow-lg); }
+.card-inset {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-inset);
+}
+
+/* ========== NEUMORPHIC BUTTON ========== */
+.btn-neu {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    padding: 0.7em 1.7em;
+    font-size: 14px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    border: none;
+    box-shadow: var(--shadow-none);
+    transition: all var(--transition);
+    font-family: inherit;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.btn-neu:hover { box-shadow: var(--shadow-sm); }
+.btn-neu:active { box-shadow: var(--shadow-inset); }
+
+.btn-neu-primary {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    padding: 0.7em 1.7em;
+    font-size: 14px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    border: none;
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition);
+    font-family: inherit;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.btn-neu-primary:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.btn-neu-primary:active { box-shadow: var(--shadow-inset); transform: translateY(0); }
+
+/* ========== NEUMORPHIC INPUT ========== */
+.input-neu {
+    border: none;
+    padding: 0.8rem 1rem;
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-none);
+    transition: all var(--transition);
+    font-family: inherit;
+    font-size: 14px;
+    width: 100%;
+    outline: none;
+}
+.input-neu:focus { background: var(--bg-card); box-shadow: var(--shadow-inset); }
+.input-neu::placeholder { color: var(--text-tertiary); }
+
+/* ========== SVG CHECKBOX (from Uiverse) ========== */
+.checkbox-svg {
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.checkbox-svg input { display: none; }
+.checkbox-svg svg {
+    overflow: visible;
+    height: 1.5em;
+    width: 1.5em;
+}
+.checkbox-svg .path {
+    fill: none;
+    stroke: var(--text-primary);
+    stroke-width: 6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: stroke-dasharray 0.5s ease, stroke-dashoffset 0.5s ease;
+    stroke-dasharray: 241 9999999;
+    stroke-dashoffset: 0;
+}
+.checkbox-svg input:checked ~ svg .path {
+    stroke-dasharray: 70.5096664428711 9999999;
+    stroke-dashoffset: -262.2723388671875;
+}
+
+/* ========== NEUMORPHIC THEME TOGGLE ========== */
+.theme-switch {
+    font-size: 17px;
+    position: relative;
+    display: inline-block;
+    width: 64px;
+    height: 34px;
+}
+.theme-switch input { opacity: 0; width: 0; height: 0; }
+.theme-switch .slider {
+    position: absolute; cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--text-tertiary);
+    transition: 0.4s;
+    border-radius: var(--radius-full);
+}
+.theme-switch .slider:before {
+    position: absolute; content: "";
+    height: 26px; width: 26px;
+    border-radius: 50%;
+    left: 4px; bottom: 4px; z-index: 2;
+    background: var(--bg-body);
+    transition: 0.4s;
+}
+.theme-switch .sun svg {
+    position: absolute; top: 5px; left: 36px; z-index: 1;
+    width: 22px; height: 22px;
+}
+.theme-switch .moon svg {
+    fill: var(--text-primary);
+    position: absolute; top: 5px; left: 6px; z-index: 1;
+    width: 22px; height: 22px;
+}
+.theme-switch .sun svg { animation: rotate 15s linear infinite; }
+@keyframes rotate {
+    0% { transform: rotate(0); }
+    100% { transform: rotate(360deg); }
+}
+.theme-switch .moon svg { animation: tilt 5s linear infinite; }
+@keyframes tilt {
+    0% { transform: rotate(0deg); }
+    25% { transform: rotate(-10deg); }
+    75% { transform: rotate(10deg); }
+    100% { transform: rotate(0deg); }
+}
+.theme-switch input:checked + .slider { background: var(--text-muted); }
+.theme-switch input:checked + .slider:before { transform: translateX(30px); }
+
+/* ========== NEUMORPHIC LOADER ========== */
+.loader-neu {
+    position: relative; width: 90px; height: 90px; margin: 0 auto;
+}
+.loader-neu .item1,.loader-neu .item2,.loader-neu .item3 {
+    position: absolute; background-color: transparent;
+    left: calc(50% - (var(--size) / 2));
+    top: calc(50% - (var(--size) / 2));
+    height: var(--size); width: var(--size); border-radius: 50%;
+}
+.loader-neu .item1 { --size: 80px; animation: size1_1 2.5s infinite alternate; z-index: 1; }
+.loader-neu .item2 { --size: 55px; animation: size1_2 2.5s infinite alternate; z-index: 2; }
+.loader-neu .item3 { --size: 30px; animation: size1_3 2.5s infinite alternate; z-index: 3; }
+@keyframes size1_1 { 0%,10%{transform:scale(0)}100%{transform:scale(1);box-shadow:var(--shadow-md)}}
+@keyframes size1_2 { 0%,40%{transform:scale(0)}100%{transform:scale(1);box-shadow:var(--shadow-md)}}
+@keyframes size1_3 { 0%,70%{transform:scale(0)}100%{transform:scale(1);box-shadow:var(--shadow-md)}}
+
+/* ========== SKELETON LOADING ========== */
+@keyframes skeleton-pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.7; }
+}
+.skeleton {
+    background: var(--skeleton);
+    border-radius: var(--radius-sm);
+    animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+/* ========== DIALOG ========== */
+#dialogOverlay {
+    position: fixed; inset: 0; z-index: 9990;
+    background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center; padding: 16px;
+}
+#dialogOverlay.show { display: flex; }
+#dialogBox {
+    background: var(--bg-card); border-radius: var(--radius-lg);
+    padding: 28px; width: 100%; max-width: 420px;
+    box-shadow: var(--shadow-lg); animation: fadeIn .25s ease;
+    font-family: 'Outfit', sans-serif;
+}
+#dialogBox h4 { font-size:14px; font-weight:700; color:var(--text-primary); margin-bottom:8px; }
+#dialogBox p { font-size:12px; color:var(--text-secondary); margin-bottom:16px; line-height:1.6; }
+#dialogInput {
+    width:100%; padding:10px 14px; border-radius:var(--radius-sm); border:none;
+    background:var(--bg-card); color:var(--text-primary); font-size:13px; outline:none;
+    font-family:'Fira Code',monospace; margin-bottom:16px; box-shadow:var(--shadow-inset-sm);
+}
+.dialog-actions { display:flex; gap:10px; justify-content:flex-end; }
+.dialog-btn-cancel {
+    padding:8px 18px; border-radius:var(--radius-sm); background:var(--bg-card);
+    color:var(--text-secondary); font-size:12px; cursor:pointer; font-weight:600;
+    transition:all var(--transition); border:none; box-shadow:var(--shadow-xs);
+}
+.dialog-btn-cancel:hover { background:var(--bg-elevated); }
+.dialog-btn-ok {
+    padding:8px 20px; border-radius:var(--radius-sm); border:none;
+    background:var(--bg-elevated); color:var(--text-primary); font-size:12px;
+    font-weight:700; cursor:pointer; box-shadow:var(--shadow-sm); transition:all var(--transition);
+}
+.dialog-btn-ok:hover { box-shadow:var(--shadow-md); }
+
+/* ========== TOAST ========== */
+#toastContainer {
+    position: fixed; top: 20px; right: 20px;
+    z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none;
+}
+.toast {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 14px 18px; border-radius: var(--radius-md);
+    min-width: 280px; max-width: 360px;
+    background: var(--bg-card); box-shadow: var(--shadow-md);
+    animation: toastIn .35s cubic-bezier(.4,0,.2,1) forwards;
+    pointer-events: all; font-family: 'Outfit', sans-serif; font-size: 13px;
+    border-left: 3px solid var(--text-tertiary);
+}
+.toast.success { border-left-color: #4ade80; }
+.toast.error   { border-left-color: #ff5252; }
+.toast.info    { border-left-color: var(--text-primary); }
+.toast.warn    { border-left-color: #ffca28; }
+.toast-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+.toast-msg  { flex: 1; line-height: 1.5; color: var(--text-primary); }
+.toast-msg strong { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 2px; opacity: 0.7; }
+.toast-close { background: none; border: none; cursor: pointer; opacity: .5; transition: opacity .2s; font-size: 16px; color: var(--text-primary); padding: 0; line-height: 1; }
+.toast-close:hover { opacity: 1; }
+
+@keyframes toastIn  { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes toastOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(40px); } }
+@keyframes fadeIn  { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+/* ========== SCROLLBAR ========== */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+
+/* ========== MONO FONT ========== */
+.font-mono { font-family: 'Fira Code', monospace; }
+
+/* ========== PROGRESS BAR ========== */
+.progress-bar {
+    background: var(--bg-inset); border-radius: var(--radius-full);
+    height: 8px; overflow: hidden; box-shadow: var(--shadow-inset-sm);
+}
+.progress-bar-fill {
+    height: 100%; background: var(--text-primary);
+    border-radius: var(--radius-full); transition: width 0.4s ease;
+}
+
+/* ========== NEUMORPHIC FILE ITEM ========== */
+.file-item {
+    background: var(--bg-card);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-xs);
+    transition: all var(--transition);
+    padding: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+    overflow: hidden;
+}
+.file-item:hover {
+    box-shadow: var(--shadow-sm);
+}
+.file-item.active {
+    box-shadow: var(--shadow-inset);
+    background: var(--bg-elevated);
+}
+
+/* ========== OPEN FILE BUTTON (from Uiverse) ========== */
+.btn-open-file {
+    background: var(--bg-card);
+    width: 100%;
+    padding: 0.6rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    border: none;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.3s;
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-xs);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-weight: 600;
+}
+.btn-open-file .file-wrapper {
+    width: 16px;
+    height: auto;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    position: relative;
+}
+.btn-open-file .file-wrapper svg { width: 100%; }
+.btn-open-file .file-wrapper svg path { stroke: var(--text-primary); }
+.btn-open-file .file-front {
+    position: absolute;
+    width: 100%;
+    height: 70%;
+    border: 2px solid var(--text-primary);
+    border-bottom: 1px solid var(--text-primary);
+    transform: skewX(-40deg);
+    transform-origin: bottom right;
+    background: var(--bg-card);
+    transition: all 0.5s;
+    bottom: 0;
+}
+.btn-open-file:hover { box-shadow: var(--shadow-sm); }
+.btn-open-file:hover .file-front {
+    height: 50%;
+    transform-origin: bottom right;
+    transform: skewX(-55deg);
+}
+
+/* ========== DELETE BUTTON (from Uiverse) ========== */
+.btn-delete-file {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    border: none;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-xs);
+    cursor: pointer;
+    transition-duration: .3s;
+    overflow: hidden;
+    position: relative;
+}
+.btn-delete-file .svgIcon {
+    width: 14px;
+    transition-duration: .3s;
+}
+.btn-delete-file .svgIcon path { fill: var(--text-primary); }
+.btn-delete-file:hover {
+    width: 120px;
+    border-radius: var(--radius-sm);
+    transition-duration: .3s;
+    background: #ff5252;
+    align-items: center;
+}
+.btn-delete-file:hover .svgIcon {
+    width: 40px;
+    transition-duration: .3s;
+    transform: translateY(60%);
+}
+.btn-delete-file::before {
+    position: absolute;
+    top: -20px;
+    content: "Delete";
+    color: white;
+    transition-duration: .3s;
+    font-size: 2px;
+}
+.btn-delete-file:hover::before {
+    font-size: 13px;
+    opacity: 1;
+    transform: translateY(30px);
+    transition-duration: .3s;
+}
+
+/* ========== GRID FILE ITEM ========== */
+.file-grid-item {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-xs);
+    transition: all var(--transition);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    position: relative;
+    min-width: 0;
+    overflow: hidden;
+}
+.file-grid-item:hover {
+    box-shadow: var(--shadow-sm);
+}
+.file-grid-item.active {
+    box-shadow: var(--shadow-inset);
+    background: var(--bg-elevated);
+}
+
+/* ========== SKELETON CARD ========== */
+.skeleton-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    box-shadow: var(--shadow-xs);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
