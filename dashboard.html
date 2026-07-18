@@ -33,42 +33,46 @@
         .download-toast-main { display:flex;align-items:center;gap:9px;min-width:0; }.download-toast-icon{width:32px;height:32px;padding:6px;border-radius:8px;background:rgba(255,255,255,.06);flex:none}.download-toast-icon svg{width:20px;height:20px}.download-toast.success .download-toast-icon{color:#2b9875}.download-toast.error .download-toast-icon{color:#d65563}.download-toast.info .download-toast-icon{color:#60a5fa}.download-toast-title{font-weight:700;color:#fff;margin:0 0 2px}.download-toast-text{margin:0;color:#9ca3af;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}.download-toast-close{background:none;border:0;color:#6b7280;cursor:pointer;border-radius:6px;padding:4px;display:grid;place-items:center}.download-toast-close:hover{background:rgba(255,255,255,.1);color:#fff}
         
         /* ── Terminal CLI ── */
-        #cliOutput {
-            scrollbar-width:thin; scrollbar-color:var(--text-muted) transparent;
-            background: var(--bg-inset);
-            font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
-        }
-        #cliOutput::-webkit-scrollbar { width:4px; }
-        #cliOutput::-webkit-scrollbar-thumb { background:var(--text-muted); border-radius:4px; }
-        #cliInput { background:transparent; outline:none; border:none; caret-color:var(--text-primary); color:var(--text-primary); width:100%; font-family:'Fira Code','Consolas',monospace; font-size:11px; }
-        .cli-prompt  { color: var(--text-primary); }
-        .cli-success { color: var(--text-primary); }
-        .cli-error   { color: var(--text-tertiary); }
-        .cli-info    { color: var(--text-secondary); }
-        .cli-warn    { color: var(--text-primary); }
-        .cli-folder  { color: var(--text-primary); }
-        .cli-file    { color: var(--text-primary); }
-        .cli-cmd     { color: var(--text-primary); }
-        .cli-desc    { color: var(--text-tertiary); }
-        .cli-dim     { color: var(--text-tertiary); }
-        .cli-bracket { color: var(--text-secondary); }
-        .cli-highlight { color: var(--text-primary); font-weight: 600; }
-        .cli-sep     { color: var(--border); }
-        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
-        .cursor-blink { display:inline-block; animation:blink 1s step-end infinite; }
-        .cli-help-row  { padding-left: 4px; white-space: pre; }
-        .cli-help-cmd  { color: var(--text-primary); }
-        .cli-help-desc { color: var(--text-secondary); }
-        .cli-help-group { color: var(--text-tertiary); font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 8px; margin-bottom: 2px; padding-left: 4px; }
-        
-        /* Floating terminal panel */
         #terminalWindow {
-            position:fixed; bottom:80px; right:24px; width:min(640px,95vw);
-            transform:translateY(20px); opacity:0; pointer-events:none;
-            transition:all .3s cubic-bezier(.4,0,.2,1); z-index:900;
-            max-height: 60vh;
+            position:fixed; bottom:48px; right:24px; width:min(720px,calc(100vw-48px)); height:min(72vh,520px);
+            display:none; flex-direction:column; z-index:900; overflow:hidden;
+            background:var(--bg-card); border:1px solid var(--border); border-radius:12px;
+            box-shadow:var(--shadow-lg), 0 8px 32px rgba(0,0,0,0.12);
         }
-        #terminalWindow.open { transform:translateY(0); opacity:1; pointer-events:all; }
+        #terminalWindow.open { display:flex; }
+        #terminalWindow .term-header {
+            background:var(--bg-elevated); border-bottom:1px solid var(--border); padding:10px 16px;
+            display:flex; align-items:center; justify-content:space-between; cursor:move; user-select:none;
+        }
+        #terminalWindow .term-header .term-title {
+            display:flex; align-items:center; gap:10px; font-size:11px; color:var(--text-secondary); font-family:'Outfit',sans-serif; font-weight:600;
+        }
+        #terminalWindow .term-header .term-title svg { width:16px; height:16px; color:var(--text-tertiary); }
+        #terminalWindow .term-header .term-close {
+            width:28px; height:28px; display:flex; align-items:center; justify-content:center;
+            border-radius:6px; color:var(--text-tertiary); cursor:pointer; background:var(--bg-card); border:1px solid var(--border); font-size:16px;
+            transition:all .2s;
+        }
+        #terminalWindow .term-header .term-close:hover { background:#c00; color:#fff; border-color:#c00; }
+        #terminalWindow .term-body {
+            flex:1; padding:14px 16px; overflow-y:auto;
+            -webkit-user-select:text; user-select:text;
+            background:var(--bg-inset); font-family:Consolas,"Lucida Console","Courier New",monospace;
+            font-size:13px; line-height:1.5; color:var(--text-primary);
+        }
+        #terminalWindow .term-body #cliHistory { -webkit-user-select:text; user-select:text; }
+        #terminalWindow .term-body .line  { white-space:pre; -webkit-user-select:text; user-select:text; }
+        #terminalWindow .term-body .dim   { color:var(--text-tertiary); }
+        #terminalWindow .term-body .hl    { color:var(--text-primary); font-weight:700; }
+        #terminalWindow .term-body .err   { color:var(--text-tertiary); }
+
+        .term-input-wrap { display:flex; align-items:center; width:100%; }
+        .term-input-wrap .prompt-label { color:var(--text-primary); white-space:pre; flex-shrink:0; }
+        .term-input-wrap .input-area { flex:1; display:flex; align-items:center; }
+        .term-input-wrap .input-area input {
+            border:none; outline:none; background:transparent; color:inherit; font:inherit;
+            flex:1; min-width:0; caret-color:var(--text-primary);
+        }
         
         /* ── Markdown Rendering ── */
         .markdown-body h1 { font-size: 1.5rem; font-weight: bold; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem; margin-top: 1rem; margin-bottom: 0.5rem; color: var(--text-primary); }
@@ -725,18 +729,24 @@
     </div>
 
     <!-- Floating Terminal Panel -->
-    <div id="terminalWindow" class="card" style="position:fixed;bottom:48px;right:24px;width:min(680px,calc(100vw - 48px));height:min(76vh,680px);padding:0;overflow:hidden;display:flex;flex-direction:column;z-index:900;transition:all .3s;max-height:76vh;">
-        <div style="padding:0.5rem 1rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);">
-            <span style="font-size:9px;font-weight:700;color:var(--text-secondary);font-family:'Fira Code',monospace;">⬡ VAULT CLI TERMINAL</span>
-            <div style="display:flex;align-items:center;gap:0.5rem;">
-                <button id="termClose" style="background:none;border:none;cursor:pointer;color:var(--text-tertiary);font-size:18px;">&times;</button>
+    <div id="terminalWindow">
+        <div class="term-header" id="termHeader">
+            <div class="term-title">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                <span>Vault Terminal</span>
             </div>
+            <button class="term-close" id="termClose">&times;</button>
         </div>
-        <div id="cliOutput" class="font-mono" style="flex:1;padding:0.75rem;background:var(--bg-inset);font-size:11px;overflow-y:auto;display:flex;flex-direction:column;gap:0.25rem;box-shadow:var(--shadow-inset) inset;"></div>
-        <div style="padding:0.4rem 0.75rem;display:flex;align-items:center;gap:0.5rem;border-top:1px solid var(--border);background:var(--bg-card);">
-            <span style="font-size:9px;font-weight:700;font-family:'Fira Code',monospace;color:var(--text-primary);">vault:~$</span>
-            <input type="text" id="cliInput" class="input-neu" style="flex:1;background:transparent;box-shadow:none;padding:0.25rem 0;font-size:11px;" autocomplete="off" placeholder="">
-            <button id="cliClearBtn" class="btn-neu" style="padding:0.25rem 0.5rem;font-size:9px;font-weight:700;">CLEAR</button>
+        <div class="term-body" id="cliOutput">
+            <div class="line dim">Vault CLI v2.0 &mdash; type <span class="hl">help</span> for commands</div>
+            <div class="line dim">============================================================</div>
+            <div id="cliHistory"></div>
+            <div class="term-input-wrap" style="margin-top:4px;">
+                <span class="prompt-label" id="promptLabel">vault/root&gt;</span>
+                <div class="input-area">
+                    <input type="text" id="cliInputField" autocomplete="off" spellcheck="false" style="flex:1;min-width:30px;background:transparent;border:none;outline:none;color:var(--text-primary);font:inherit;">
+                </div>
+            </div>
         </div>
     </div>
 
@@ -823,284 +833,346 @@
         // ==================== END TOAST & DIALOG ENGINE ====================
 
         // ==================== VAULT CLI ENGINE ====================
-        const cliOutput   = document.getElementById('cliOutput');
-        const cliInput    = document.getElementById('cliInput');
-        const cliClearBtn = document.getElementById('cliClearBtn');
-        const toggleCliBtn = document.getElementById('toggleCliBtn');
+        const cliOutput     = document.getElementById('cliOutput');
+        const cliHistoryEl  = document.getElementById('cliHistory');
+        const toggleCliBtn  = document.getElementById('toggleCliBtn');
         const terminalWindow = document.getElementById('terminalWindow');
-        const termClose   = document.getElementById('termClose');
+        const termClose     = document.getElementById('termClose');
+        const termHeader    = document.getElementById('termHeader');
+        const hiddenInput   = document.getElementById('cliInputField');
+        const promptLabel   = document.getElementById('promptLabel');
+
         let cliHistory = [], cliHistoryIdx = -1;
         let cliCurrentFolder = { id: null, name: 'root' };
         let cliParentStack  = [];
+        let cliPath = ['root'];
 
-        // CLI Toggle Button
-        toggleCliBtn.addEventListener('click', () => {
-            terminalWindow.classList.toggle('open');
-            if (terminalWindow.classList.contains('open')) {
-                cliInput.focus();
-            }
-        });
-        termClose.addEventListener('click', () => {
-            terminalWindow.classList.remove('open');
-        });
+        // ── Commands data ──
+        const CLI_COMMANDS_DATA = [
+            { cmd: 'ls',          param: '[folder-id?]',      desc: 'daftar isi folder' },
+            { cmd: 'tree',        param: '[all|folder-id] [--without id]', desc: 'tampilkan pohon direktori' },
+            { cmd: 'cd',          param: '[id | ..]',         desc: 'navigasi direktori' },
+            { cmd: 'pwd',         param: '',                  desc: 'tampilkan folder aktif' },
+            { cmd: 'mkdir',       param: '[nama]',            desc: 'buat folder baru' },
+            { cmd: 'rm',          param: '[id]',              desc: 'hapus file/folder' },
+            { cmd: 'rename',      param: '[id] [nama baru]',  desc: 'ganti nama item' },
+            { cmd: 'mv',          param: '[id] [id_tujuan]',  desc: 'pindahkan item' },
+            { cmd: 'curl',        param: '-o [nama] [url]',   desc: 'download file dari url' },
+            { cmd: 'git',         param: '[status|log|push]', desc: 'sinkronisasi vault' },
+            { cmd: 'import-drive',param: '[url|id]',          desc: 'impor folder google drive' },
+            { cmd: 'clear',       param: '',                  desc: 'bersihkan terminal' },
+            { cmd: 'help',        param: '',                  desc: 'tampilkan panduan ini' },
+        ];
 
-        function cliPrint(text) {
-            const line = document.createElement('div');
-            line.innerHTML = text;
-            line.style.lineHeight = '1.5';
-            cliOutput.appendChild(line);
+        function updatePrompt() {
+            promptLabel.textContent = 'vault/' + cliPath.join('/') + '>';
+        }
+
+        function printLine(text, className) {
+            const div = document.createElement('div');
+            div.className = 'line' + (className ? ' ' + className : '');
+            div.textContent = text;
+            cliHistoryEl.appendChild(div);
             cliOutput.scrollTop = cliOutput.scrollHeight;
         }
-        function cliSep() { cliPrint('<span class="cli-sep">' + '─'.repeat(56) + '</span>'); }
 
-        cliPrint(`<span class="cli-dim">Vault CLI &mdash; type <span class="cli-cmd">help</span> for commands</span>`);
-        cliSep();
-
-        // Normalisasi URL agar repo GitHub bisa langsung di-curl
-        // github.com/OWNER/REPO                -> archive zip (branch main)
-        // github.com/OWNER/REPO/tree/BRANCH    -> archive zip branch tsb
-        // github.com/OWNER/REPO/blob/...        -> raw file
-        function normalizeCurlUrl(raw) {
-            let u = raw.trim();
-            // Hapus suffix .git di akhir URL jika ada
-            u = u.replace(/\.git$/, '');
-            let m;
-            if ((m = u.match(/^https?:\/\/github\.com\/([^\/]+)\/([^\/]+)\/tree\/([^\/]+)/))) {
-                return `https://github.com/${m[1]}/${m[2]}/archive/refs/heads/${m[3]}.zip`;
+        function updatePath(name) {
+            if (name === 'root') { cliPath = ['root']; }
+            else {
+                if (cliPath[cliPath.length - 1] !== name) cliPath.push(name);
             }
-            if ((m = u.match(/^https?:\/\/github\.com\/([^\/]+)\/([^\/]+)\/?$/))) {
-                return `https://github.com/${m[1]}/${m[2]}/archive/refs/heads/main.zip`;
-            }
-            if ((m = u.match(/^https?:\/\/github\.com\/([^\/]+)\/([^\/]+)\/blob\/(.+)$/))) {
-                return `https://raw.githubusercontent.com/${m[1]}/${m[2]}/${m[3]}`;
-            }
-            return u;
+            updatePrompt();
         }
 
-        const CLI_COMMANDS = {
-            help: async () => {
-                function printGroup(title, rows) {
-                    let html = `<span class="cli-help-group">${title}</span>`;
-                    rows.forEach(([cmd, spec, desc]) => {
-                        const line = '  ' + cmd.padEnd(7) + (spec ? spec + '  ' : '     ') + desc;
-                        html += `<div class="cli-help-row"><span class="cli-help-desc">${line}</span></div>`;
-                    });
-                    cliPrint(html);
-                }
+        // ── Window controls ──
+        toggleCliBtn.addEventListener('click', () => {
+            terminalWindow.classList.toggle('open');
+            if (terminalWindow.classList.contains('open')) hiddenInput.focus();
+        });
+        termClose.addEventListener('click', () => terminalWindow.classList.remove('open'));
 
-                printGroup('FILE OPERATIONS', [
-                    ['ls',    '[folder-id?]',      'Tampilkan isi folder'],
-                    ['cd',    '[folder-id | ..]',  'Navigasi folder'],
-                    ['pwd',   '',                  'Folder aktif saat ini'],
-                    ['mkdir', '[nama]',            'Buat folder baru'],
-                ]);
+        // ── Drag ──
+        let isDragging = false, dragOffX, dragOffY;
+        termHeader.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            const r = terminalWindow.getBoundingClientRect();
+            dragOffX = e.clientX - r.left; dragOffY = e.clientY - r.top;
+            document.addEventListener('mousemove', onDrag);
+            document.addEventListener('mouseup', stopDrag);
+        });
+        function onDrag(e) {
+            if (!isDragging) return;
+            let l = e.clientX - dragOffX, t = e.clientY - dragOffY;
+            const d = document.getElementById('desktop') || document.body;
+            const dr = d.getBoundingClientRect();
+            if (l < 0) l = 0; if (t < 0) t = 0;
+            if (l > dr.width - 200) l = dr.width - 200;
+            if (t > dr.height - 80) t = dr.height - 80;
+            terminalWindow.style.left = l + 'px'; terminalWindow.style.top = t + 'px';
+            terminalWindow.style.bottom = 'auto'; terminalWindow.style.right = 'auto';
+        }
+        function stopDrag() { isDragging = false; document.removeEventListener('mousemove', onDrag); document.removeEventListener('mouseup', stopDrag); }
 
-                printGroup('MANAGE ITEMS', [
-                    ['rm',     '[id]',                  'Hapus file/folder'],
-                    ['rename', '[id] [nama baru]',      'Ganti nama item'],
-                    ['mv',     '[id] [folder-id/root]', 'Pindahkan file/folder'],
-                ]);
-
-                printGroup('GIT / SYNC', [
-                    ['git', 'status', 'Info vault & sesi saat ini'],
-                    ['git', 'log',    'Riwayat file terbaru'],
-                    ['git', 'push',   'Info cara push via drive.bat'],
-                ]);
-
-                printGroup('NETWORK', [
-                    ['curl',         '-o [nama] [url]', 'Download file dari URL ke vault'],
-                    ['import-drive', '[url|id]',        'Impor Google Drive folder publik (D2D)'],
-                ]);
-
-                printGroup('OTHER', [
-                    ['clear', '', 'Bersihkan terminal'],
-                ]);
-            },
-
-            pwd: async () => {
-                cliPrint(`<span class="cli-info">  Dir: </span><span class="cli-highlight">${cliCurrentFolder.name}</span><span class="cli-dim"> :: ${cliCurrentFolder.id || 'root'}</span>`);
-            },
-
-            ls: async (args) => {
-                cliPrint('<span class="cli-dim">Loading...</span>');
-                const result = await fetchFiles(args[0] || cliCurrentFolder.id);
-                if (result.status !== 'success') { cliPrint(`<span class="cli-error">  Error: ${result.message}</span>`); return; }
-                if (!result.data.length) { cliPrint('<span class="cli-info">  Folder is empty.</span>'); return; }
-                cliPrint(`<span class="cli-info">  ${result.data.length} items in </span><span class="cli-highlight">${result.currentFolderName}</span>`);
-                cliSep();
-                result.data.forEach(item => {
-                    const icon = item.isFolder ? '📁' : '📄';
-                    const cls  = item.isFolder ? 'cli-folder' : 'cli-file';
-                    const size = item.isFolder ? 'DIR' : formatBytes(item.size);
-                    const sizeFmt = item.isFolder
-                        ? `<span class="cli-dim">${size.padEnd(8)}</span>`
-                        : `<span class="cli-info">${size.padEnd(8)}</span>`;
-                    cliPrint(`  ${icon} <span class="${cls}">${item.name}</span> ${sizeFmt}<span class="cli-dim">${item.id}</span>`);
-                });
-            },
-
-            cd: async (args) => {
-                if (!args[0]) { cliPrint('<span class="cli-error">  Usage: cd [folder-id] | cd ..</span>'); return; }
-                if (args[0] === '..') {
-                    if (!cliParentStack.length) { cliPrint('<span class="cli-warn">  Already at root.</span>'); return; }
-                    cliCurrentFolder = cliParentStack.pop();
-                    cliPrint(`<span class="cli-success">  Up to: </span><span class="cli-highlight">${cliCurrentFolder.name}</span>`);
-                    return;
-                }
-                const result = await fetchFiles(args[0]);
-                if (result.status !== 'success') { cliPrint(`<span class="cli-error">  Error: ${result.message}</span>`); return; }
-                cliParentStack.push({ ...cliCurrentFolder });
-                cliCurrentFolder = { id: result.currentFolderId, name: result.currentFolderName };
-                cliPrint(`<span class="cli-success">  Entered: </span><span class="cli-highlight">${result.currentFolderName}</span>`);
-            },
-
-            mkdir: async (args) => {
-                const name = args.join(' ');
-                if (!name) { cliPrint('<span class="cli-error">  Usage: mkdir [name]</span>'); return; }
-                const result = await createFolder(name, cliCurrentFolder.id);
-                if (result.status === 'success') {
-                    cliPrint(`<span class="cli-success">  Created folder </span><span class="cli-highlight">"${name}"</span><span class="cli-dim"> :: ${result.data.id}</span>`);
-                    if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
-                } else { cliPrint(`<span class="cli-error">  ${result.message}</span>`); }
-            },
-
-            rm: async (args) => {
-                if (!args[0]) { cliPrint('<span class="cli-error">  Usage: rm [id]</span>'); return; }
-                cliPrint(`<span class="cli-warn">  Deleting ${args[0]}...</span>`);
-                const result = await deleteFile(args[0]);
-                if (result.status === 'success') {
-                    cliPrint(`<span class="cli-success">  Deleted.</span>`);
-                    if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
-                } else {
-                    cliPrint(`<span class="cli-error">  ${result.message}</span>`);
-                }
-            },
-
-            rename: async (args) => {
-                const [id, ...rest] = args;
-                const newName = rest.join(' ');
-                if (!id || !newName) { cliPrint('<span class="cli-error">  Usage: rename [id] [new name]</span>'); return; }
-                const result = await renameFile(id, newName);
-                if (result.status === 'success') {
-                    cliPrint(`<span class="cli-success">  Renamed to </span><span class="cli-highlight">"${newName}"</span>`);
-                    if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
-                } else {
-                    cliPrint(`<span class="cli-error">  ${result.message}</span>`);
-                }
-            },
-
-            mv: async (args) => {
-                const [id, targetFolderId] = args;
-                if (!id || !targetFolderId) { cliPrint('<span class="cli-error">  Usage: mv [id] [target-id/root]</span>'); return; }
-                cliPrint(`<span class="cli-warn">  Moving ${id} to ${targetFolderId}...</span>`);
-                const isRoot = targetFolderId.toLowerCase() === 'root';
-                const destId = isRoot ? null : targetFolderId;
-                const res = await moveItems([id], [id], destId);
-                if (res.status === 'success') {
-                    cliPrint(`<span class="cli-success">  Item moved successfully!</span>`);
-                    if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
-                } else {
-                    cliPrint(`<span class="cli-error">  ${res.message}</span>`);
-                }
-            },
-
-            git: async (args) => {
-                const sub = (args[0] || '').toLowerCase();
-                if (sub === 'status') {
-                    const cfg  = JSON.parse(localStorage.getItem('vault_config') || '{}');
-                    const url  = localStorage.getItem('vault_api_url') || 'N/A';
-                    cliSep();
-                    cliPrint('<span class="cli-highlight">  VAULT STATUS</span>');
-                    cliPrint(`  <span class="cli-dim">Vault Name  :</span> <span class="cli-prompt">${cfg.vaultName || 'Cyber Vault'}</span>`);
-                    cliPrint(`  <span class="cli-dim">Backend URL :</span> <span class="cli-file">${url.substring(0,60)}...</span>`);
-                    cliPrint(`  <span class="cli-dim">Folder      :</span> <span class="cli-prompt">${cliCurrentFolder.name}</span>`);
-                    cliPrint(`  <span class="cli-dim">Max Size    :</span> <span class="cli-prompt">${cfg.maxFileSizeMB || 15} MB</span>`);
-                    cliSep();
-                } else if (sub === 'log') {
-                    cliPrint('<span class="cli-dim">Fetching recent files...</span>');
-                    const result = await fetchFiles(cliCurrentFolder.id);
-                    if (result.status !== 'success') { cliPrint(`<span class="cli-error">${result.message}</span>`); return; }
-                    cliSep();
-                    cliPrint('<span class="cli-highlight">  RECENT FILES</span>');
-                    result.data.slice(0, 10).forEach((item, i) => {
-                        cliPrint(`  <span class="cli-dim">#${String(i+1).padStart(2,'0')}</span> <span class="cli-prompt">${item.name}</span> <span class="cli-dim">${item.id}</span>`);
-                    });
-                    cliSep();
-                } else if (sub === 'push') {
-                    cliPrint('<span class="cli-warn">  To push project to Google Drive, use drive.bat locally:</span>');
-                    cliPrint('  <span class="cli-cmd">  drive push "commit message"</span>');
-                    cliPrint('<span class="cli-dim">  Make sure D:\\vault is in your PATH.</span>');
-                } else {
-                    cliPrint('<span class="cli-error">  Available git subcommands: status | log | push</span>');
-                }
-            },
-
-            curl: async (args) => {
-                let fileName = null, url = null;
-                const oIdx = args.indexOf('-o');
-                if (oIdx !== -1 && args[oIdx + 1] && args[oIdx + 2]) {
-                    fileName = args[oIdx + 1];
-                    url = args[oIdx + 2];
-                } else if (args[0] && !args[0].startsWith('-')) {
-                    url = args[0];
-                    fileName = url.split('/').pop().split('?')[0] || 'download';
-                }
-                if (!url) { cliPrint('<span class="cli-error">  Usage: curl -o [name] [url]</span>'); return; }
-
-                const finalUrl = normalizeCurlUrl(url);
-                if (finalUrl !== url) {
-                    cliPrint(`<span class="cli-info">  GitHub repo detected, redirecting...</span>`);
-                }
-
-                cliPrint(`<span class="cli-dim">  Downloading from: ${finalUrl.substring(0,65)}${finalUrl.length > 65 ? '...' : ''}</span>`);
-                const result = await importFromUrl(finalUrl, fileName, cliCurrentFolder.id);
-                if (result.status === 'success') {
-                    const savedName = (result.data && result.data.name) || fileName || 'file';
-                    cliPrint(`<span class="cli-success">  Imported: </span><span class="cli-highlight">${savedName}</span>`);
-                    if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
-                } else {
-                    cliPrint(`<span class="cli-error">  ${result.message}</span>`);
-                }
-            },
-
-            'import-drive': async (args) => {
-                const urlOrId = args[0];
-                if (!urlOrId) { cliPrint('<span class="cli-error">  Usage: import-drive [google_drive_folder_url_or_id]</span>'); return; }
-                cliPrint(`<span class="cli-dim">  Importing Google Drive folder (D2D)...</span>`);
-                cliPrint(`<span class="cli-info">  Copying contents from: ${urlOrId.substring(0, 50)}...</span>`);
-                
-                const result = await importFromDrive(urlOrId, cliCurrentFolder.id);
-                if (result.status === 'success') {
-                    cliPrint(`<span class="cli-success">  Imported folder: </span><span class="cli-highlight">${result.data.name}</span>`);
-                    if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
-                } else {
-                    cliPrint(`<span class="cli-error">  ${result.message}</span>`);
-                }
-            },
-
-            clear: async () => { cliOutput.innerHTML = ''; },
-        };
-
-        cliInput.addEventListener('keydown', async (e) => {
+        // ── Input ──
+        hiddenInput.addEventListener('keydown', async (e) => {
             if (e.key === 'Enter') {
-                const raw = cliInput.value.trim();
-                if (!raw) return;
-                cliHistory.unshift(raw);
-                if (cliHistory.length > 50) cliHistory.pop();
-                cliHistoryIdx = -1;
-                cliPrint(`<span class="cli-prompt">vault@cyber:~$</span> <span style="color:#e2e8f0;">${raw}</span>`);
-                cliInput.value = '';
-                const parts = raw.trim().split(/\s+/);
+                const raw = hiddenInput.value;
+                hiddenInput.value = '';
+                printLine(promptLabel.textContent + raw);
+                const trimmed = raw.trim();
+                if (!trimmed) return;
+                const parts = trimmed.split(/\s+/);
                 const cmd = parts[0].toLowerCase();
                 const args = parts.slice(1);
-                if (CLI_COMMANDS[cmd]) { await CLI_COMMANDS[cmd](args); }
-                else { cliPrint(`<span class="cli-error">  Unknown command: '${cmd}'. Type </span><span class="cli-cmd">help</span><span class="cli-error">.</span>`); }
+
+                // ── help ──
+                if (cmd === 'help') {
+                    const c1 = 14, c2 = 28;
+                    printLine('');
+                    printLine('Command'.padEnd(c1) + 'Parameter'.padEnd(c2) + 'Keterangan', 'hl');
+                    printLine('-------'.padEnd(c1) + '---------'.padEnd(c2) + '----------', 'dim');
+                    CLI_COMMANDS_DATA.forEach(item => {
+                        printLine(item.cmd.padEnd(c1) + item.param.padEnd(c2) + item.desc);
+                    });
+                    printLine('');
+
+                // ── pwd ──
+                } else if (cmd === 'pwd') {
+                    printLine(cliCurrentFolder.name + ' [' + (cliCurrentFolder.id || 'root') + ']');
+
+                // ── ls ──
+                } else if (cmd === 'ls') {
+                    printLine('Loading...', 'dim');
+                    const result = await fetchFiles(args[0] || cliCurrentFolder.id);
+                    if (result.status !== 'success') { printLine('Error: ' + result.message, 'err'); return; }
+                    if (!result.data || !result.data.length) { printLine('Folder kosong.', 'dim'); return; }
+                    printLine(result.data.length + ' item(s) in ' + result.currentFolderName, 'hl');
+                    const ipref = '         ';
+                    const nameW = 36;
+                    result.data.forEach(item => {
+                        const isDir = item.isFolder;
+                        const tag   = isDir ? '[DIR]' : '[FIL]';
+                        const icon  = '  ' + tag + '  ';
+                        const size  = isDir ? '<DIR>' : formatBytes(item.size);
+                        const id    = item.id || '';
+                        const name  = item.name;
+                        if (name.length > nameW) {
+                            const parts = [];
+                            for (let i = 0; i < name.length; i += nameW) parts.push(name.slice(i, i + nameW));
+                            parts.forEach((chunk, i) => {
+                                if (i === 0) {
+                                    printLine(icon + chunk);
+                                } else if (i === parts.length - 1) {
+                                    printLine(ipref + chunk.padEnd(nameW) + '  ' + size.padEnd(8) + '  ' + id);
+                                } else {
+                                    printLine(ipref + chunk);
+                                }
+                            });
+                        } else {
+                            printLine(icon + name.padEnd(nameW) + '  ' + size.padEnd(8) + '  ' + id);
+                        }
+                    });
+
+                // ── tree ──
+                } else if (cmd === 'tree') {
+                    let excludeId = null;
+                    const wIdx = args.indexOf('--without');
+                    if (wIdx !== -1 && args[wIdx + 1]) { excludeId = args[wIdx + 1]; args.splice(wIdx, 2); }
+                    const target = args[0] || '';
+                    let folderId, recursive, rootLabel;
+                    if (!target) {
+                        folderId = cliCurrentFolder.id; recursive = false;
+                        rootLabel = cliCurrentFolder.name;
+                    } else if (target === 'all') {
+                        folderId = null; recursive = true;
+                        rootLabel = 'root';
+                    } else {
+                        folderId = target; recursive = true;
+                        rootLabel = target;
+                    }
+                    function filterItems(arr, excl) { return arr.filter(function(x) { return x.id !== excl; }); }
+                    function buildTree(items, pref, excl) {
+                        var arr = filterItems(items || [], excl);
+                        var len = arr.length;
+                        for (var i = 0; i < len; i++) {
+                            var item = arr[i];
+                            var conn = (i === len - 1) ? '└── ' : '├── ';
+                            printLine(pref + conn + item.name);
+                            if (item.isFolder && item.children && item.children.length > 0) {
+                                var nextPref = pref + (i === len - 1 ? '    ' : '│   ');
+                                buildTree(item.children, nextPref, excl);
+                            }
+                        }
+                    }
+                    printLine('Loading...', 'dim');
+                    fetchFiles(folderId, recursive).then(function(result) {
+                        if (result.status !== 'success') { printLine('Error: ' + result.message, 'err'); return; }
+                        var items = result.data || [];
+                        var treeName = result.currentFolderName || rootLabel;
+                        printLine(treeName + '/');
+                        if (recursive) {
+                            buildTree(items, '', excludeId);
+                        } else {
+                            items = filterItems(items, excludeId);
+                            items.forEach(function(item, i) {
+                                var conn = (i === items.length - 1) ? '└── ' : '├── ';
+                                printLine(conn + item.name);
+                            });
+                        }
+                    });
+
+                // ── cd ──
+                } else if (cmd === 'cd') {
+                    if (!args[0]) { printLine('Usage: cd [id] | cd ..', 'err'); }
+                    else if (args[0] === '..') {
+                        if (!cliParentStack.length) { printLine('Already at root.', 'dim'); }
+                        else {
+                            cliCurrentFolder = cliParentStack.pop();
+                            cliPath.pop();
+                            updatePrompt();
+                            printLine('vault/' + cliPath.join('/'));
+                        }
+                    } else {
+                        const result = await fetchFiles(args[0]);
+                        if (result.status !== 'success') { printLine('Error: ' + result.message, 'err'); return; }
+                        cliParentStack.push({ ...cliCurrentFolder });
+                        cliCurrentFolder = { id: result.currentFolderId, name: result.currentFolderName };
+                        updatePath(result.currentFolderName);
+                        printLine('vault/' + cliPath.join('/'));
+                    }
+
+                // ── mkdir ──
+                } else if (cmd === 'mkdir') {
+                    const name = args.join(' ');
+                    if (!name) { printLine('Usage: mkdir [nama]', 'err'); return; }
+                    const result = await createFolder(name, cliCurrentFolder.id);
+                    if (result.status === 'success') {
+                        printLine('Folder "' + name + '" dibuat.  ID: ' + result.data.id);
+                        if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
+                    } else { printLine(result.message, 'err'); }
+
+                // ── rm ──
+                } else if (cmd === 'rm') {
+                    if (!args[0]) { printLine('Usage: rm [id]', 'err'); return; }
+                    printLine('Menghapus ' + args[0] + '...', 'dim');
+                    const result = await deleteFile(args[0]);
+                    if (result.status === 'success') {
+                        printLine('Dihapus.');
+                        if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
+                    } else { printLine(result.message, 'err'); }
+
+                // ── rename ──
+                } else if (cmd === 'rename') {
+                    const id = args[0], newName = args.slice(1).join(' ');
+                    if (!id || !newName) { printLine('Usage: rename [id] [nama baru]', 'err'); return; }
+                    const result = await renameFile(id, newName);
+                    if (result.status === 'success') {
+                        printLine('Item diganti menjadi "' + newName + '"');
+                        if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
+                    } else { printLine(result.message, 'err'); }
+
+                // ── mv ──
+                } else if (cmd === 'mv') {
+                    const id = args[0], target = args[1];
+                    if (!id || !target) { printLine('Usage: mv [id] [id_tujuan/root]', 'err'); return; }
+                    const destId = target.toLowerCase() === 'root' ? null : target;
+                    const res = await moveItems([id], [id], destId);
+                    if (res.status === 'success') {
+                        printLine('Item dipindahkan.');
+                        if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
+                    } else { printLine(res.message, 'err'); }
+
+                // ── git ──
+                } else if (cmd === 'git') {
+                    const sub = (args[0] || '').toLowerCase();
+                    if (sub === 'status') {
+                        const cfg = JSON.parse(localStorage.getItem('vault_config') || '{}');
+                        const url = localStorage.getItem('vault_api_url') || 'N/A';
+                        printLine('====================================', 'dim');
+                        printLine('Vault Name  : ' + (cfg.vaultName || 'Cyber Vault'));
+                        printLine('Backend URL : ' + url.substring(0, 60));
+                        printLine('Folder      : ' + cliCurrentFolder.name);
+                        printLine('Max Size    : ' + (cfg.maxFileSizeMB || 15) + ' MB');
+                        printLine('====================================', 'dim');
+                    } else if (sub === 'log') {
+                        const result = await fetchFiles(cliCurrentFolder.id);
+                        if (result.status !== 'success') { printLine(result.message, 'err'); return; }
+                        printLine('RECENT FILES', 'hl');
+                        result.data.slice(0, 10).forEach((item, i) => {
+                            const n = String(i + 1).padStart(2, '0');
+                            printLine('  #' + n + '  ' + item.name + '  [' + item.id + ']');
+                        });
+                    } else if (sub === 'push') {
+                        printLine('Gunakan drive.bat di terminal lokal:');
+                        printLine('  drive push "pesan commit"');
+                    } else {
+                        printLine('Subperintah git: status | log | push', 'err');
+                    }
+
+                // ── curl ──
+                } else if (cmd === 'curl') {
+                    let fileName = null, url = null;
+                    const oIdx = args.indexOf('-o');
+                    if (oIdx !== -1 && args[oIdx + 1] && args[oIdx + 2]) {
+                        fileName = args[oIdx + 1]; url = args[oIdx + 2];
+                    } else if (args[0] && !args[0].startsWith('-')) {
+                        url = args[0]; fileName = url.split('/').pop().split('?')[0] || 'download';
+                    }
+                    if (!url) { printLine('Usage: curl -o [nama] [url]', 'err'); return; }
+                    const finalUrl = url; // simplified
+                    printLine('Downloading... ' + finalUrl.substring(0, 60), 'dim');
+                    const result = await importFromUrl(finalUrl, fileName, cliCurrentFolder.id);
+                    if (result.status === 'success') {
+                        const saved = (result.data && result.data.name) || fileName;
+                        printLine('Imported: ' + saved);
+                        if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
+                    } else { printLine(result.message, 'err'); }
+
+                // ── import-drive ──
+                } else if (cmd === 'import-drive') {
+                    if (!args[0]) { printLine('Usage: import-drive [google_drive_folder_url_or_id]', 'err'); return; }
+                    printLine('Importing Google Drive folder (D2D)...', 'dim');
+                    const result = await importFromDrive(args[0], cliCurrentFolder.id);
+                    if (result.status === 'success') {
+                        printLine('Imported: ' + result.data.name);
+                        if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
+                    } else { printLine(result.message, 'err'); }
+
+                // ── clear ──
+                } else if (cmd === 'clear' || cmd === 'cls') {
+                    cliHistoryEl.innerHTML = '';
+
+                // ── unknown ──
+                } else {
+                    printLine("'" + cmd + "' tidak dikenali. Ketik 'help'.", 'err');
+                }
+
+                printLine('');
+                cliOutput.scrollTop = cliOutput.scrollHeight;
             }
-            if (e.key === 'ArrowUp') { e.preventDefault(); if (cliHistoryIdx < cliHistory.length - 1) { cliHistoryIdx++; cliInput.value = cliHistory[cliHistoryIdx]; } }
-            if (e.key === 'ArrowDown') { e.preventDefault(); if (cliHistoryIdx > 0) { cliHistoryIdx--; cliInput.value = cliHistory[cliHistoryIdx]; } else { cliHistoryIdx = -1; cliInput.value = ''; } }
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (cliHistoryIdx < cliHistory.length - 1) {
+                    cliHistoryIdx++;
+                    hiddenInput.value = cliHistory[cliHistoryIdx];
+                }
+            }
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (cliHistoryIdx > 0) {
+                    cliHistoryIdx--;
+                    hiddenInput.value = cliHistory[cliHistoryIdx];
+                } else {
+                    cliHistoryIdx = -1;
+                    hiddenInput.value = '';
+                }
+            }
         });
-        cliClearBtn.addEventListener('click', () => cliOutput.innerHTML = '');
-        cliOutput.addEventListener('click', () => cliInput.focus());
+        // Click on terminal body focuses input without stealing text selection
+        cliOutput.addEventListener('mousedown', (e) => {
+            if (e.target === cliOutput || e.target === cliHistoryEl) hiddenInput.focus();
+        });
+        updatePrompt();
         // ==================== END CLI ENGINE ====================
 
 
