@@ -4,6 +4,11 @@ on:
   push:
     branches: ["main"]
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write # ⬅️ ini yang diminta error log
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -11,12 +16,12 @@ jobs:
       - name: Checkout frontend only
         uses: actions/checkout@v4
         with:
-          submodules: false # skip backend private
+          submodules: false
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: . # root repo, bisa diganti ./dist kalau ada build output
+          path: . # root repo, ganti kalau ada folder build
 
   deploy:
     runs-on: ubuntu-latest
