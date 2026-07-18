@@ -16,7 +16,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: . # ⬅️ root folder, bisa diganti ./dist kalau ada build output
+          path: . # root repo, bisa diganti ./dist kalau ada build output
 
   deploy:
     runs-on: ubuntu-latest
