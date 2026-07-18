@@ -29,8 +29,8 @@
         @keyframes skeleton-shimmer { to { transform:translateX(100%); } }
         #propertiesSidebar.loading { position:relative; pointer-events:none; }
         #propertiesSidebar.loading::after { content:""; position:absolute; inset:0; border-radius:12px; background:linear-gradient(90deg,transparent,var(--bg-elevated),transparent); animation:skeleton-shimmer 1.2s infinite; opacity:.8; }
-        .download-toast { display:flex;align-items:center;justify-content:space-between;width:min(340px,calc(100vw - 32px));min-height:56px;padding:10px;border-radius:10px;background:#232531;box-shadow:0 14px 38px rgba(0,0,0,.35);color:#fff;font:12px 'Outfit',sans-serif;animation:toastIn .35s ease forwards;pointer-events:auto; }
-        .download-toast-main { display:flex;align-items:center;gap:9px;min-width:0; }.download-toast-icon{width:32px;height:32px;padding:6px;border-radius:8px;background:rgba(255,255,255,.06);flex:none}.download-toast-icon svg{width:20px;height:20px}.download-toast.success .download-toast-icon{color:#2b9875}.download-toast.error .download-toast-icon{color:#d65563}.download-toast.info .download-toast-icon{color:#60a5fa}.download-toast-title{font-weight:700;color:#fff;margin:0 0 2px}.download-toast-text{margin:0;color:#9ca3af;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}.download-toast-close{background:none;border:0;color:#6b7280;cursor:pointer;border-radius:6px;padding:4px;display:grid;place-items:center}.download-toast-close:hover{background:rgba(255,255,255,.1);color:#fff}
+        .toast { display:flex;align-items:center;justify-content:space-between;width:min(340px,calc(100vw - 32px));min-height:56px;padding:10px;border-radius:10px;background:var(--bg-card);box-shadow:var(--shadow-lg);color:var(--text-primary);font:12px 'Outfit',sans-serif;animation:toastIn .35s ease forwards;pointer-events:auto;border:1px solid var(--border); }
+        .toast-main { display:flex;align-items:center;gap:9px;min-width:0; }.toast-icon{width:32px;height:32px;padding:6px;border-radius:8px;background:var(--bg-elevated);flex:none}.toast-icon svg{width:20px;height:20px}.toast.success .toast-icon{color:#2b9875}.toast.error .toast-icon{color:#d65563}.toast.info .toast-icon{color:#60a5fa}.toast.warn .toast-icon{color:#f59e0b}.toast-title{font-weight:700;color:var(--text-primary);margin:0 0 2px}.toast-text{margin:0;color:var(--text-secondary);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}.toast-close{background:none;border:0;color:var(--text-tertiary);cursor:pointer;border-radius:6px;padding:4px;display:grid;place-items:center}.toast-close:hover{background:var(--bg-elevated);color:var(--text-primary)}
         
         /* ── Terminal CLI ── */
         #terminalWindow {
@@ -801,12 +801,12 @@
         const dialogOk       = document.getElementById('dialogOk');
         const dialogCancel   = document.getElementById('dialogCancel');
 
-        function toast(message, type = 'info', duration = 4000) {
-            const labels = { success:'Unduhan berhasil', error:'Unduhan gagal', info:'Memproses unduhan', warn:'Perhatian' };
+        function toast(message, type = 'info', duration = 4000, title) {
+            const labels = { success:'Berhasil', error:'Gagal', info:'Informasi', warn:'Perhatian' };
             const el = document.createElement('div');
-            el.className = `download-toast ${type}`;
+            el.className = `toast ${type}`;
             el.innerHTML = `
-                <div class="download-toast-main"><span class="download-toast-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="${type === 'success' ? 'm4.5 12.75 6 6 9-13.5' : type === 'error' ? 'M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z' : 'M12 6.75v.008h.008V6.75H12Zm0 4.5v6m0 0h.008v.008H12V17.25Z'}"/></svg></span><div><p class="download-toast-title">${labels[type] || labels.info}</p><p class="download-toast-text">${message}</p></div></div><button class="download-toast-close" onclick="this.parentElement.remove()" aria-label="Tutup">&times;</button>`;
+                <div class="toast-main"><span class="toast-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="${type === 'success' ? 'm4.5 12.75 6 6 9-13.5' : type === 'error' ? 'M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z' : type === 'warn' ? 'M12 9v3.75m-1.5-7.5 1.5-1.5 1.5 1.5m-1.5 1.5v6m0 0h.008v.008H12V17.25Z' : 'M12 6.75v.008h.008V6.75H12Zm0 4.5v6m0 0h.008v.008H12V17.25Z'}"/></svg></span><div><p class="toast-title">${title || labels[type] || labels.info}</p><p class="toast-text">${message}</p></div></div><button class="toast-close" onclick="this.parentElement.remove()" aria-label="Tutup">&times;</button>`;
             toastContainer.appendChild(el);
             setTimeout(() => {
                 el.style.animation = 'toastOut .35s ease forwards';
@@ -876,6 +876,12 @@
             cliOutput.scrollTop = cliOutput.scrollHeight;
         }
 
+        function wrapPrint(text, className, w) {
+            w = w || 72;
+            if (text.length <= w) { printLine(text, className); return; }
+            for (var i = 0; i < text.length; i += w) printLine(text.slice(i, i + w), className);
+        }
+
         function updatePath(name) {
             if (name === 'root') { cliPath = ['root']; }
             else {
@@ -927,12 +933,25 @@
 
                 // ── help ──
                 if (cmd === 'help') {
-                    const c1 = 14, c2 = 28;
+                    var c1 = 14, c2 = 28;
+                    function wrapCol(text, w) {
+                        if (text.length <= w) return [text];
+                        var parts = [];
+                        for (var i = 0; i < text.length; i += w) parts.push(text.slice(i, i + w));
+                        return parts;
+                    }
                     printLine('');
                     printLine('Command'.padEnd(c1) + 'Parameter'.padEnd(c2) + 'Keterangan', 'hl');
                     printLine('-------'.padEnd(c1) + '---------'.padEnd(c2) + '----------', 'dim');
-                    CLI_COMMANDS_DATA.forEach(item => {
-                        printLine(item.cmd.padEnd(c1) + item.param.padEnd(c2) + item.desc);
+                    CLI_COMMANDS_DATA.forEach(function(item) {
+                        var pLines = wrapCol(item.param, c2);
+                        pLines.forEach(function(line, i) {
+                            if (i === 0) {
+                                printLine(item.cmd.padEnd(c1) + line.padEnd(c2) + (i === pLines.length - 1 ? item.desc : ''));
+                            } else {
+                                printLine(''.padEnd(c1) + line.padEnd(c2) + (i === pLines.length - 1 ? item.desc : ''));
+                            }
+                        });
                     });
                     printLine('');
 
@@ -944,7 +963,7 @@
                 } else if (cmd === 'ls') {
                     printLine('Loading...', 'dim');
                     const result = await fetchFiles(args[0] || cliCurrentFolder.id);
-                    if (result.status !== 'success') { printLine('Error: ' + result.message, 'err'); return; }
+                    if (result.status !== 'success') { wrapPrint('Error: ' + result.message, 'err'); return; }
                     if (!result.data || !result.data.length) { printLine('Folder kosong.', 'dim'); return; }
                     printLine(result.data.length + ' item(s) in ' + result.currentFolderName, 'hl');
                     const ipref = '         ';
@@ -1006,7 +1025,7 @@
                     }
                     printLine('Loading...', 'dim');
                     fetchFiles(folderId, recursive).then(function(result) {
-                        if (result.status !== 'success') { printLine('Error: ' + result.message, 'err'); return; }
+                        if (result.status !== 'success') { wrapPrint('Error: ' + result.message, 'err'); return; }
                         var items = result.data || [];
                         var treeName = result.currentFolderName || rootLabel;
                         printLine(treeName + '/');
@@ -1031,14 +1050,17 @@
                             cliPath.pop();
                             updatePrompt();
                             printLine('vault/' + cliPath.join('/'));
+                            loadAndRender(cliCurrentFolder.id);
                         }
                     } else {
+                        printLine('Loading...', 'dim');
                         const result = await fetchFiles(args[0]);
-                        if (result.status !== 'success') { printLine('Error: ' + result.message, 'err'); return; }
+                        if (result.status !== 'success') { wrapPrint('Error: ' + result.message, 'err'); return; }
                         cliParentStack.push({ ...cliCurrentFolder });
                         cliCurrentFolder = { id: result.currentFolderId, name: result.currentFolderName };
                         updatePath(result.currentFolderName);
                         printLine('vault/' + cliPath.join('/'));
+                        loadAndRender(cliCurrentFolder.id);
                     }
 
                 // ── mkdir ──
@@ -1048,8 +1070,8 @@
                     const result = await createFolder(name, cliCurrentFolder.id);
                     if (result.status === 'success') {
                         printLine('Folder "' + name + '" dibuat.  ID: ' + result.data.id);
-                        if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
-                    } else { printLine(result.message, 'err'); }
+                        loadAndRender(cliCurrentFolder.id);
+                    } else { wrapPrint(result.message, 'err'); }
 
                 // ── rm ──
                 } else if (cmd === 'rm') {
@@ -1058,29 +1080,31 @@
                     const result = await deleteFile(args[0]);
                     if (result.status === 'success') {
                         printLine('Dihapus.');
-                        if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
-                    } else { printLine(result.message, 'err'); }
+                        loadAndRender(cliCurrentFolder.id);
+                    } else { wrapPrint(result.message, 'err'); }
 
                 // ── rename ──
                 } else if (cmd === 'rename') {
                     const id = args[0], newName = args.slice(1).join(' ');
                     if (!id || !newName) { printLine('Usage: rename [id] [nama baru]', 'err'); return; }
+                    printLine('Loading...', 'dim');
                     const result = await renameFile(id, newName);
                     if (result.status === 'success') {
                         printLine('Item diganti menjadi "' + newName + '"');
-                        if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
-                    } else { printLine(result.message, 'err'); }
+                        loadAndRender(cliCurrentFolder.id);
+                    } else { wrapPrint(result.message, 'err'); }
 
                 // ── mv ──
                 } else if (cmd === 'mv') {
                     const id = args[0], target = args[1];
                     if (!id || !target) { printLine('Usage: mv [id] [id_tujuan/root]', 'err'); return; }
                     const destId = target.toLowerCase() === 'root' ? null : target;
+                    printLine('Loading...', 'dim');
                     const res = await moveItems([id], [id], destId);
                     if (res.status === 'success') {
                         printLine('Item dipindahkan.');
-                        if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
-                    } else { printLine(res.message, 'err'); }
+                        loadAndRender(cliCurrentFolder.id);
+                    } else { wrapPrint(res.message, 'err'); }
 
                 // ── git ──
                 } else if (cmd === 'git') {
@@ -1095,8 +1119,9 @@
                         printLine('Max Size    : ' + (cfg.maxFileSizeMB || 15) + ' MB');
                         printLine('====================================', 'dim');
                     } else if (sub === 'log') {
+                        printLine('Loading...', 'dim');
                         const result = await fetchFiles(cliCurrentFolder.id);
-                        if (result.status !== 'success') { printLine(result.message, 'err'); return; }
+                        if (result.status !== 'success') { wrapPrint(result.message, 'err'); return; }
                         printLine('RECENT FILES', 'hl');
                         result.data.slice(0, 10).forEach((item, i) => {
                             const n = String(i + 1).padStart(2, '0');
@@ -1125,8 +1150,8 @@
                     if (result.status === 'success') {
                         const saved = (result.data && result.data.name) || fileName;
                         printLine('Imported: ' + saved);
-                        if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
-                    } else { printLine(result.message, 'err'); }
+                        loadAndRender(cliCurrentFolder.id);
+                    } else { wrapPrint(result.message, 'err'); }
 
                 // ── import-drive ──
                 } else if (cmd === 'import-drive') {
@@ -1135,8 +1160,8 @@
                     const result = await importFromDrive(args[0], cliCurrentFolder.id);
                     if (result.status === 'success') {
                         printLine('Imported: ' + result.data.name);
-                        if (currentFolderId === cliCurrentFolder.id) loadAndRender(cliCurrentFolder.id);
-                    } else { printLine(result.message, 'err'); }
+                        loadAndRender(cliCurrentFolder.id);
+                    } else { wrapPrint(result.message, 'err'); }
 
                 // ── clear ──
                 } else if (cmd === 'clear' || cmd === 'cls') {
@@ -1168,10 +1193,8 @@
                 }
             }
         });
-        // Click on terminal body focuses input without stealing text selection
-        cliOutput.addEventListener('mousedown', (e) => {
-            if (e.target === cliOutput || e.target === cliHistoryEl) hiddenInput.focus();
-        });
+        // Click anywhere on terminal body activates input, but allow text selection
+        cliOutput.addEventListener('mousedown', function() { hiddenInput.focus(); });
         updatePrompt();
         // ==================== END CLI ENGINE ====================
 
@@ -1740,7 +1763,7 @@
             const url = (item && item.url ? item.url : getDownloadUrl(itemOrId, isFolder)) + '&format=base64';
             try {
                 const downloadName = (item && item.name) || 'berkas';
-                toast(`Menyiapkan ${downloadName}...`, 'info', 2200);
+                toast(`Menyiapkan ${downloadName}...`, 'info', 2200, 'Mengunduh');
                 const startedAt = performance.now();
                 if (statusConsole) {
                     statusConsole.classList.remove('hidden');
@@ -1761,11 +1784,11 @@
                 link.remove();
                 setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
                 const elapsed = ((performance.now() - startedAt) / 1000).toFixed(1);
-                toast(`${payload.filename || downloadName} siap disimpan (${formatBytes(bytes.byteLength)} • ${elapsed} dtk)`, 'success');
+                toast(`${payload.filename || downloadName} siap disimpan (${formatBytes(bytes.byteLength)} • ${elapsed} dtk)`, 'success', 4000, 'Selesai');
                 if (statusConsole) statusConsole.innerHTML += `<div>STATUS: COMPLETE</div><div>SIZE: ${formatBytes(bytes.byteLength)} | TIME: ${elapsed}s</div>`;
             } catch (error) {
                 console.error('Download gagal:', error);
-                toast('Download gagal: ' + (error.message || 'respons backend tidak valid.'), 'error');
+                toast('Download gagal: ' + (error.message || 'respons backend tidak valid.'), 'error', 4000, 'Gagal');
                 if (statusConsole) statusConsole.innerHTML += `<div>STATUS: FAILED</div>`;
             }
         }
@@ -2129,7 +2152,7 @@
                 progressPercentText.innerText = '50%';
                 
                 const res = await deleteMultiple(fileIds, folderIds);
-                toast(res.message, res.status === 'success' ? 'success' : 'error');
+                toast(res.message, res.status === 'success' ? 'success' : 'error', 4000, 'Hapus Massal');
                 
                 cliPrint(`<span class="cli-success">[DELETE LOG] Selesai: ${res.message}</span>`);
                 
@@ -2160,7 +2183,7 @@
                 const fileIds   = selectedItems.filter(i => !i.isFolder).map(i => i.id);
                 const folderIds = selectedItems.filter(i =>  i.isFolder).map(i => i.id);
                 const res = await moveItems(fileIds, folderIds, targetId.toLowerCase() === 'root' ? null : targetId);
-                toast(res.message, res.status === 'success' ? 'success' : 'error');
+                toast(res.message, res.status === 'success' ? 'success' : 'error', 4000, 'Pindahkan');
                 bulkMoveBtn.innerText = 'Pindah Terpilih 📦';
                 bulkMoveBtn.disabled = false;
                 loadAndRender(currentFolderId);
@@ -2172,7 +2195,7 @@
             const folderName = await showDialog('Buat Folder Baru', 'Masukkan nama folder yang ingin dibuat:', { hasInput: true, inputPlaceholder: 'Nama folder...' });
             if (folderName) {
                 const res = await createFolder(folderName, currentFolderId);
-                toast(res.message, res.status === 'success' ? 'success' : 'error');
+                toast(res.message, res.status === 'success' ? 'success' : 'error', 4000, 'Buat Folder');
                 loadAndRender(currentFolderId);
             }
         });
@@ -2428,14 +2451,14 @@
             e.stopPropagation();
             const id = sidebarId.innerText;
             navigator.clipboard.writeText(id);
-            toast('ID File disalin ke clipboard!', 'success');
+            toast('ID File disalin ke clipboard!', 'success', 4000, 'Clipboard');
         });
         
         copyUrlBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             const url = sidebarUrl.innerText;
             navigator.clipboard.writeText(url);
-            toast('Direct Download Link disalin ke clipboard!', 'success');
+            toast('Direct Download Link disalin ke clipboard!', 'success', 4000, 'Clipboard');
         });
 
         // Sidebar Action Buttons
@@ -2458,7 +2481,7 @@
             if (newName && newName !== oldName) {
                 sidebarRenameBtn.disabled = true;
                 const res = await renameFile(id, newName);
-                toast(res.message, res.status === 'success' ? 'success' : 'error');
+                toast(res.message, res.status === 'success' ? 'success' : 'error', 4000, 'Ganti Nama');
                 sidebarRenameBtn.disabled = false;
                 loadAndRender(currentFolderId);
             }
@@ -2476,7 +2499,7 @@
                 const fileIds = isFolder ? [] : [id];
                 const folderIds = isFolder ? [id] : [];
                 const res = await moveItems(fileIds, folderIds, targetId.toLowerCase() === 'root' ? null : targetId);
-                toast(res.message, res.status === 'success' ? 'success' : 'error');
+                toast(res.message, res.status === 'success' ? 'success' : 'error', 4000, 'Pindahkan');
                 sidebarMoveBtn.disabled = false;
                 loadAndRender(currentFolderId);
             }
@@ -2491,7 +2514,7 @@
             if (confirmed) {
                 sidebarDeleteBtn.disabled = true;
                 const res = await deleteFile(id);
-                toast(res.message, res.status === 'success' ? 'success' : 'error');
+                toast(res.message, res.status === 'success' ? 'success' : 'error', 4000, 'Hapus');
                 sidebarDeleteBtn.disabled = false;
                 loadAndRender(currentFolderId);
             }
@@ -2525,13 +2548,13 @@
             if (ta) editorActiveContent = ta.value;
             
             const name = editorFileName.value.trim();
-            if (!name) return toast("Nama file tidak boleh kosong!", "warn");
+            if (!name) return toast("Nama file tidak boleh kosong!", "warn", 4000, 'Validasi');
             
             editorSaveBtn.innerText = "SAVING...";
             editorSaveBtn.disabled = true;
             
             const res = await saveTextFile(name, editorActiveContent, editorActiveFileId, currentFolderId);
-            toast(res.message, res.status === "success" ? "success" : "error");
+            toast(res.message, res.status === "success" ? "success" : "error", 4000, 'Simpan');
             
             editorSaveBtn.innerText = "SAVE 💾";
             editorSaveBtn.disabled = false;
@@ -2599,7 +2622,7 @@
             importDriveBtn.addEventListener('click', async () => {
                 const driveUrl = await showDialog('Impor Google Drive (D2D)', 'Masukkan URL atau ID folder Google Drive publik yang ingin Anda impor ke folder saat ini:', { hasInput: true, inputPlaceholder: 'https://drive.google.com/drive/folders/...' });
                 if (driveUrl) {
-                    toast('Memulai impor Google Drive (Proses di latar belakang)...', 'info');
+                    toast('Memulai impor Google Drive (Proses di latar belakang)...', 'info', 4000, 'Impor Drive');
                     
                     // Show progress bar
                     const progressContainer = document.getElementById('operationProgressContainer');
@@ -2623,7 +2646,7 @@
                         setTimeout(() => progressContainer.classList.add('hidden'), 3000);
                     }
                     
-                    toast(res.message, res.status === 'success' ? 'success' : 'error');
+                    toast(res.message, res.status === 'success' ? 'success' : 'error', 4000, 'Impor Drive');
                     loadAndRender(currentFolderId);
                 }
             });
@@ -2634,7 +2657,7 @@
                 const selectedItems = localFilesState.filter(item => item.selected);
                 if (!selectedItems.length) return;
                 
-                toast(`Mengunduh ${selectedItems.length} item...`, 'info');
+                toast(`Mengunduh ${selectedItems.length} item...`, 'info', 4000, 'Unduh Massal');
                 
                 // Use the original, proven single-download link for every selected item.
                 selectedItems.forEach(item => openDownloadLink(item));
