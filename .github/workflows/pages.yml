@@ -1,0 +1,35 @@
+name: Build and Deploy Pages
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout frontend only
+        uses: actions/checkout@v4
+        with:
+          submodules: false # ⬅️ ini penting, biar backend nggak di-clone
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Build with Jekyll
+        run: |
+          bundle install
+          bundle exec jekyll build
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./_site
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
