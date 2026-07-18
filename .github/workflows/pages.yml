@@ -1,4 +1,4 @@
-name: Build and Deploy Pages
+name: Deploy static site to Pages
 
 on:
   push:
@@ -11,20 +11,12 @@ jobs:
       - name: Checkout frontend only
         uses: actions/checkout@v4
         with:
-          submodules: false # ⬅️ ini penting, biar backend nggak di-clone
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Build with Jekyll
-        run: |
-          bundle install
-          bundle exec jekyll build
+          submodules: false # skip backend private
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./_site
+          path: . # ⬅️ root folder, bisa diganti ./dist kalau ada build output
 
   deploy:
     runs-on: ubuntu-latest
