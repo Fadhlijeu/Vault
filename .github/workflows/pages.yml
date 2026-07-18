@@ -7,7 +7,7 @@ on:
 permissions:
   contents: read
   pages: write
-  id-token: write # ⬅️ ini yang diminta error log
+  id-token: write
 
 jobs:
   build:
@@ -21,11 +21,13 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: . # root repo, ganti kalau ada folder build
+          path: . # ganti kalau ada folder build
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
+    environment:
+      name: github-pages # ⬅️ WAJIB biar deploy nggak error
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
