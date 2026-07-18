@@ -250,3 +250,48 @@ export async function importFromDrive(folderIdOrUrl, parentFolderId = null) {
         return { status: "error", message: "Gagal mengimpor Google Drive." };
     }
 }
+
+// 12. Trash: List item di trash
+export async function listTrash() {
+    const token = checkToken();
+    const apiUrl = getApiUrl();
+    try {
+        const response = await fetch(apiUrl, {
+            method: "POST",
+            body: JSON.stringify({ token, action: "listTrash" })
+        });
+        return await response.json();
+    } catch (error) {
+        return { status: "error", message: "Gagal mengambil Trash." };
+    }
+}
+
+// 13. Trash: Restore item dari trash
+export async function restoreFromTrash(itemId) {
+    const token = checkToken();
+    const apiUrl = getApiUrl();
+    try {
+        const response = await fetch(apiUrl, {
+            method: "POST",
+            body: JSON.stringify({ token, action: "restoreFromTrash", itemId })
+        });
+        return await response.json();
+    } catch (error) {
+        return { status: "error", message: "Gagal restore item." };
+    }
+}
+
+// 14. Trash: Empty trash (hapus permanen)
+export async function emptyTrash() {
+    const token = checkToken();
+    const apiUrl = getApiUrl();
+    try {
+        const response = await fetch(apiUrl, {
+            method: "POST",
+            body: JSON.stringify({ token, action: "emptyTrash" })
+        });
+        return await response.json();
+    } catch (error) {
+        return { status: "error", message: "Gagal mengosongkan Trash." };
+    }
+}

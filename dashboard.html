@@ -81,6 +81,11 @@
         #uploadModal .file-list .file-item .fi-remove:hover { background:var(--bg-card); color:var(--text-primary); }
         #uploadModal .file-count { font-size:9px; color:var(--text-tertiary); margin-top:-0.25rem; }
 
+        /* ── Drag & Drop internal ── */
+        .file-item.dragging, .file-grid-item.dragging { opacity:0.4; }
+        .file-item.drag-over, .file-grid-item.drag-over { outline:2px solid var(--text-primary); outline-offset:-2px; border-radius:var(--radius-sm); background:var(--bg-elevated); }
+        #fileExplorerTree .drag-over { outline:1px solid var(--text-primary); border-radius:6px; background:var(--bg-elevated); }
+
         /* ── Terminal CLI ── */
         #terminalWindow {
             position:fixed; bottom:48px; right:24px; width:min(720px,calc(100vw-48px)); height:min(72vh,520px);
@@ -897,7 +902,7 @@
 
     <script type="module">
         import { checkAuth, logout, getApiUrl } from './src/auth.js';
-        import { fetchFiles, searchFiles, uploadFile, deleteFile, renameFile, fetchFileBlob, createFolder, deleteMultiple, importFromUrl, moveItems, saveTextFile, importFromDrive } from './src/vault.js';
+        import { fetchFiles, searchFiles, uploadFile, deleteFile, renameFile, fetchFileBlob, createFolder, deleteMultiple, importFromUrl, moveItems, saveTextFile, importFromDrive, listTrash, restoreFromTrash, emptyTrash } from './src/vault.js';
         import { formatBytes, getFileMeta } from './src/utils.js?v=2';
 
         // ==================== TOAST & DIALOG ENGINE ====================
@@ -952,7 +957,7 @@
 
         function cliPrint(html) { cliHistoryEl.insertAdjacentHTML('beforeend', html); cliOutput.scrollTop = cliOutput.scrollHeight; }
 
-        let cliHistory = [], cliHistoryIdx = -1;
+        let cliHistory = [];
         let cliCurrentFolder = { id: null, name: 'root' };
         let cliParentStack  = [];
         let cliPath = ['root'];
@@ -970,6 +975,9 @@
             { cmd: 'curl',        param: '-o [nama] [url]',   desc: 'download file dari url' },
             { cmd: 'git',         param: '[status|log|push]', desc: 'sinkronisasi vault' },
             { cmd: 'import-drive',param: '[url|id]',          desc: 'impor folder google drive' },
+            { cmd: 'trash',       param: '',                  desc: 'daftar item di recycle bin' },
+            { cmd: 'restore',     param: '[id]',              desc: 'kembalikan item dari trash' },
+            { cmd: 'empty-trash', param: '',                  desc: 'hapus permanen semua item di trash' },
             { cmd: 'clear',       param: '',                  desc: 'bersihkan terminal' },
             { cmd: 'help',        param: '',                  desc: 'tampilkan panduan ini' },
         ];
@@ -1030,8 +1038,20 @@
         function stopDrag() { isDragging = false; document.removeEventListener('mousemove', onDrag); document.removeEventListener('mouseup', stopDrag); }
 
         // ── Input ──
+        var cliHistoryIdx = -1;
+
         hiddenInput.addEventListener('keydown', async (e) => {
-            if (e.key === 'Enter') {
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (!cliHistory.length) return;
+                cliHistoryIdx = Math.max(-1, cliHistoryIdx - 1);
+                hiddenInput.value = cliHistoryIdx >= 0 ? cliHistory[cliHistoryIdx] : '';
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (!cliHistory.length) return;
+                cliHistoryIdx = Math.min(cliHistory.length, cliHistoryIdx + 1);
+                hiddenInput.value = cliHistoryIdx < cliHistory.length ? cliHistory[cliHistoryIdx] : '';
+            } else if (e.key === 'Enter') {
                 const raw = hiddenInput.value;
                 hiddenInput.value = '';
                 printLine(promptLabel.textContent + raw);
@@ -1273,6 +1293,36 @@
                         loadAndRender(cliCurrentFolder.id);
                     } else { wrapPrint(result.message, 'err'); }
 
+                // ── trash ──
+                } else if (cmd === 'trash') {
+                    printLine('Loading...', 'dim');
+                    const trashRes = await listTrash();
+                    if (trashRes.status !== 'success') { wrapPrint('Error: ' + trashRes.message, 'err'); return; }
+                    var trashItems = trashRes.data || [];
+                    if (!trashItems.length) { printLine('Trash kosong.', 'dim'); }
+                    else {
+                        trashItems.forEach(function(item) {
+                            var tag = item.isFolder ? '[DIR]' : '[FIL]';
+                            var size = item.isFolder ? '<DIR>' : formatBytes(item.size);
+                            printLine(tag + '  ' + item.name.padEnd(36) + '  ' + size.padEnd(8) + '  ' + item.id);
+                        });
+                    }
+
+                // ── restore ──
+                } else if (cmd === 'restore') {
+                    if (!args[0]) { printLine('Usage: restore [id]', 'err'); return; }
+                    printLine('Restoring...', 'dim');
+                    const restoreRes = await restoreFromTrash(args[0]);
+                    if (restoreRes.status === 'success') { printLine(restoreRes.message); }
+                    else { wrapPrint(restoreRes.message, 'err'); }
+
+                // ── empty-trash ──
+                } else if (cmd === 'empty-trash') {
+                    printLine('Mengosongkan Trash...', 'dim');
+                    const emptyRes = await emptyTrash();
+                    if (emptyRes.status === 'success') { printLine(emptyRes.message); }
+                    else { wrapPrint(emptyRes.message, 'err'); }
+
                 // ── clear ──
                 } else if (cmd === 'clear' || cmd === 'cls') {
                     cliHistoryEl.innerHTML = '';
@@ -1282,25 +1332,11 @@
                     printLine("'" + cmd + "' tidak dikenali. Ketik 'help'.", 'err');
                 }
 
+                cliHistory.push(trimmed);
+                if (cliHistory.length > 200) cliHistory.shift();
+                cliHistoryIdx = -1;
                 printLine('');
                 cliOutput.scrollTop = cliOutput.scrollHeight;
-            }
-            if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                if (cliHistoryIdx < cliHistory.length - 1) {
-                    cliHistoryIdx++;
-                    hiddenInput.value = cliHistory[cliHistoryIdx];
-                }
-            }
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                if (cliHistoryIdx > 0) {
-                    cliHistoryIdx--;
-                    hiddenInput.value = cliHistory[cliHistoryIdx];
-                } else {
-                    cliHistoryIdx = -1;
-                    hiddenInput.value = '';
-                }
             }
         });
         // Click anywhere on terminal body activates input, but allow text selection
@@ -1692,9 +1728,9 @@
                 const toggleIcon = node.isOpen ? 'keyboard_arrow_down' : 'keyboard_arrow_right';
                 const hasChildren = node.children && node.children.length > 0;
                 let html = `
-                    <div class="group flex items-center py-1 pr-2 rounded-lg text-xs transition-colors hover:bg-cyan-500/5 ${isSelected ? 'bg-cyan-500/10 text-cyan-400 font-semibold' : 'text-slate-300'}"
-                         style="padding-left: ${paddingLeft}px;position:relative;min-width:0;overflow:hidden;">
-                        <div style="display:grid;grid-template-columns:auto auto 1fr;gap:2px;align-items:center;cursor:pointer;flex:1;min-width:0;" onclick="navigateToFolder('${node.id}')">
+                        <div data-tree-id="${node.id}" draggable="true" class="group flex items-center py-1 pr-2 rounded-lg text-xs transition-colors hover:bg-cyan-500/5 ${isSelected ? 'bg-cyan-500/10 text-cyan-400 font-semibold' : 'text-slate-300'}"
+                             style="padding-left: ${paddingLeft}px;position:relative;min-width:0;overflow:hidden;">
+                            <div style="display:grid;grid-template-columns:auto auto 1fr;gap:2px;align-items:center;cursor:pointer;flex:1;min-width:0;" onclick="navigateToFolder('${node.id}')">
                             <span class="material-symbols-outlined" style="font-size:14px;color:var(--text-tertiary);cursor:pointer;user-select:none;" onclick="event.stopPropagation(); toggleTreeNode('${node.id}')">${toggleIcon}</span>
                             <span class="material-symbols-outlined" style="font-size:1.1rem;color:var(--text-secondary);">folder</span>
                             <span title="${escapeHtml(node.name)}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${renderFileName(node.name)}</span>
@@ -1968,7 +2004,7 @@
                         const metaStr = [countStr, sizeStr, dateStr].filter(Boolean).join(' • ');
 
                         html += `
-                            <div data-id="${item.id}" class="file-item${isActive}">
+                            <div data-id="${item.id}" data-is-folder="true" draggable="true" class="file-item${isActive}">
                                 <label class="checkbox-svg item-selector" style="flex-shrink:0;" onclick="event.stopPropagation();">
                                     <input type="checkbox" data-index="${index}" class="item-select-checkbox" ${isSelected}>
                                     <svg viewBox="0 0 64 64" style="height:1.2em;width:1.2em;">
@@ -1978,7 +2014,7 @@
                                 <span class="material-symbols-outlined" style="font-size:1.3rem;color:var(--text-secondary);flex-shrink:0;">folder</span>
                                 <div style="flex:1;min-width:0;">
                                     <div style="font-size:11px;font-weight:600;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${renderFileName(item.name)}</div>
-                                    <div style="font-size:9px;color:var(--text-tertiary);">${metaStr || 'Folder'}</div>
+                                    <div style="font-size:9px;color:var(--text-tertiary;">${metaStr || 'Folder'}</div>
                                 </div>
                                 <button class="row-download-btn btn-neu" style="padding:0.3rem;font-size:14px;" data-id="${item.id}" data-type="folder" title="Download ZIP">
                                     <span class="material-symbols-outlined" style="font-size:14px;">download</span>
@@ -1995,7 +2031,7 @@
                             : `<span style="font-size:14px;line-height:1;flex-shrink:0;">${meta.icon}</span>`;
                         const dateStr = item.dateCreated || '';
                         html += `
-                            <div data-id="${item.id}" class="file-item${isActive}">
+                            <div data-id="${item.id}" data-is-folder="false" draggable="true" class="file-item${isActive}">
                                 <label class="checkbox-svg item-selector" style="flex-shrink:0;" onclick="event.stopPropagation();">
                                     <input type="checkbox" data-index="${index}" class="item-select-checkbox" ${isSelected}>
                                     <svg viewBox="0 0 64 64" style="height:1.2em;width:1.2em;">
@@ -2029,7 +2065,7 @@
                         const metaStr = [countStr, sizeStr].filter(Boolean).join(' • ');
 
                         html += `
-                            <div data-id="${item.id}" class="file-grid-item${isActive}">
+                            <div data-id="${item.id}" data-is-folder="true" draggable="true" class="file-grid-item${isActive}">
                                 <label class="checkbox-svg item-selector" style="position:absolute;top:0.5rem;left:0.5rem;" onclick="event.stopPropagation();">
                                     <input type="checkbox" data-index="${index}" class="item-select-checkbox" ${isSelected}>
                                     <svg viewBox="0 0 64 64" style="height:1em;width:1em;">
@@ -2056,7 +2092,7 @@
                             : `<span style="font-size:2rem;text-align:center;display:block;margin-top:0.5rem;">${meta.icon}</span>`;
                         const dateStr = item.dateCreated || '';
                         html += `
-                            <div data-id="${item.id}" class="file-grid-item${isActive}">
+                            <div data-id="${item.id}" data-is-folder="false" draggable="true" class="file-grid-item${isActive}">
                                 <label class="checkbox-svg item-selector" style="position:absolute;top:0.5rem;left:0.5rem;" onclick="event.stopPropagation();">
                                     <input type="checkbox" data-index="${index}" class="item-select-checkbox" ${isSelected}>
                                     <svg viewBox="0 0 64 64" style="height:1em;width:1em;">
@@ -2078,6 +2114,86 @@
             }
 
             setupActionListeners();
+        }
+
+        // ── Internal Drag & Drop ──
+        var _dragData = null;
+        function clearDragOver() { document.querySelectorAll('.drag-over').forEach(function(d){d.classList.remove('drag-over');}); }
+        fileViewer.addEventListener('dragstart', function(e) {
+            var el = e.target.closest('[data-id]');
+            if (!el) return;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', el.getAttribute('data-id'));
+            _dragData = { id: el.getAttribute('data-id'), isFolder: el.getAttribute('data-is-folder') === 'true' };
+            el.classList.add('dragging');
+        });
+        fileViewer.addEventListener('dragend', function(e) {
+            var el = e.target.closest('[data-id]');
+            if (el) el.classList.remove('dragging');
+            _dragData = null; clearDragOver();
+        });
+        fileViewer.addEventListener('dragover', function(e) {
+            var target = e.target.closest('[data-id]');
+            if (!target || !_dragData) return;
+            var isTargetFolder = target.getAttribute('data-is-folder') === 'true';
+            var isSelf = target.getAttribute('data-id') === _dragData.id;
+            if (isTargetFolder && !isSelf) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; target.classList.add('drag-over'); }
+        });
+        fileViewer.addEventListener('dragleave', function(e) {
+            var target = e.target.closest('[data-id]');
+            if (target) target.classList.remove('drag-over');
+        });
+        fileViewer.addEventListener('drop', async function(e) {
+            e.preventDefault(); clearDragOver();
+            var target = e.target.closest('[data-id][data-is-folder="true"]');
+            if (!target || !_dragData) return;
+            var targetId = target.getAttribute('data-id');
+            if (targetId === _dragData.id) return;
+            var result = await moveItems([_dragData.id], _dragData.isFolder ? [_dragData.id] : [], targetId);
+            if (result.status === 'success') { toast('Item dipindahkan!', 'success'); loadAndRender(currentFolderId); }
+            else { toast(result.message || 'Gagal memindahkan item', 'error'); }
+            _dragData = null;
+        });
+        // Sidebar tree drag & drop
+        var treeEl = document.getElementById('fileExplorerTree');
+        if (treeEl) {
+            treeEl.addEventListener('dragstart', function(e) {
+                var el = e.target.closest('[draggable="true"]');
+                if (!el) return;
+                var id = el.getAttribute('data-tree-id') || el.getAttribute('data-id');
+                if (!id) return;
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', id);
+                _dragData = { id: id, isFolder: true };
+                el.classList.add('dragging');
+            });
+            treeEl.addEventListener('dragend', function(e) {
+                var el = e.target.closest('[draggable="true"]');
+                if (el) el.classList.remove('dragging');
+                _dragData = null; clearDragOver();
+            });
+            treeEl.addEventListener('dragover', function(e) {
+                var target = e.target.closest('[onclick^="navigateToFolder"]');
+                if (!target || !_dragData) return;
+                e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+                target.closest('[style*="padding-left"]').classList.add('drag-over');
+            });
+            treeEl.addEventListener('dragleave', function(e) {
+                var t = e.target.closest('[style*="padding-left"]');
+                if (t) t.classList.remove('drag-over');
+            });
+            treeEl.addEventListener('drop', async function(e) {
+                e.preventDefault(); clearDragOver();
+                var target = e.target.closest('[onclick^="navigateToFolder"]');
+                if (!target || !_dragData) return;
+                var targetId = target.getAttribute('onclick').match(/'([^']+)'/)[1];
+                if (!targetId || targetId === 'null' || targetId === _dragData.id) return;
+                if (targetId === 'root') targetId = null;
+                var result = await moveItems([_dragData.id], _dragData.isFolder ? [_dragData.id] : [], targetId);
+                if (result.status === 'success') { toast('Item dipindahkan!', 'success'); loadAndRender(currentFolderId); }
+                else { toast(result.message || 'Gagal memindahkan item', 'error'); }
+                _dragData = null;
+            });
         }
 
         // Sort files
