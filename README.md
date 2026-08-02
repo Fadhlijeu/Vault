@@ -44,9 +44,15 @@
   - `git status` & `git log` — Melihat status brankas serta riwayat berkas terbaru.
   - `curl -o [nama_file] [url]` — Mengimpor berkas langsung dari URL eksternal atau repository GitHub ke brankas cloud.
 
-### 4. 📊 Real-time Progress Engine & Dashboard Logs
+### 4. 📊 Unlimited Chunked Uploads & Real-time Progress Engine
 
-- **Visual Progress Bar**: Dilengkapi indikator progress bar bertema neon cyan-blue yang dinamis saat mengunggah banyak berkas secara massal (_bulk upload_) atau menghapus berkas.
+- **Upload Tanpa Batas Ukuran (Unlimited File Size)**: Mendukung pengunggahan berkas berukuran berapa pun (bebas >15MB, ratusan MB hingga puluhan/ratusan GB) memanfaatkan teknik *Chunked Upload* dan *Google Drive Resumable Upload Session*.
+- **Multi-State Fallback Notification System**: Sistem status lengkap yang responsif menangkap setiap kejadian:
+  - 🔵 **Process**: Notifikasi & progress bar real-time saat operasi cloud berjalan.
+  - 🟢 **Success**: Notifikasi hijau & rincian sukses saat unggahan/aksi berhasil diselesaikan.
+  - 🟡 **Warning / Partial**: Notifikasi kuning jika terjadi partial failure (misal sebagian file sukses, sebagian gagal).
+  - 🔴 **Error**: Fallback merah dengan rincian kegagalan akurat jika terjadi kesalahan server, jaringan, atau limit.
+- **Visual Progress Bar**: Dilengkapi indikator progress bar bertema neon cyan-blue yang dinamis saat mengunggah banyak berkas secara massal (_bulk upload_).
 - **Metrik Informasi**: Menampilkan status file ke-X dari total Y berkas, sisa persentase, dan perbandingan ukuran unggahan (e.g., `1.50 MB / 5.20 MB`).
 - **Terminal Log Sync**: Menampilkan log konsol detail langsung ke CLI saat operasi cloud sedang berjalan.
 

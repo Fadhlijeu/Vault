@@ -34,42 +34,119 @@ export async function searchFiles(query) {
     }
 }
 
-// 2. Unggah File Baru (Add)
-export function uploadFile(file, parentFolderId, onProgress, onComplete) {
+// 2. Unggah File Baru (Add) - Supercharged High-Speed Uploader
+export async function uploadFile(file, parentFolderId, onProgress = () => {}, onComplete = () => {}) {
     const token = checkToken();
     const apiUrl = getApiUrl();
-    const reader = new FileReader();
-    
-    onProgress("Mengonversi file ke format aman...");
-    
-    reader.onload = async function(e) {
-        const base64Data = e.target.result.split(',')[1];
-        
-        // Proteksi limit payload Google Script (~15MB biar aman)
-        if (base64Data.length * 0.75 > 15 * 1024 * 1024) {
-            onComplete({ status: "error", message: "Ukuran file terlalu besar! Maksimal 15MB." });
-            return;
-        }
 
-        onProgress(`Mengirim ${file.name} ke cloud...`);
+    if (!file) {
+        onComplete({ status: "error", message: "File tidak boleh kosong!" });
+        return;
+    }
+
+    const SINGLE_POST_MAX_BYTES = 20 * 1024 * 1024; // 20MB limit untuk direct single Base64 POST (Super Cepat!)
+    const CHUNK_SIZE = 12 * 1024 * 1024; // 12MB per chunk untuk file sangat besar (>20MB)
+
+    // Tier 1: Direct Single Base64 POST untuk file (<= 20MB) -> Super Cepat (Instant!)
+    if (file.size <= SINGLE_POST_MAX_BYTES) {
+        onProgress(`Membaca ${file.name}...`, 15, 0, file.size);
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            const base64Data = e.target.result.split(',')[1];
+            onProgress(`Mengirim ${file.name} ke cloud...`, 50, Math.round(file.size * 0.5), file.size);
+            try {
+                const response = await fetch(apiUrl, {
+                    method: "POST",
+                    body: JSON.stringify({
+                        token: token,
+                        base64: base64Data,
+                        name: file.name,
+                        type: file.type || "application/octet-stream",
+                        parentFolderId: parentFolderId
+                    })
+                });
+                const data = await response.json();
+                if (data.status === "success") {
+                    onProgress(`Selesai mengunggah ${file.name}`, 100, file.size, file.size);
+                }
+                onComplete(data);
+            } catch (err) {
+                onComplete({ status: "error", message: "Gagal mengunggah file: " + (err.message || "Koneksi terputus") });
+            }
+        };
+        reader.onerror = function() {
+            onComplete({ status: "error", message: "Gagal membaca berkas lokal." });
+        };
+        reader.readAsDataURL(file);
+        return;
+    }
+
+    // Tier 2: Chunked Upload High-Speed Pipeline (File > 20MB - Ratusan GB)
+    const uploadId = "up_" + Date.now() + "_" + Math.random().toString(36).substr(2, 6);
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+    onProgress(`Memulai chunked upload (Chunk 12MB, Total ${totalChunks} bagian)...`, 5, 0, file.size);
+
+    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+        const start = chunkIndex * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, file.size);
+        const chunkBlob = file.slice(start, end);
+
+        const chunkBase64 = await new Promise((res, rej) => {
+            const r = new FileReader();
+            r.onload = () => res(r.result.split(',')[1]);
+            r.onerror = () => rej(new Error("Gagal membaca chunk."));
+            r.readAsDataURL(chunkBlob);
+        });
+
+        const pct = 5 + Math.round((chunkIndex / totalChunks) * 85);
+        onProgress(`Mengirim Bagian [${chunkIndex + 1}/${totalChunks}] ${file.name}...`, pct, start, file.size);
+
         try {
-            const response = await fetch(apiUrl, {
+            const cResp = await fetch(apiUrl, {
                 method: "POST",
                 body: JSON.stringify({
                     token: token,
-                    base64: base64Data,
+                    action: "uploadChunk",
+                    uploadId: uploadId,
+                    chunkIndex: chunkIndex,
+                    totalChunks: totalChunks,
+                    chunkBase64: chunkBase64,
                     name: file.name,
-                    type: file.type,
+                    type: file.type || "application/octet-stream",
                     parentFolderId: parentFolderId
                 })
             });
-            const data = await response.json();
-            onComplete(data);
-        } catch (err) {
-            onComplete({ status: "error", message: "Gagal mengunggah file." });
+            const cData = await cResp.json();
+            if (cData.status !== "success") {
+                onComplete({ status: "error", message: `Gagal pada chunk ${chunkIndex + 1}: ${cData.message}` });
+                return;
+            }
+        } catch (errChunk) {
+            onComplete({ status: "error", message: `Koneksi terputus saat mengunggah chunk ${chunkIndex + 1}/${totalChunks}.` });
+            return;
         }
-    };
-    reader.readAsDataURL(file);
+    }
+
+    // Selesaikan & Gabungkan Chunk di Apps Script
+    onProgress(`Menyambungkan seluruh berkas ${file.name}...`, 95, file.size, file.size);
+    try {
+        const fResp = await fetch(apiUrl, {
+            method: "POST",
+            body: JSON.stringify({
+                token: token,
+                action: "finishChunkedUpload",
+                uploadId: uploadId,
+                name: file.name,
+                type: file.type || "application/octet-stream",
+                parentFolderId: parentFolderId
+            })
+        });
+        const fData = await fResp.json();
+        onProgress(`Selesai mengunggah ${file.name}!`, 100, file.size, file.size);
+        onComplete(fData);
+    } catch (errFinish) {
+        onComplete({ status: "error", message: "Gagal menyatukan chunk file di cloud." });
+    }
 }
 
 // 3. Hapus File Tunggal (Delete)

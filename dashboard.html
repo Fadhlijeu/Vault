@@ -142,6 +142,107 @@
         .markdown-body li { margin-bottom: 0.25rem; }
         .markdown-body blockquote { border-left: 4px solid var(--text-primary); padding-left: 0.75rem; color: var(--text-secondary); font-style: italic; margin-bottom: 0.75rem; }
 
+        
+        /* ── Upload Modal ── */
+        :root { --shimmer-from:rgba(255,255,255,0.08); --shimmer-mid:rgba(255,255,255,0.15); }
+        [data-theme="light"] { --shimmer-from:rgba(0,0,0,0.08); --shimmer-mid:rgba(0,0,0,0.15); }
+        @keyframes wave-shimmer { 0%{background-position:-200% center} 100%{background-position:200% center} }
+        #uploadModal { position:fixed; inset:0; background:rgba(0,0,0,0.6); backdrop-filter:blur(6px); display:none; align-items:center; justify-content:center; z-index:2000; padding:1rem; }
+        #uploadModal .upload-card { width:100%; max-width:480px; background:var(--bg-card); border-radius:var(--radius-sm); box-shadow:var(--shadow-lg); padding:1.5rem; display:flex; flex-direction:column; gap:1rem; }
+        #uploadModal .upload-header { display:flex; align-items:flex-start; justify-content:space-between; }
+        #uploadModal .upload-header .logo-circle { width:3.2rem;height:3.2rem;display:flex;justify-content:center;align-items:center;border-radius:50%;background:var(--bg-elevated); }
+        #uploadModal .upload-header .logo-circle svg { width:22px;height:22px;fill:var(--text-primary); }
+        #uploadModal .upload-close { display:flex;align-items:center;justify-content:center;width:2rem;height:2rem;border-radius:0.25rem;border:none;background:transparent;cursor:pointer;color:var(--text-tertiary); }
+        #uploadModal .upload-close:hover { background:var(--bg-elevated); }
+        #uploadModal .modal-title { font-weight:700; font-size:13px; color:var(--text-primary); }
+        #uploadModal .modal-desc { color:var(--text-secondary); font-size:10px; margin-top:2px; }
+        #uploadModal .drop-zone { margin-top:0.5rem; background:transparent; padding:2.5rem 1rem; width:100%; display:flex; flex-direction:column; align-items:center; border:1.5px dashed var(--text-tertiary); border-radius:var(--radius-sm); cursor:pointer; transition:padding var(--transition), transform var(--transition), background var(--transition); position:relative; overflow:hidden; }
+        #uploadModal .drop-zone::after { content:''; position:absolute; inset:-2px; border-radius:inherit; opacity:0; transition:opacity var(--transition); pointer-events:none; background:linear-gradient(90deg,transparent 0%,var(--shimmer-from) 25%,var(--shimmer-mid) 50%,var(--shimmer-from) 75%,transparent 100%); background-size:200% 100%; }
+        #uploadModal .drop-zone.drag-over { padding:3.5rem 1rem; border-color:var(--text-primary); transform:scale(1.02); }
+        #uploadModal .drop-zone.drag-over::after { opacity:1; animation:wave-shimmer 0.8s linear infinite; }
+        #uploadModal .drop-zone .dz-icon { width:2rem;height:2rem; fill:var(--text-primary); transition:transform var(--transition); }
+        #uploadModal .drop-zone.drag-over .dz-icon { transform:scale(1.15); }
+        #uploadModal .drop-zone .dz-icon svg { width:100%;height:100%; fill:inherit; }
+        #uploadModal .drop-zone .dz-title { margin-top:0.75rem; font-weight:700; font-size:11px; color:var(--text-primary); }
+        #uploadModal .drop-zone .dz-desc { color:var(--text-secondary); font-size:9px; margin-top:0.25rem; }
+        #uploadModal .drop-zone .dz-desc strong { color:var(--text-primary); }
+        #uploadModal .upload-footer { display:flex; justify-content:flex-end; gap:0.5rem; margin-top:0.5rem; }
+        #uploadModal .upload-footer .btn-cancel { padding:0.4rem 1rem; font-size:9px; font-weight:600; border:1.5px solid var(--border); border-radius:0.25rem; background:transparent; color:var(--text-secondary); cursor:pointer; }
+        #uploadModal .upload-footer .btn-cancel:hover { background:var(--bg-elevated); }
+        #uploadModal .upload-footer .btn-confirm { padding:0.4rem 1rem; font-size:9px; font-weight:700; border:none; border-radius:0.25rem; background:var(--bg-elevated); color:var(--text-primary); cursor:pointer; box-shadow:var(--shadow-sm); opacity:0.4; pointer-events:none; transition:opacity var(--transition); }
+        #uploadModal .upload-footer .btn-confirm.active { opacity:1; pointer-events:auto; }
+        #uploadModal .upload-footer .btn-confirm.active:hover { box-shadow:var(--shadow-md); }
+        #uploadModal .upload-footer .btn-confirm.active:active { box-shadow:var(--shadow-inset); }
+        #uploadModal .file-list { display:none; flex-direction:column; gap:0.3rem; max-height:180px; overflow-y:auto; margin-top:-0.25rem; }
+        #uploadModal .file-list.visible { display:flex; }
+        #uploadModal .file-list .file-item { display:flex; align-items:center; gap:0.5rem; padding:0.35rem 0.5rem; border-radius:0.25rem; background:var(--bg-elevated); font-size:10px; color:var(--text-primary); }
+        #uploadModal .file-list .file-item .fi-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        #uploadModal .file-list .file-item .fi-size { color:var(--text-tertiary); font-size:9px; white-space:nowrap; }
+        #uploadModal .file-list .file-item .fi-remove { display:flex;align-items:center;justify-content:center;width:1.4rem;height:1.4rem;border:none;border-radius:0.2rem;background:transparent;color:var(--text-tertiary);cursor:pointer;font-size:12px;padding:0; }
+        #uploadModal .file-list .file-item .fi-remove:hover { background:var(--bg-card); color:var(--text-primary); }
+        #uploadModal .file-count { font-size:9px; color:var(--text-tertiary); margin-top:-0.25rem; }
+
+        /* ── Drag & Drop internal ── */
+        .file-item.dragging, .file-grid-item.dragging { opacity:0.4; }
+        .file-item.drag-over, .file-grid-item.drag-over { outline:2px solid var(--text-primary); outline-offset:-2px; border-radius:var(--radius-sm); background:var(--bg-elevated); }
+        #fileExplorerTree .drag-over { outline:1px solid var(--text-primary); border-radius:6px; background:var(--bg-elevated); }
+
+        /* ── Terminal CLI ── */
+        #terminalWindow {
+            position:fixed; bottom:48px; right:24px; width:min(720px,calc(100vw-48px)); height:min(72vh,520px);
+            display:none; flex-direction:column; z-index:900; overflow:hidden;
+            background:var(--bg-card); border:1px solid var(--border); border-radius:12px;
+            box-shadow:var(--shadow-lg), 0 8px 32px rgba(0,0,0,0.12);
+        }
+        #terminalWindow.open { display:flex; }
+        #terminalWindow .term-header {
+            background:var(--bg-elevated); border-bottom:1px solid var(--border); padding:10px 16px;
+            display:flex; align-items:center; justify-content:space-between; cursor:move; user-select:none;
+        }
+        #terminalWindow .term-header .term-title {
+            display:flex; align-items:center; gap:10px; font-size:11px; color:var(--text-secondary); font-family:'Outfit',sans-serif; font-weight:600;
+        }
+        #terminalWindow .term-header .term-title svg { width:16px; height:16px; color:var(--text-tertiary); }
+        #terminalWindow .term-header .term-close {
+            width:28px; height:28px; display:flex; align-items:center; justify-content:center;
+            border-radius:6px; color:var(--text-tertiary); cursor:pointer; background:var(--bg-card); border:1px solid var(--border); font-size:16px;
+            transition:all .2s;
+        }
+        #terminalWindow .term-header .term-close:hover { background:#c00; color:#fff; border-color:#c00; }
+        #terminalWindow .term-body {
+            flex:1; padding:14px 16px; overflow-y:auto;
+            -webkit-user-select:text; user-select:text;
+            background:var(--bg-inset); font-family:Consolas,"Lucida Console","Courier New",monospace;
+            font-size:13px; line-height:1.5; color:var(--text-primary);
+        }
+        #terminalWindow .term-body #cliHistory { -webkit-user-select:text; user-select:text; }
+        #terminalWindow .term-body .line  { white-space:pre; -webkit-user-select:text; user-select:text; }
+        #terminalWindow .term-body .dim   { color:var(--text-tertiary); }
+        #terminalWindow .term-body .hl    { color:var(--text-primary); font-weight:700; }
+        #terminalWindow .term-body .err   { color:var(--text-tertiary); }
+
+        .term-input-wrap { display:flex; align-items:center; width:100%; }
+        .term-input-wrap .prompt-label { color:var(--text-primary); white-space:pre; flex-shrink:0; }
+        .term-input-wrap .input-area { flex:1; display:flex; align-items:center; }
+        .term-input-wrap .input-area input {
+            border:none; outline:none; background:transparent; color:inherit; font:inherit;
+            flex:1; min-width:0; caret-color:var(--text-primary);
+        }
+        
+        /* ── Markdown Rendering ── */
+        .markdown-body h1 { font-size: 1.5rem; font-weight: bold; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem; margin-top: 1rem; margin-bottom: 0.5rem; color: var(--text-primary); }
+        .markdown-body h2 { font-size: 1.25rem; font-weight: bold; margin-top: 1rem; margin-bottom: 0.5rem; color: var(--text-primary); }
+        .markdown-body h3 { font-size: 1.1rem; font-weight: bold; margin-top: 0.75rem; margin-bottom: 0.4rem; color: var(--text-primary); }
+        .markdown-body p { margin-bottom: 0.75rem; line-height: 1.6; color: var(--text-secondary); }
+        .markdown-body code { font-family: 'Fira Code', monospace; background: var(--bg-card); padding: 0.1rem 0.3rem; border-radius: 4px; color: var(--text-primary); box-shadow: var(--shadow-inset-sm); }
+        .markdown-body pre { background: var(--bg-card); padding: 0.75rem; border-radius: 8px; border: none; overflow-x: auto; margin-bottom: 0.75rem; box-shadow: var(--shadow-inset); }
+        .markdown-body pre code { background: transparent; padding: 0; color: var(--text-primary); box-shadow: none; }
+        .markdown-body ul, .markdown-body ol { margin-left: 1.5rem; margin-bottom: 0.75rem; }
+        .markdown-body ul { list-style-type: disc; }
+        .markdown-body ol { list-style-type: decimal; }
+        .markdown-body li { margin-bottom: 0.25rem; }
+        .markdown-body blockquote { border-left: 4px solid var(--text-primary); padding-left: 0.75rem; color: var(--text-secondary); font-style: italic; margin-bottom: 0.75rem; }
+
         /* ── CodeMirror Editor ── */
         .editor-wrap .CodeMirror { height:70vh; font-size:12px; font-family:'Fira Code','Consolas',monospace; border-radius:var(--radius-sm); color:var(--text-primary); background:var(--bg-inset); }
         .editor-wrap .CodeMirror-gutters { background:var(--bg-elevated); border-right:1px solid var(--border); }
@@ -179,16 +280,46 @@
         }
         @media (min-width: 1024px) {
             .lg-hidden { display: none !important; }
-            /* Keep the application frame fixed; panels, not the page, scroll. */
-            .workspace-grid { height: calc(100vh - 116px); min-height: 0; overflow: hidden; grid-template-columns:minmax(220px,var(--left-sidebar-width,320px)) minmax(0,2fr) minmax(240px,var(--right-sidebar-width,340px)) !important; }
-            #leftSidebar, #middleContent, #rightSidebar { min-height: 0 !important; max-height: 100%; overflow: hidden !important; }
-            #leftSidebar { height: 100% !important; display:flex !important; flex-direction:column !important; }
-            #leftSidebar.desktop-collapsed, #rightSidebar.desktop-collapsed { display:none !important; }
+            /* Robust fixed layout for desktop & zoom-out screens */
+            .workspace-grid { 
+                min-height: 540px !important; 
+                height: max(540px, calc(100vh - 220px)) !important; 
+                overflow: hidden !important; 
+                display: grid !important;
+                grid-template-columns: auto minmax(0, 1fr) auto !important; 
+                width: 100% !important;
+            }
+            #leftSidebar { 
+                width: var(--left-sidebar-width, 280px) !important; 
+                min-width: 200px !important; 
+                max-width: 450px !important;
+                height: 100% !important; 
+                display: flex !important; 
+                flex-direction: column !important; 
+            }
+            #middleContent { 
+                min-width: 0 !important; 
+                flex: 1 !important; 
+                height: 100% !important;
+                overflow: hidden !important; 
+                display: flex !important; 
+                flex-direction: column !important; 
+            }
+            #rightSidebar { 
+                width: var(--right-sidebar-width, 300px) !important; 
+                min-width: 200px !important; 
+                max-width: 450px !important;
+                height: 100% !important; 
+            }
+            #leftSidebar.desktop-collapsed, #rightSidebar.desktop-collapsed { 
+                display: none !important; 
+                width: 0 !important; 
+            }
             #leftSidebar .explorer-scroll { flex:1 1 0 !important; min-height:0 !important; overflow-y:auto !important; overflow-x:hidden !important; overscroll-behavior:contain; scrollbar-gutter:stable; }
             #leftSidebar .explorer-scroll::-webkit-scrollbar { width: 8px; }
             #leftSidebar .explorer-scroll::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 99px; }
-            #middleContent > div:last-child { min-height: 0; }
-            #fileViewer { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+            #middleContent > div:last-child { min-height: 0; flex: 1; display: flex; flex-direction: column; }
+            #fileViewer { flex: 1; min-height: 0; max-height: none !important; overflow-y: auto; overscroll-behavior: contain; }
         }
 
         /* ── Mobile Responsive Overlay Layouts ── */
@@ -366,6 +497,39 @@
                 h1 {
                     font-size: 1.2rem !important;
                 }
+                /* ── Force all content areas to not overflow ── */
+                #fileViewer > div {
+                    min-width: 0;
+                    max-width: 100%;
+                    overflow: hidden;
+                }
+                #breadcrumbs {
+                    font-size: 10px !important;
+                    max-width: 160px;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+                #sortBar button {
+                    font-size: 7px !important;
+                    padding: 0.15rem 0.3rem !important;
+                }
+                #searchBar {
+                    max-width: 120px;
+                    font-size: 10px !important;
+                }
+                .sidebar-btn, .sidebar-btn-download {
+                    height: 36px !important;
+                }
+                #rightSidebar {
+                    padding: 16px !important;
+                }
+                .card {
+                    padding: 0.75rem !important;
+                }
+                h1 {
+                    font-size: 1.2rem !important;
+                }
                 .desktop-header span:first-child {
                     font-size: 8px !important;
                 }
@@ -398,156 +562,13 @@
             box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.164);
             font-family: inherit;
         }
-        .sidebar-btn:disabled {
-            opacity: 0.5;
-            pointer-events: none;
-        }
-        .sidebar-btn .sb-icon {
-            transition-duration: .3s;
-        }
-        .sidebar-btn .sb-icon path {
-            fill: var(--text-primary);
-        }
-
-        /* Rename */
-        .sidebar-btn-rename .sb-icon {
-            width: 17px;
-        }
-        .sidebar-btn-rename:hover {
-            background: rgb(69, 255, 69);
-        }
-        .sidebar-btn-rename:hover .sb-icon {
-            width: 20px;
-            transform: rotate(360deg);
-        }
-        .sidebar-btn-rename::before {
-            content: "Rename";
-            color: var(--text-primary);
-            font-size: 2px;
-            transition-duration: .3s;
-            opacity: 0;
-        }
-        .sidebar-btn-rename:hover::before {
-            font-size: 13px;
-            padding-right: 6px;
-            opacity: 1;
-        }
-
-        /* Move */
-        .sidebar-btn-move .sb-icon {
-            width: 20px;
-        }
-        .sidebar-btn-move:hover {
-            background: rgb(69, 255, 69);
-        }
-        .sidebar-btn-move:hover .sb-icon {
-            transform: translateX(30px);
-        }
-        .sidebar-btn-move::before {
-            content: "Move";
-            color: var(--text-primary);
-            font-size: 13px;
-            position: absolute;
-            left: -40px;
-            opacity: 0;
-            transition: all .3s ease;
-        }
-        .sidebar-btn-move:hover::before {
-            opacity: 1;
-            transform: translateX(60px);
-        }
-
-        /* Delete */
-        .sidebar-btn-delete .sb-icon {
-            width: 12px;
-        }
-        .sidebar-btn-delete:hover {
-            background: rgb(255, 69, 69);
-        }
-        .sidebar-btn-delete:hover .sb-icon {
-            width: 50px;
-            transform: translateY(60%);
-        }
-        .sidebar-btn-delete::before {
-            content: "Delete";
-            color: var(--text-primary);
-            font-size: 13px;
-            position: absolute;
-            top: -20px;
-            opacity: 0;
-            transition-duration: .3s;
-        }
-        .sidebar-btn-delete:hover::before {
-            opacity: 1;
-            transform: translateY(30px);
-        }
-
-        /* Download */
-        .sidebar-btn-download {
-            width: 100%;
-            height: 40px;
-            border-radius: 40px;
-            background: var(--bg-elevated);
-            position: relative;
-            cursor: pointer;
-            transition: background 0.3s;
-            overflow: hidden;
-            box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.164);
-        }
-        .sidebar-btn-download .sb-wrap {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-        }
-        .sidebar-btn-download .sb-wrap .sb-text,
-        .sidebar-btn-download .sb-wrap .sb-icon {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            left: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-primary);
-            transition: top 0.5s;
-        }
-        .sidebar-btn-download .sb-wrap .sb-icon {
-            top: 0;
-        }
-        .sidebar-btn-download .sb-wrap .sb-text {
-            top: 100%;
-            font-size: 13px;
-            font-weight: 600;
-            font-family: inherit;
-        }
-        .sidebar-btn-download .sb-wrap .sb-icon svg {
-            width: 24px;
-            height: 24px;
-        }
-        .sidebar-btn-download .sb-wrap .sb-icon svg path {
-            fill: none;
-            stroke: var(--text-primary);
-            stroke-linecap: round;
-            stroke-linejoin: round;
-            stroke-width: 2;
-        }
-        .sidebar-btn-download:hover {
-            background: rgb(69, 255, 69);
-        }
-        .sidebar-btn-download:hover .sb-wrap .sb-icon {
-            top: -100%;
-        }
-        .sidebar-btn-download:hover .sb-wrap .sb-text {
-            top: 0;
-        }
     </style>
 </head>
 <body class="p-4 md:p-8" style="min-height:100vh;">
 
     <div class="card" style="max-width:1400px;margin:0 auto;padding:1.5rem;display:flex;flex-direction:column;gap:1.5rem;position:relative;">
         
-        <!-- Top Bar with Theme Toggle & CLI -->
+        <!-- Top Bar with Theme Toggle, Notification History & CLI -->
         <div style="display:flex;justify-content:flex-end;align-items:center;gap:0.75rem;">
             <label class="theme-switch" style="margin-right:auto;">
                 <span class="sun"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="#ffd43b"><circle r="5" cy="12" cx="12"></circle><path d="m21 13h-1a1 1 0 0 1 0-2h1a1 1 0 0 1 0 2zm-17 0h-1a1 1 0 0 1 0-2h1a1 1 0 0 1 0 2zm13.66-5.66a1 1 0 0 1 -.66-.29 1 1 0 0 1 0-1.41l.71-.71a1 1 0 1 1 1.41 1.41l-.71.71a1 1 0 0 1 -.75.29zm-12.02 12.02a1 1 0 0 1 -.71-.29 1 1 0 0 1 0-1.41l.71-.66a1 1 0 0 1 1.41 1.41l-.71.71a1 1 0 0 1 -.7.24zm6.36-14.36a1 1 0 0 1 -1-1v-1a1 1 0 0 1 2 0v1a1 1 0 0 1 -1 1zm0 17a1 1 0 0 1 -1-1v-1a1 1 0 0 1 2 0v1a1 1 0 0 1 -1 1zm-5.66-14.66a1 1 0 0 1 -.7-.29l-.71-.71a1 1 0 0 1 1.41-1.41l.71.71a1 1 0 0 1 0 1.41 1 1 0 0 1 -.71.29zm12.02 12.02a1 1 0 0 1 -.7-.29l-.66-.71a1 1 0 0 1 1.36-1.36l.71.71a1 1 0 0 1 0 1.41 1 1 0 0 1 -.71.24z"></path></g></svg></span>
@@ -555,7 +576,12 @@
                 <input type="checkbox" id="themeToggleCheckbox">
                 <span class="slider"></span>
             </label>
-            <button id="toggleCliBtn" class="btn-neu" style="padding:0.5rem 1rem;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;" title="Buka CLI Terminal">
+            <button id="toggleNotifBtn" class="btn-neu" style="padding:0.5rem 0.85rem;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;position:relative;display:flex;align-items:center;gap:0.3rem;" title="Riwayat Notifikasi & Log Aktivitas">
+                <span class="material-symbols-outlined" style="font-size:16px;">notifications</span>
+                NOTIFIKASI
+                <span id="notifBadge" style="position:absolute;top:-6px;right:-6px;background:#ef4444;color:#ffffff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:10px;display:none;box-shadow:0 2px 6px rgba(239,68,68,0.4);">0</span>
+            </button>
+            <button id="toggleCliBtn" class="btn-neu" style="padding:0.5rem 1rem;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;display:flex;align-items:center;gap:0.3rem;" title="Buka CLI Terminal">
                 <span class="material-symbols-outlined" style="font-size:16px;">terminal</span>
                 CLI
             </button>
@@ -576,7 +602,7 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:0.5rem;">
                     <button id="toggleLeftSidebarBtn" class="btn-neu" style="padding:0.3rem;font-size:10px;display:flex;align-items:center;" title="Toggle File Explorer">
-                        <svg id="leftSidebarIcon" xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 -960 960 960" width="18px" fill="var(--text-secondary)"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm120-80v-560H200v560h120Zm80 0h360v-560H400v560Zm-80 0H200h120Z"/></svg>
+                        <svg id="leftSidebarIcon" xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="-0 -960 960 960" width="18px" fill="var(--text-secondary)"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm120-80v-560H200v560h120Zm80 0h360v-560H400v560Zm-80 0H200h120Z"/></svg>
                     </button>
                     <button id="toggleRightSidebarBtn" class="btn-neu" style="padding:0.3rem;font-size:10px;display:flex;align-items:center;" title="Toggle Properties">
                         <svg id="rightSidebarIcon" xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 -960 960 960" width="18px" fill="var(--text-secondary)"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm360-80v-560H200v560h360Z"/></svg>
@@ -595,7 +621,7 @@
                 <!-- Mobile Backdrop Overlay -->
                 <div id="mobileBackdrop" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:40;display:none;" class="lg-hidden"></div>
                 
-                <div class="workspace-grid" style="display:grid;grid-template-columns:1fr 2fr 1.2fr;gap:0;">
+                <div class="workspace-grid" style="display:grid;grid-template-columns:auto minmax(0, 1fr) auto;gap:0;width:100%;">
                     
                     <!-- Left Sidebar -->
                     <div id="leftSidebar" style="padding:1rem;display:flex;flex-direction:column;gap:1rem;border-right:1px solid var(--border);background:var(--bg-card);">
@@ -812,6 +838,34 @@
 
     </div>
 
+    <!-- Notification History Drawer -->
+    <div id="notifDrawer" style="position:fixed;top:0;right:-420px;width:400px;max-width:100vw;height:100vh;background:var(--bg-card);box-shadow:var(--shadow-lg);z-index:1050;transition:right 0.3s cubic-bezier(0.4, 0, 0.2, 1);display:flex;flex-direction:column;border-left:1px solid var(--border);">
+        <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg-body);">
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+                <span class="material-symbols-outlined" style="font-size:20px;color:var(--text-primary);">notifications_active</span>
+                <div>
+                    <h3 style="font-size:12px;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;color:var(--text-primary);">Riwayat Notifikasi</h3>
+                    <span style="font-size:9px;color:var(--text-tertiary);font-family:'Fira Code',monospace;">Log Aktivitas & Fallback Cloud</span>
+                </div>
+            </div>
+            <button id="closeNotifBtn" style="background:none;border:none;cursor:pointer;color:var(--text-tertiary);font-size:24px;line-height:1;">&times;</button>
+        </div>
+        
+        <div style="padding:0.6rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:0.5rem;background:var(--bg-card);">
+            <div style="display:flex;gap:0.3rem;" id="notifFilterTabs">
+                <button class="notif-tab active btn-neu" data-filter="all" style="padding:0.25rem 0.5rem;font-size:9px;font-weight:700;">Semua</button>
+                <button class="notif-tab btn-neu" data-filter="success" style="padding:0.25rem 0.5rem;font-size:9px;font-weight:700;color:#22c55e;">Success</button>
+                <button class="notif-tab btn-neu" data-filter="warn" style="padding:0.25rem 0.5rem;font-size:9px;font-weight:700;color:#eab308;">Warn</button>
+                <button class="notif-tab btn-neu" data-filter="error" style="padding:0.25rem 0.5rem;font-size:9px;font-weight:700;color:#ef4444;">Error</button>
+            </div>
+            <button id="clearNotifBtn" class="btn-neu" style="padding:0.25rem 0.5rem;font-size:9px;font-weight:700;color:var(--text-tertiary);" title="Bersihkan Seluruh Log">Clear</button>
+        </div>
+
+        <div id="notifListContainer" style="flex:1;overflow-y:auto;padding:0.75rem;display:flex;flex-direction:column;gap:0.5rem;font-family:'Fira Code',monospace;">
+        </div>
+    </div>
+    <div id="notifBackdrop" style="position:fixed;inset:0;background:rgba(0,0,0,0.4);backdrop-filter:blur(2px);z-index:1040;display:none;"></div>
+
     <!-- Floating Terminal Panel -->
     <div id="terminalWindow">
         <div class="term-header" id="termHeader">
@@ -833,7 +887,6 @@
             </div>
         </div>
     </div>
-
 
     <!-- Toast Container -->
     <div id="toastContainer"></div>
@@ -882,14 +935,14 @@
             </div>
             <div>
                 <p class="modal-title">Upload File</p>
-                <p class="modal-desc">Pilih file untuk diunggah ke vault</p>
+                <p class="modal-desc">Pilih file berukuran berapa pun (Tanpa Batas Size - Ratusan MB / GB)</p>
             </div>
             <div class="drop-zone" id="uploadModalDropZone">
                 <span class="dz-icon">
                     <svg viewBox="0 0 340.531 419.116"><path d="M-2904.708-8.885A39.292,39.292,0,0,1-2944-48.177V-388.708A39.292,39.292,0,0,1-2904.708-428h209.558a13.1,13.1,0,0,1,9.3,3.8l78.584,78.584a13.1,13.1,0,0,1,3.8,9.3V-48.177a39.292,39.292,0,0,1-39.292,39.292Zm-13.1-379.823V-48.177a13.1,13.1,0,0,0,13.1,13.1h261.947a13.1,13.1,0,0,0,13.1-13.1V-323.221h-52.39a26.2,26.2,0,0,1-26.194-26.195v-52.39h-196.46A13.1,13.1,0,0,0-2917.805-388.708Zm146.5,241.621a14.269,14.269,0,0,1-7.883-12.758v-19.113h-68.841c-7.869,0-7.87-47.619,0-47.619h68.842v-18.8a14.271,14.271,0,0,1,7.882-12.758,14.239,14.239,0,0,1,14.925,1.354l57.019,42.764c.242.185.328.485.555.671a13.9,13.9,0,0,1,2.751,3.292,14.57,14.57,0,0,1,.984,1.454,14.114,14.114,0,0,1,1.411,5.987,14.006,14.006,0,0,1-1.411,5.973,14.653,14.653,0,0,1-.984,1.468,13.9,13.9,0,0,1-2.751,3.293c-.228.2-.313.485-.555.671l-57.019,42.764a14.26,14.26,0,0,1-8.558,2.847A14.326,14.326,0,0,1-2771.3-147.087Z"/></svg>
                 </span>
                 <span class="dz-title">Drag file(s) ke sini untuk upload.</span>
-                <span class="dz-desc">Atau <strong>klik area ini</strong> untuk pilih dari file explorer</span>
+                <span class="dz-desc">Bebas upload <strong>file ratusan MB/GB</strong> (Chunked & Resumable Streaming)</span>
             </div>
             <span class="file-count" id="fileCount"></span>
             <div class="file-list" id="fileList"></div>
@@ -914,8 +967,104 @@
         const dialogOk       = document.getElementById('dialogOk');
         const dialogCancel   = document.getElementById('dialogCancel');
 
-        function toast(message, type = 'info', duration = 4000, title) {
-            const labels = { success:'Berhasil', error:'Gagal', info:'Informasi', warn:'Perhatian' };
+        // ==================== NOTIFICATION HISTORY ENGINE ====================
+        let notifHistory = JSON.parse(localStorage.getItem('vault_notif_history') || '[]');
+        let activeNotifFilter = 'all';
+
+        const toggleNotifBtn     = document.getElementById('toggleNotifBtn');
+        const notifDrawer        = document.getElementById('notifDrawer');
+        const notifBackdrop      = document.getElementById('notifBackdrop');
+        const closeNotifBtn      = document.getElementById('closeNotifBtn');
+        const clearNotifBtn      = document.getElementById('clearNotifBtn');
+        const notifBadge         = document.getElementById('notifBadge');
+        const notifListContainer = document.getElementById('notifListContainer');
+
+        function renderNotifBadge() {
+            if (!notifBadge) return;
+            const unreadCount = notifHistory.filter(n => !n.read).length;
+            if (unreadCount > 0) {
+                notifBadge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+                notifBadge.style.display = 'block';
+            } else {
+                notifBadge.style.display = 'none';
+            }
+        }
+
+        function renderNotifList() {
+            if (!notifListContainer) return;
+            notifListContainer.innerHTML = '';
+
+            const filtered = notifHistory.filter(n => {
+                if (activeNotifFilter === 'all') return true;
+                return n.type === activeNotifFilter;
+            });
+
+            if (filtered.length === 0) {
+                notifListContainer.innerHTML = `
+                    <div style="text-align:center;padding:2.5rem 1rem;color:var(--text-tertiary);font-size:11px;">
+                        <span class="material-symbols-outlined" style="font-size:36px;display:block;margin-bottom:0.5rem;opacity:0.4;">notifications_off</span>
+                        Belum ada riwayat notifikasi ${activeNotifFilter !== 'all' ? `(${activeNotifFilter})` : ''}
+                    </div>`;
+                return;
+            }
+
+            filtered.forEach(item => {
+                const card = document.createElement('div');
+                const badgeColor = item.type === 'success' ? '#22c55e' : item.type === 'error' ? '#ef4444' : item.type === 'warn' ? '#eab308' : '#3b82f6';
+                const tagColor = item.actionTag === 'UPLOAD' ? '#8b5cf6' : item.actionTag === 'DELETE' ? '#ef4444' : item.actionTag === 'RENAME' ? '#f59e0b' : item.actionTag === 'CREATE' ? '#10b981' : item.actionTag === 'IMPORT' ? '#06b6d4' : '#64748b';
+
+                card.style.cssText = `padding:0.75rem;background:var(--bg-inset);border-radius:var(--radius-sm);border-left:3.5px solid ${badgeColor};box-shadow:var(--shadow-inset-sm);display:flex;flex-direction:column;gap:0.3rem;position:relative;`;
+                card.innerHTML = `
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;">
+                        <div style="display:flex;align-items:center;gap:0.4rem;">
+                            <span style="font-size:8px;font-weight:800;padding:1px 5px;border-radius:4px;background:${tagColor}22;color:${tagColor};border:1px solid ${tagColor}44;text-transform:uppercase;">[${item.actionTag}]</span>
+                            <span style="font-size:10px;font-weight:700;color:var(--text-primary);">${item.title}</span>
+                        </div>
+                        <span style="font-size:8px;color:var(--text-tertiary);">${item.time}</span>
+                    </div>
+                    <p style="font-size:10px;color:var(--text-secondary);margin:0;line-height:1.4;word-break:break-word;">${item.message}</p>
+                `;
+                notifListContainer.appendChild(card);
+            });
+        }
+
+        function addNotificationHistory({ message, type = 'info', title = '' }) {
+            const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const dateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+            
+            let actionTag = 'LOG';
+            const text = (message + ' ' + title).toLowerCase();
+            if (text.includes('unggah') || text.includes('upload')) actionTag = 'UPLOAD';
+            else if (text.includes('hapus') || text.includes('delete')) actionTag = 'DELETE';
+            else if (text.includes('rename') || text.includes('ubah nama')) actionTag = 'RENAME';
+            else if (text.includes('folder') || text.includes('buat')) actionTag = 'CREATE';
+            else if (text.includes('pindah') || text.includes('move')) actionTag = 'MOVE';
+            else if (text.includes('impor') || text.includes('import') || text.includes('curl')) actionTag = 'IMPORT';
+            else if (text.includes('simpan') || text.includes('save') || text.includes('edit')) actionTag = 'EDIT';
+            else if (text.includes('trash') || text.includes('sampah')) actionTag = 'TRASH';
+
+            const entry = {
+                id: 'notif_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                time: `${dateStr}, ${timeStr}`,
+                type: type,
+                title: title || (type === 'success' ? 'Berhasil' : type === 'error' ? 'Gagal' : type === 'warn' ? 'Peringatan' : 'Informasi'),
+                message: message,
+                actionTag: actionTag,
+                read: false
+            };
+
+            notifHistory.unshift(entry);
+            if (notifHistory.length > 100) notifHistory = notifHistory.slice(0, 100);
+            localStorage.setItem('vault_notif_history', JSON.stringify(notifHistory));
+            renderNotifBadge();
+            if (notifDrawer && notifDrawer.style.right === '0px') {
+                renderNotifList();
+            }
+        }
+
+        function showToast(message, { type = 'info', title = '', duration = 3000 } = {}) {
+            addNotificationHistory({ message, type, title });
+            const labels = { info: 'Info', success: 'Berhasil', error: 'Error', warn: 'Peringatan' };
             const el = document.createElement('div');
             el.className = `toast ${type}`;
             el.innerHTML = `
@@ -925,6 +1074,10 @@
                 el.style.animation = 'toastOut .35s ease forwards';
                 setTimeout(() => el.remove(), 350);
             }, duration);
+        }
+
+        function toast(message, type = 'info', duration = 4000, title) {
+            showToast(message, { type, duration, title });
         }
 
         function showDialog(title, message, { hasInput = false, inputDefault = '', inputPlaceholder = '' } = {}) {
@@ -943,11 +1096,56 @@
                 dialogInput.onkeydown = (e) => { if (e.key === 'Enter') dialogOk.click(); if (e.key === 'Escape') dialogCancel.click(); };
             });
         }
+
+        // Notification History Event Listeners
+        if (toggleNotifBtn) {
+            toggleNotifBtn.addEventListener('click', () => {
+                const isOpen = notifDrawer.style.right === '0px';
+                if (isOpen) {
+                    notifDrawer.style.right = '-420px';
+                    notifBackdrop.style.display = 'none';
+                } else {
+                    notifDrawer.style.right = '0px';
+                    notifBackdrop.style.display = 'block';
+                    notifHistory.forEach(n => n.read = true);
+                    localStorage.setItem('vault_notif_history', JSON.stringify(notifHistory));
+                    renderNotifBadge();
+                    renderNotifList();
+                }
+            });
+        }
+        if (closeNotifBtn) {
+            closeNotifBtn.addEventListener('click', () => {
+                notifDrawer.style.right = '-420px';
+                notifBackdrop.style.display = 'none';
+            });
+        }
+        if (notifBackdrop) {
+            notifBackdrop.addEventListener('click', () => {
+                notifDrawer.style.right = '-420px';
+                notifBackdrop.style.display = 'none';
+            });
+        }
+        if (clearNotifBtn) {
+            clearNotifBtn.addEventListener('click', async () => {
+                notifHistory = [];
+                localStorage.removeItem('vault_notif_history');
+                renderNotifBadge();
+                renderNotifList();
+            });
+        }
+        document.querySelectorAll('#notifFilterTabs .notif-tab').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('#notifFilterTabs .notif-tab').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                activeNotifFilter = e.target.getAttribute('data-filter');
+                renderNotifList();
+            });
+        });
+        renderNotifBadge();
         // ==================== END TOAST & DIALOG ENGINE ====================
 
         // ==================== VAULT CLI ENGINE ====================
-        const cliOutput     = document.getElementById('cliOutput');
-        const cliHistoryEl  = document.getElementById('cliHistory');
         const toggleCliBtn  = document.getElementById('toggleCliBtn');
         const terminalWindow = document.getElementById('terminalWindow');
         const termClose     = document.getElementById('termClose');
@@ -1412,7 +1610,6 @@
         const toggleSelectionModeBtn = document.getElementById('toggleSelectionMode');
         const breadcrumbs = document.getElementById('breadcrumbs');
 
-        // Sidebar Selectors
         const propertiesSidebar = document.getElementById('propertiesSidebar');
         const detailSkeleton = document.getElementById('detailSkeleton');
         const closeSidebarBtn = document.getElementById('closeSidebarBtn');
@@ -1461,7 +1658,9 @@
             pendingFiles.forEach(function(f, i) {
                 var item = document.createElement('div');
                 item.className = 'file-item';
-                var fi = getFileMeta(f.name); var fiIcon = fi.devicon ? '<img src="' + fi.devicon + '" style="width:14px;height:14px;flex:none;" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'inline\'" /><span style="display:none;font-size:14px;line-height:1;flex:none;">' + fi.icon + '</span>' : '<span style="font-size:14px;line-height:1;flex:none;">' + fi.icon + '</span>'; item.innerHTML = fiIcon + '<span class="fi-name">' + f.name + '</span><span class="fi-size">' + formatBytes(f.size) + '</span><button class="fi-remove" data-index="' + i + '">&times;</button>';
+                var fi = getFileMeta(f.name); 
+                var fiIcon = fi.devicon ? '<img src="' + fi.devicon + '" style="width:14px;height:14px;flex:none;" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'inline\'" /><span style="display:none;font-size:14px;line-height:1;flex:none;">' + fi.icon + '</span>' : '<span style="font-size:14px;line-height:1;flex:none;">' + fi.icon + '</span>'; 
+                item.innerHTML = fiIcon + '<span class="fi-name">' + f.name + '</span><span class="fi-size">' + formatBytes(f.size) + '</span><button class="fi-remove" data-index="' + i + '">&times;</button>';
                 item.querySelector('.fi-remove').addEventListener('click', function() { pendingFiles.splice(i,1); renderPendingFiles(); });
                 fileListEl.appendChild(item);
             });
@@ -1475,7 +1674,6 @@
         uploadModal.addEventListener('click', function(e) { if (e.target === this) hideUploadModal(); });
 
         uploadModalDropZone.addEventListener('click', function() { fInput.click(); });
-
         uploadModalDropZone.addEventListener('dragover', function(e) { e.preventDefault(); this.classList.add('drag-over'); });
         uploadModalDropZone.addEventListener('dragleave', function() { this.classList.remove('drag-over'); });
         uploadModalDropZone.addEventListener('drop', function(e) {
@@ -1488,12 +1686,12 @@
 
         uploadModalConfirm.addEventListener('click', async function() {
             if (!pendingFiles.length) return;
-            await uploadMultipleFiles(pendingFiles);
-            loadAndRender(currentFolderId);
+            const filesToUpload = [...pendingFiles];
             hideUploadModal();
+            await uploadMultipleFiles(filesToUpload);
+            loadAndRender(currentFolderId);
         });
 
-        // ==================== FIX BUG 2: File input handler ====================
         function processSelectedFiles() {
             const files = Array.prototype.slice.call(fInput.files);
             if (!files.length) return;
@@ -1517,10 +1715,11 @@
             statusConsole.classList.remove('hidden');
             statusConsole.innerHTML = "";
 
-            const logMessage = (msg) => {
-                statusConsole.innerHTML += `<div>CONSOLE > ${msg}</div>`;
+            const logMessage = (msg, isErr = false) => {
+                const colorStyle = isErr ? 'color:#ef4444;' : '';
+                statusConsole.innerHTML += `<div style="${colorStyle}">CONSOLE > ${msg}</div>`;
                 statusConsole.scrollTop = statusConsole.scrollHeight;
-                cliPrint(`<span class="cli-dim">[UPLOAD] ${msg}</span>`);
+                cliPrint(`<span class="${isErr ? 'text-red-400' : 'cli-dim'}">[UPLOAD] ${msg}</span>`);
             };
 
             const N = files.length;
@@ -1529,16 +1728,20 @@
                 totalBytes += files[i].size;
             }
             let uploadedBytes = 0;
+            let successCount = 0;
+            let failedCount = 0;
+            const failedFiles = [];
 
-            logMessage(`Memulai proses bulk upload untuk ${N} file (Total: ${(totalBytes / (1024 * 1024)).toFixed(2)} MB)...`);
+            logMessage(`Memulai proses upload untuk ${N} file (Total: ${formatBytes(totalBytes)})...`);
+            toast(`Memulai unggah ${N} file (${formatBytes(totalBytes)})...`, 'info', 3000, 'Proses Upload');
 
             for (let i = 0; i < N; i++) {
                 const file = files[i];
-                logMessage(`[${i+1}/${N}] Mempersiapkan file: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`);
+                logMessage(`[${i+1}/${N}] Mempersiapkan berkas: ${file.name} (${formatBytes(file.size)})`);
                 
                 progressStatusText.innerText = `⚡ MENGUNGGAH: ${file.name}`;
                 progressFilesText.innerText = `File: ${i}/${N}`;
-                progressBytesText.innerText = `${(uploadedBytes / (1024 * 1024)).toFixed(2)} MB / ${(totalBytes / (1024 * 1024)).toFixed(2)} MB`;
+                progressBytesText.innerText = `${formatBytes(uploadedBytes)} / ${formatBytes(totalBytes)}`;
                 
                 const basePct = (i / N) * 100;
                 progressBar.style.width = `${basePct}%`;
@@ -1546,48 +1749,71 @@
 
                 await new Promise((resolve) => {
                     uploadFile(file, currentFolderId, 
-                        (progressText) => {
+                        (progressText, stepPct, currentFileUploaded, currentFileTotal) => {
                             logMessage(`[${i+1}/${N}] status: ${progressText}`);
-                            if (progressText && progressText.includes("cloud")) {
-                                progressStatusText.innerText = `⚡ MENGIRIM KE CLOUD: ${file.name}`;
-                                progressBar.style.width = `${basePct + (0.5 / N) * 100}%`;
-                                progressPercentText.innerText = `${Math.round(basePct + (0.5 / N) * 100)}%`;
-                            }
+                            progressStatusText.innerText = `⚡ MENGUNGGAH [${i+1}/${N}]: ${file.name}`;
+                            
+                            const fileFraction = currentFileTotal ? (currentFileUploaded / currentFileTotal) : 0.5;
+                            const currentTotalPct = Math.min(99, Math.round(basePct + (fileFraction / N) * 100));
+                            progressBar.style.width = `${currentTotalPct}%`;
+                            progressPercentText.innerText = `${currentTotalPct}%`;
+                            
+                            const currentOverallBytes = uploadedBytes + currentFileUploaded;
+                            progressBytesText.innerText = `${formatBytes(currentOverallBytes)} / ${formatBytes(totalBytes)}`;
                         }, 
                         (result) => {
                             if (result.status === "success") {
-                                logMessage(`[${i+1}/${N}] Berhasil: ${file.name}`);
+                                logMessage(`[${i+1}/${N}] ✅ Berhasil: ${file.name}`);
                                 uploadedBytes += file.size;
+                                successCount++;
                             } else {
-                                logMessage(`[${i+1}/${N}] Gagal: ${result.message}`);
+                                failedCount++;
+                                failedFiles.push({ name: file.name, message: result.message || "Unknown error" });
+                                logMessage(`[${i+1}/${N}] ❌ Gagal: ${file.name} -> ${result.message || 'Server/Network Error'}`, true);
                             }
                             const endPct = ((i + 1) / N) * 100;
                             progressBar.style.width = `${endPct}%`;
                             progressPercentText.innerText = `${Math.round(endPct)}%`;
                             progressFilesText.innerText = `File: ${i+1}/${N}`;
-                            progressBytesText.innerText = `${(uploadedBytes / (1024 * 1024)).toFixed(2)} MB / ${(totalBytes / (1024 * 1024)).toFixed(2)} MB`;
+                            progressBytesText.innerText = `${formatBytes(uploadedBytes)} / ${formatBytes(totalBytes)}`;
                             resolve();
                         }
                     );
                 });
             }
 
-            progressStatusText.innerText = `✅ SELESAI`;
+            // ==================== MULTI-STATE FALLBACK NOTIFICATION ENGINE ====================
             progressBar.style.width = '100%';
             progressPercentText.innerText = '100%';
-            logMessage("Bulk upload selesai! Sinkronisasi database...");
-            
+
+            if (failedCount === 0) {
+                // ALL SUCCESS FALLBACK
+                progressStatusText.innerText = `✅ SELESAI (${successCount} File Terunggah)`;
+                logMessage(`[SUCCESS] Seluruh ${successCount} file berhasil diunggah!`);
+                toast(`Berhasil mengunggah ${successCount} file (${formatBytes(totalBytes)})`, 'success', 5000, 'Upload Selesai');
+            } else if (successCount > 0) {
+                // PARTIAL FAILURE / WARN FALLBACK
+                progressStatusText.innerText = `⚠️ SELESAI DENGAN CATATAN (${successCount} Sukses, ${failedCount} Gagal)`;
+                logMessage(`[WARN] Bulk upload selesai dengan rincian: ${successCount} Berhasil, ${failedCount} Gagal.`, true);
+                failedFiles.forEach(f => logMessage(`   - File Gagal: ${f.name} (${f.message})`, true));
+                toast(`Upload selesai: ${successCount} Berhasil, ${failedCount} Gagal! Cek log konsol.`, 'warn', 7000, 'Upload Sebagian Gagal');
+            } else {
+                // TOTAL FAILURE FALLBACK
+                progressStatusText.innerText = `❌ GAGAL UPLOAD (${failedCount} File Gagal)`;
+                logMessage(`[ERROR] Seluruh ${failedCount} file gagal diunggah!`, true);
+                failedFiles.forEach(f => logMessage(`   - Detail Error: ${f.name} (${f.message})`, true));
+                toast(`Seluruh upload gagal! (${failedFiles[0] ? failedFiles[0].message : 'Koneksi/Limit Error'})`, 'error', 7000, 'Upload Gagal');
+            }
+
             setTimeout(() => { 
                 statusConsole.classList.add('hidden'); 
                 progressContainer.classList.add('hidden');
-            }, 6000);
+            }, 7000);
         }
 
         if (fInput) {
             fInput.addEventListener('change', processSelectedFiles);
         }
-
-        // ==================== FOLDER EXPLORER TREE ENGINE ====================
         let folderTree = {
             id: 'root',
             name: 'Root',
