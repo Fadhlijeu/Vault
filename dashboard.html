@@ -562,6 +562,169 @@
             box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.164);
             font-family: inherit;
         }
+        .sidebar-btn:disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .sidebar-btn .sb-icon {
+            transition-duration: .3s;
+        }
+        .sidebar-btn .sb-icon path {
+            fill: var(--text-primary);
+        }
+
+        /* ── File Explorer Active Folder Highlight ── */
+        .tree-node-item {
+            transition: all 0.15s ease;
+            border-radius: 4px;
+            margin: 1px 0;
+            border-left: 3px solid transparent;
+        }
+        .tree-node-item:hover {
+            background: rgba(59, 130, 246, 0.08) !important;
+        }
+        .tree-node-item.active-tree-folder {
+            background: rgba(59, 130, 246, 0.15) !important;
+            color: #3b82f6 !important;
+            border-left: 3.5px solid #3b82f6 !important;
+            font-weight: 700 !important;
+        }
+        .tree-node-item.active-tree-folder span {
+            color: #3b82f6 !important;
+        }
+
+        /* Rename */
+        .sidebar-btn-rename .sb-icon {
+            width: 17px;
+        }
+        .sidebar-btn-rename:hover {
+            background: rgb(69, 255, 69);
+        }
+        .sidebar-btn-rename:hover .sb-icon {
+            width: 20px;
+            transform: rotate(360deg);
+        }
+        .sidebar-btn-rename::before {
+            content: "Rename";
+            color: var(--text-primary);
+            font-size: 2px;
+            transition-duration: .3s;
+            opacity: 0;
+        }
+        .sidebar-btn-rename:hover::before {
+            font-size: 13px;
+            padding-right: 6px;
+            opacity: 1;
+        }
+
+        /* Move */
+        .sidebar-btn-move .sb-icon {
+            width: 20px;
+        }
+        .sidebar-btn-move:hover {
+            background: rgb(69, 255, 69);
+        }
+        .sidebar-btn-move:hover .sb-icon {
+            transform: translateX(30px);
+        }
+        .sidebar-btn-move::before {
+            content: "Move";
+            color: var(--text-primary);
+            font-size: 13px;
+            position: absolute;
+            left: -40px;
+            opacity: 0;
+            transition: all .3s ease;
+        }
+        .sidebar-btn-move:hover::before {
+            opacity: 1;
+            transform: translateX(60px);
+        }
+
+        /* Delete */
+        .sidebar-btn-delete .sb-icon {
+            width: 12px;
+        }
+        .sidebar-btn-delete:hover {
+            background: rgb(255, 69, 69);
+        }
+        .sidebar-btn-delete:hover .sb-icon {
+            width: 50px;
+            transform: translateY(60%);
+        }
+        .sidebar-btn-delete::before {
+            content: "Delete";
+            color: var(--text-primary);
+            font-size: 13px;
+            position: absolute;
+            top: -20px;
+            opacity: 0;
+            transition-duration: .3s;
+        }
+        .sidebar-btn-delete:hover::before {
+            opacity: 1;
+            transform: translateY(30px);
+        }
+
+        /* Download */
+        .sidebar-btn-download {
+            width: 100%;
+            height: 40px;
+            border-radius: 40px;
+            background: var(--bg-elevated);
+            position: relative;
+            cursor: pointer;
+            transition: background 0.3s;
+            overflow: hidden;
+            box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.164);
+        }
+        .sidebar-btn-download .sb-wrap {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        .sidebar-btn-download .sb-wrap .sb-text,
+        .sidebar-btn-download .sb-wrap .sb-icon {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            left: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-primary);
+            transition: top 0.5s;
+        }
+        .sidebar-btn-download .sb-wrap .sb-icon {
+            top: 0;
+        }
+        .sidebar-btn-download .sb-wrap .sb-text {
+            top: 100%;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
+        }
+        .sidebar-btn-download .sb-wrap .sb-icon svg {
+            width: 24px;
+            height: 24px;
+        }
+        .sidebar-btn-download .sb-wrap .sb-icon svg path {
+            fill: none;
+            stroke: var(--text-primary);
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-width: 2;
+        }
+        .sidebar-btn-download:hover {
+            background: rgb(69, 255, 69);
+        }
+        .sidebar-btn-download:hover .sb-wrap .sb-icon {
+            top: -100%;
+        }
+        .sidebar-btn-download:hover .sb-wrap .sb-text {
+            top: 0;
+        }
     </style>
 </head>
 <body class="p-4 md:p-8" style="min-height:100vh;">
@@ -1848,26 +2011,28 @@
         }
 
         function deepMapChildren(children) {
-            return children.map(child => {
-                if (child.isFolder) {
-                    return {
-                        id: child.id,
-                        name: child.name,
-                        isFolder: true,
-                        children: child.children ? deepMapChildren(child.children) : [],
-                        isOpen: false,
-                        isLoaded: true
-                    };
-                } else {
-                    return {
-                        id: child.id,
-                        name: child.name,
-                        isFolder: false,
-                        size: child.size,
-                        url: child.url
-                    };
-                }
-            });
+            return (children || [])
+                .filter(child => child && child.name && child.name !== '_vault_temp_chunks' && !child.name.startsWith('_vault_temp_'))
+                .map(child => {
+                    if (child.isFolder) {
+                        return {
+                            id: child.id,
+                            name: child.name,
+                            isFolder: true,
+                            children: child.children ? deepMapChildren(child.children) : [],
+                            isOpen: false,
+                            isLoaded: true
+                        };
+                    } else {
+                        return {
+                            id: child.id,
+                            name: child.name,
+                            isFolder: false,
+                            size: child.size,
+                            url: child.url
+                        };
+                    }
+                });
         }
 
         function updateTreeNode(folderId, items) {
@@ -1876,8 +2041,9 @@
             if (!node) return;
 
             node.isLoaded = true;
+            const validItems = (items || []).filter(item => item && item.name && item.name !== '_vault_temp_chunks' && !item.name.startsWith('_vault_temp_'));
             
-            const newChildren = items.map(item => {
+            const newChildren = validItems.map(item => {
                 if (item.isFolder) {
                     const existing = node.children.find(c => c.id === item.id);
                     if (existing) {
@@ -1929,7 +2095,8 @@
             if (!container) return;
 
             function buildHtml(node, depth = 0) {
-                const isSelected = (currentFolderId === null && node.id === 'root') || (selectedItem && selectedItem.id === node.id) || (!selectedItem && currentFolderId === node.id);
+                const isCurrentFolder = (currentFolderId === null && node.id === 'root') || (currentFolderId === node.id);
+                const isSelected = isCurrentFolder || (selectedItem && selectedItem.id === node.id);
                 const paddingLeft = depth * 12;
 
                 if (!node.isFolder && node.id !== 'root') {
@@ -1940,7 +2107,7 @@
                         ? `<span style="flex-shrink:0;display:flex;align-items:center;"><img src="${meta.devicon}" style="${deviconStyle}" onerror="this.style.display='none';this.nextElementSibling.style.display='inline'" /><span style="display:none;font-size:11px;line-height:1;">${meta.icon}</span></span>`
                         : `<span style="font-size:11px;line-height:1;flex-shrink:0;">${meta.icon}</span>`;
                     return `
-                        <div class="group flex items-center py-1 pr-2 rounded-lg text-xs transition-colors hover:bg-cyan-500/5 ${isSelected ? 'bg-cyan-500/10 text-cyan-400 font-semibold' : 'text-slate-300'}" 
+                        <div class="tree-node-item ${isSelected ? 'active-tree-folder' : ''} flex items-center py-1 pr-2 text-xs" 
                              style="padding-left: ${paddingLeft + 20}px;position:relative;min-width:0;overflow:hidden;">
                             <div style="display:grid;grid-template-columns:auto 1fr;gap:4px;align-items:center;cursor:pointer;flex:1;min-width:0;" onclick="selectItemFromTree('${node.id}')" ondblclick="openFileFromTree('${node.id}')">
                                 ${iconHtml}
@@ -1953,15 +2120,16 @@
                 // It's a folder (or root)
                 const toggleIcon = node.isOpen ? 'keyboard_arrow_down' : 'keyboard_arrow_right';
                 const hasChildren = node.children && node.children.length > 0;
+                const folderIconColor = isSelected ? '#3b82f6' : 'var(--text-secondary)';
                 let html = `
-                        <div data-tree-id="${node.id}" draggable="true" class="group flex items-center py-1 pr-2 rounded-lg text-xs transition-colors hover:bg-cyan-500/5 ${isSelected ? 'bg-cyan-500/10 text-cyan-400 font-semibold' : 'text-slate-300'}"
+                        <div data-tree-id="${node.id}" draggable="true" class="tree-node-item ${isSelected ? 'active-tree-folder' : ''} flex items-center py-1 pr-2 text-xs"
                              style="padding-left: ${paddingLeft}px;position:relative;min-width:0;overflow:hidden;">
                             <div style="display:grid;grid-template-columns:auto auto 1fr;gap:2px;align-items:center;cursor:pointer;flex:1;min-width:0;" onclick="navigateToFolder('${node.id}')">
-                            <span class="material-symbols-outlined" style="font-size:14px;color:var(--text-tertiary);cursor:pointer;user-select:none;" onclick="event.stopPropagation(); toggleTreeNode('${node.id}')">${toggleIcon}</span>
-                            <span class="material-symbols-outlined" style="font-size:1.1rem;color:var(--text-secondary);">folder</span>
-                            <span title="${escapeHtml(node.name)}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${renderFileName(node.name)}</span>
+                                <span class="material-symbols-outlined" style="font-size:14px;color:${isSelected ? '#3b82f6' : 'var(--text-tertiary)'};cursor:pointer;user-select:none;" onclick="event.stopPropagation(); toggleTreeNode('${node.id}')">${toggleIcon}</span>
+                                <span class="material-symbols-outlined" style="font-size:1.1rem;color:${folderIconColor};">folder</span>
+                                <span title="${escapeHtml(node.name)}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:${isSelected ? '700' : '500'};">${renderFileName(node.name)}</span>
+                            </div>
                         </div>
-                    </div>
                 `;
 
                 if (node.isOpen && hasChildren) {
@@ -2209,7 +2377,8 @@
         }
 
         function renderFiles(items) {
-            if (items.length === 0) {
+            const visibleItems = (items || []).filter(item => item && item.name && item.name !== '_vault_temp_chunks' && !item.name.startsWith('_vault_temp_'));
+            if (visibleItems.length === 0) {
                 fileViewer.innerHTML = `
                     <div style="text-align:center;padding:3rem 1rem;color:var(--text-tertiary);font-family:'Fira Code',monospace;font-size:11px;font-style:italic;">
                         Folder ini kosong.
@@ -2219,11 +2388,14 @@
 
             if (currentViewMode === 'list') {
                 let html = `<div style="display:flex;flex-direction:column;gap:0.5rem;">`;
-                items.forEach((item, index) => {
+                visibleItems.forEach((item, index) => {
                     const isSelected = item.selected ? 'checked' : '';
                     const isActive = (selectedItem && selectedItem.id === item.id) ? ' active' : '';
                     
                     if (item.isFolder) {
+                        const isTrash = item.name === '_vault_trash';
+                        const folderIconName = isTrash ? 'delete' : 'folder';
+                        const folderIconColor = isTrash ? '#ef4444' : 'var(--text-secondary)';
                         const countStr = item.fileCount !== undefined ? `${item.fileCount} file` : '';
                         const sizeStr = item.size > 0 ? formatBytes(item.size) : '';
                         const dateStr = item.dateCreated || '';
@@ -2234,13 +2406,13 @@
                                 <label class="checkbox-svg item-selector" style="flex-shrink:0;" onclick="event.stopPropagation();">
                                     <input type="checkbox" data-index="${index}" class="item-select-checkbox" ${isSelected}>
                                     <svg viewBox="0 0 64 64" style="height:1.2em;width:1.2em;">
-                                        <path d="M 0 16 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 16" pathLength="575.0541385938" class="path"></path>
+                                        <path d="M 0 16 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 56 A 8 8 90 0 0 64 56 V 16" pathLength="575.0541385938" class="path"></path>
                                     </svg>
                                 </label>
-                                <span class="material-symbols-outlined" style="font-size:1.3rem;color:var(--text-secondary);flex-shrink:0;">folder</span>
+                                <span class="material-symbols-outlined" style="font-size:1.3rem;color:${folderIconColor};flex-shrink:0;">${folderIconName}</span>
                                 <div style="flex:1;min-width:0;">
                                     <div style="font-size:11px;font-weight:600;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${renderFileName(item.name)}</div>
-                                    <div style="font-size:9px;color:var(--text-tertiary;">${metaStr || 'Folder'}</div>
+                                    <div style="font-size:9px;color:var(--text-tertiary);">${metaStr || 'Folder'}</div>
                                 </div>
                                 <button class="row-download-btn btn-neu" style="padding:0.3rem;font-size:14px;" data-id="${item.id}" data-type="folder" title="Download ZIP">
                                     <span class="material-symbols-outlined" style="font-size:14px;">download</span>
@@ -2261,14 +2433,13 @@
                                 <label class="checkbox-svg item-selector" style="flex-shrink:0;" onclick="event.stopPropagation();">
                                     <input type="checkbox" data-index="${index}" class="item-select-checkbox" ${isSelected}>
                                     <svg viewBox="0 0 64 64" style="height:1.2em;width:1.2em;">
-                                        <path d="M 0 16 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 16" pathLength="575.0541385938" class="path"></path>
+                                        <path d="M 0 16 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 0 8 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 16" pathLength="575.0541385938" class="path"></path>
                                     </svg>
                                 </label>
                                 ${fileIconHtml}
                                 <div style="flex:1;min-width:0;">
                                     <div style="font-size:11px;font-weight:500;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${renderFileName(item.name)}</div>
                                     <div style="font-size:9px;color:var(--text-tertiary);">${formatBytes(item.size)}${dateStr ? ` • ${dateStr}` : ''}</div>
-
                                 </div>
                                 <button class="row-download-btn btn-neu" style="padding:0.3rem;font-size:14px;" data-id="${item.id}" data-type="file" title="Download File">
                                     <span class="material-symbols-outlined" style="font-size:14px;">download</span>
@@ -2281,11 +2452,14 @@
             } else {
                 // Grid View
                 let html = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:0.75rem;">`;
-                items.forEach((item, index) => {
+                visibleItems.forEach((item, index) => {
                     const isSelected = item.selected ? 'checked' : '';
                     const isActive = (selectedItem && selectedItem.id === item.id) ? ' active' : '';
                     
                     if (item.isFolder) {
+                        const isTrash = item.name === '_vault_trash';
+                        const folderIconName = isTrash ? 'delete' : 'folder';
+                        const folderIconColor = isTrash ? '#ef4444' : 'var(--text-secondary)';
                         const countStr = item.fileCount !== undefined ? `${item.fileCount} file` : '';
                         const sizeStr = item.size > 0 ? formatBytes(item.size) : '';
                         const metaStr = [countStr, sizeStr].filter(Boolean).join(' • ');
@@ -2295,7 +2469,7 @@
                                 <label class="checkbox-svg item-selector" style="position:absolute;top:0.5rem;left:0.5rem;" onclick="event.stopPropagation();">
                                     <input type="checkbox" data-index="${index}" class="item-select-checkbox" ${isSelected}>
                                     <svg viewBox="0 0 64 64" style="height:1em;width:1em;">
-                                        <path d="M 0 16 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 16" pathLength="575.0541385938" class="path"></path>
+                                        <path d="M 0 16 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 0 8 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 16" pathLength="575.0541385938" class="path"></path>
                                     </svg>
                                 </label>
                                 <div style="position:absolute;top:0.5rem;right:0.5rem;display:flex;gap:0.2rem;">
@@ -2306,7 +2480,7 @@
                                         <span class="material-symbols-outlined" style="font-size:12px;">info</span>
                                     </button>
                                 </div>
-                                <span class="material-symbols-outlined" style="font-size:2rem;color:var(--text-secondary);margin-top:0.5rem;flex-shrink:0;">folder</span>
+                                <span class="material-symbols-outlined" style="font-size:2rem;color:${folderIconColor};margin-top:0.5rem;flex-shrink:0;">${folderIconName}</span>
                                 <div style="font-size:11px;font-weight:600;color:var(--text-primary);width:100%;text-align:center;padding:0 0.25rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${renderFileName(item.name)}</div>
                                 <div style="font-size:9px;color:var(--text-tertiary);">${metaStr || 'Folder'}</div>
                             </div>`;
@@ -2314,7 +2488,7 @@
                         const meta = getFileMeta(item.name);
                         const gridIconStyle = "width:32px;height:32px;display:block;margin:0.5rem auto 0;";
                         const gridIconHtml = meta.devicon
-                            ? `<span style="display:flex;align-items:center;justify-content:center;margin-top:0.5rem;"><img src="${meta.devicon}" style="width:32px;height:32px;display:block;" onerror="this.style.display='none';this.nextElementSibling.style.display='inline'" /><span style="display:none;font-size:2rem;text-align:center;">${meta.icon}</span></span>`
+                            ? `<span style="display:flex;align-items:center;justify-content:center;margin-top:0.5rem;"><img src="${meta.devicon}" style="${gridIconStyle}" onerror="this.style.display='none';this.nextElementSibling.style.display='inline'" /><span style="display:none;font-size:2rem;text-align:center;">${meta.icon}</span></span>`
                             : `<span style="font-size:2rem;text-align:center;display:block;margin-top:0.5rem;">${meta.icon}</span>`;
                         const dateStr = item.dateCreated || '';
                         html += `
@@ -2322,7 +2496,7 @@
                                 <label class="checkbox-svg item-selector" style="position:absolute;top:0.5rem;left:0.5rem;" onclick="event.stopPropagation();">
                                     <input type="checkbox" data-index="${index}" class="item-select-checkbox" ${isSelected}>
                                     <svg viewBox="0 0 64 64" style="height:1em;width:1em;">
-                                        <path d="M 0 16 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 16" pathLength="575.0541385938" class="path"></path>
+                                        <path d="M 0 16 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 56 0 H 8 A 8 8 90 0 0 0 8 V 16 L 32 48 L 64 16 V 8 A 8 8 90 0 0 0 8 V 56 A 8 8 90 0 0 8 64 H 56 A 8 8 90 0 0 64 56 V 16" pathLength="575.0541385938" class="path"></path>
                                     </svg>
                                 </label>
                                 <button class="row-download-btn btn-neu" style="position:absolute;top:0.5rem;right:0.5rem;padding:0.2rem;" data-id="${item.id}" data-type="file" title="Download">

@@ -14,6 +14,9 @@ export async function fetchFiles(folderId = null, recursive = false) {
         }
         const response = await fetch(url);
         const result = await response.json();
+        if (result.status === 'success' && Array.isArray(result.data)) {
+            result.data = result.data.filter(item => item.name !== '_vault_temp_chunks' && !item.name.startsWith('_vault_temp_'));
+        }
         return result;
     } catch (error) {
         console.error("Gagal memuat berkas:", error);
