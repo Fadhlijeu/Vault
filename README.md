@@ -2,7 +2,7 @@
   <img src="assets/images/icon.png" alt="Vault banner" width="75%">
 </p>
 
-# 🛡️ Cyber Vault — Secure Encrypted Storage System
+# 🛡️ Vault — Secure Encrypted Storage System
 
 <div align="center">
   <img src="https://img.shields.io/badge/Security-Encrypted-cyan?style=for-the-badge&logo=snyk" alt="Security Badge" />
@@ -80,11 +80,11 @@ graph TD
 ### A. Konfigurasi Google Apps Script (Backend)
 
 1. Buka [Google Drive](https://drive.google.com) Anda.
-2. Buat folder baru di Drive bernama `Cyber Vault Data Store`.
+2. Buat folder baru di Drive bernama `Vault Data Store`.
 3. Klik tombol **New** -> **More** -> **Google Apps Script** (atau kunjungi [script.google.com](https://script.google.com)).
 4. Salin seluruh isi dari berkas [`code.gs`](./code.gs) ke editor Apps Script Anda.
 5. Konfigurasikan hak akses dan konfigurasi awal (opsional) di script properties:
-   - `HANDSHAKE_KEY` (Token login Anda, default: `default-cyber-secret-1337`).
+   - `HANDSHAKE_KEY` (Token login Anda, default: `default-vault-secret-1337`).
 6. Klik **Deploy** -> **New Deployment**.
    - Pilih type: **Web App**.
    - Execute as: **Me** (akun Google Anda).
@@ -106,13 +106,13 @@ graph TD
 
 3. Akses `http://localhost:8000` pada browser Anda.
 4. Klik tombol **⚙️ Setup** di pojok kanan atas, tempelkan URL Web App Google Apps Script Anda, lalu simpan.
-5. Masukkan Access Token (default: `default-cyber-secret-1337`) untuk membuka brankas!
+5. Masukkan Access Token (default: `default-vault-secret-1337`) untuk membuka brankas!
 
 ---
 
 ## 📋 Penggunaan CLI Singkat
 
-Berikut beberapa contoh perintah yang dapat Anda jalankan pada konsol terminal Cyber Vault di dashboard:
+Berikut beberapa contoh perintah yang dapat Anda jalankan pada konsol terminal Vault di dashboard:
 
 ```bash
 # 1. Menavigasi ke folder tertentu menggunakan ID

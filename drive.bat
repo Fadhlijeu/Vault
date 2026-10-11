@@ -2,7 +2,7 @@
 cd /d "%~dp0"
 
 :: ============================================================
-::  drive.bat - Cyber Vault CLI  v1.1
+::  drive.bat - Vault CLI  v1.1
 ::  Secure Cloud Storage Control System
 :: ============================================================
 

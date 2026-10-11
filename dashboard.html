@@ -1604,7 +1604,7 @@
                         const cfg = JSON.parse(localStorage.getItem('vault_config') || '{}');
                         const url = localStorage.getItem('vault_api_url') || 'N/A';
                         printLine('====================================', 'dim');
-                        printLine('Vault Name  : ' + (cfg.vaultName || 'Cyber Vault'));
+                        printLine('Vault Name  : ' + (cfg.vaultName || 'Vault'));
                         printLine('Backend URL : ' + url.substring(0, 60));
                         printLine('Folder      : ' + cliCurrentFolder.name);
                         printLine('Max Size    : ' + (cfg.maxFileSizeMB || 15) + ' MB');
